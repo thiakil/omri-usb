@@ -4,10 +4,13 @@ apply plugin: 'com.android.library'
 def asanEnabledInDebugBuild = false
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion 30
+    ndkVersion "23.0.7599858"
+
     defaultConfig {
-        minSdkVersion 16
-        targetSdkVersion 28
+        minSdkVersion 19
+        //noinspection OldTargetApi
+        targetSdkVersion 29
         versionCode 2
         versionName "1.0"
 		externalNativeBuild {
