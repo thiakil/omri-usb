@@ -46,7 +46,7 @@ public:
     void initialize() override;
     bool isInitialized() const override;
     int getCurrentTunedFrequency() const override;
-    void tuneFrequency(int frequencyKHz) override;
+    void tuneFrequency(int frequencyHz) override;
     const DabEnsemble& getEnsemble() const override;
     int getMaximumConcurrentSubChannels() const override;
 

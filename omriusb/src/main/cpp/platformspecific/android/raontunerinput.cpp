@@ -123,11 +123,11 @@ int RaonTunerInput::getCurrentTunedFrequency() const {
     return m_currentFrequency;
 }
 
-void RaonTunerInput::tuneFrequency(int frequencyKHz) {
+void RaonTunerInput::tuneFrequency(int frequencyHz) {
     if(!m_isScanning) {
-        m_commandQueue.push(std::bind(&RaonTunerInput::tuneFrequencySync, this, frequencyKHz));
+        m_commandQueue.push(std::bind(&RaonTunerInput::tuneFrequencySync, this, frequencyHz));
     } else {
-        tuneFrequencySync(frequencyKHz);
+        tuneFrequencySync(frequencyHz);
     }
 }
 
@@ -278,7 +278,7 @@ void RaonTunerInput::startScanCommand() {
     m_currentScanningEnsembleNum = 0;
     m_maxCollectionWaitLoops = MAX_COLLECTION_LOOPS;
     m_ficCollectionWaitLoops = 300;
-    tuneFrequency(DAB_FREQ_TABLE_MHZ[m_currentScanningEnsembleNum] * 1000);
+    tuneFrequency(DAB_FREQ_TABLE_KHZ[m_currentScanningEnsembleNum] * 1000);
     m_startServiceLink = nullptr;
     if (m_usbDevice != nullptr) {
         m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_SCAN_IN_PROGRESS);
@@ -339,7 +339,7 @@ void RaonTunerInput::scanNext() {
 
     if (m_currentScanningEnsembleNum + 1 < NUM_DAB_ENSEMBLES) {
         std::stringstream logStr;
-        logStr << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Scan next Ensemble: " << +DAB_FREQ_TABLE_MHZ[m_currentScanningEnsembleNum + 1];
+        logStr << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Scan next Ensemble: " << +DAB_FREQ_TABLE_KHZ[m_currentScanningEnsembleNum + 1];
         std::cout << logStr.str() << std::endl;
         if(m_ensembleCollectFinished) {
             for (int i : DAB_N_FREQUENCIES_IDX) {
@@ -350,12 +350,12 @@ void RaonTunerInput::scanNext() {
                 }
             }
         }
-        int freqKhz = DAB_FREQ_TABLE_MHZ[++m_currentScanningEnsembleNum] * 1000;
+        const int freqHz = DAB_FREQ_TABLE_KHZ[++m_currentScanningEnsembleNum] * 1000;
 
         // open raw recording file
-        rawRecordOpen(freqKhz / 1000);
+        rawRecordOpen(freqHz / 1000);
 
-        tuneFrequency(freqKhz);
+        tuneFrequency(freqHz);
 
         if (m_usbDevice != nullptr) {
             m_usbDevice->scanProgress(m_currentScanningEnsembleNum * 100 / NUM_DAB_ENSEMBLES,

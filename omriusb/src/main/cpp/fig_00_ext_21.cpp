@@ -136,7 +136,7 @@ void Fig_00_Ext_21::parseFigData(const std::vector<uint8_t>& figData) {
                     freqInfoItem.frequencyKHz = frequency * 16;
 
                     // range check
-                    const std::vector<uint32_t> knownDabFrequencies(std::begin(DAB_FREQ_TABLE_MHZ), std::end(DAB_FREQ_TABLE_MHZ));
+                    const std::vector<uint32_t> knownDabFrequencies(std::begin(DAB_FREQ_TABLE_KHZ), std::end(DAB_FREQ_TABLE_KHZ));
                     if (std::find(knownDabFrequencies.cbegin(), knownDabFrequencies.cend(),
                             freqInfoItem.frequencyKHz) == knownDabFrequencies.cend()) {
                         std::clog << m_logTag << " DAB frequency ignored: " << freqInfoItem.frequencyKHz << " kHz" << std::endl;

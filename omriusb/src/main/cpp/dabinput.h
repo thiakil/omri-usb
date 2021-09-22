@@ -43,7 +43,7 @@ public:
     virtual const DabEnsemble& getEnsemble() const = 0;
     virtual int getMaximumConcurrentSubChannels() const = 0;
 
-    virtual void tuneFrequency(int frequencyKHz) = 0;
+    virtual void tuneFrequency(int frequencyHz) = 0;
 
 public:
     using CallbackFunction = std::function<void(const std::vector<uint8_t>&)>;
@@ -52,4 +52,3 @@ public:
 };
 
 #endif // DABINPUT
-

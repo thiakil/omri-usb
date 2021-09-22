@@ -23,7 +23,7 @@
 
 //NS: 21, 26, 31
 constexpr int NUM_DAB_ENSEMBLES = 41;
-constexpr int DAB_FREQ_TABLE_MHZ[NUM_DAB_ENSEMBLES] = {
+constexpr int DAB_FREQ_TABLE_KHZ[NUM_DAB_ENSEMBLES] = {
         174928, //05A
         176640, //05B
         178352, //05C
