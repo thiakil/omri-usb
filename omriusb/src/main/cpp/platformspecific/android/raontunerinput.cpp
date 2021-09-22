@@ -25,7 +25,6 @@
 #include <iterator>
 #include <regex>
 #include <set>
-#include <sstream>
 
 #include <pthread.h>
 #include <unistd.h>
@@ -34,7 +33,6 @@
 
 #include "../../ficparser.h"
 #include "demousbtunerinput.h"
-#include "jusbdevice.h"
 #include "raontunerinput.h"
 
 constexpr uint8_t RaonTunerInput::g_abAdcClkSynTbl[4][7];
@@ -49,7 +47,7 @@ RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice) : m_
     std::cout << LOG_TAG << "Constructing...." << std::endl;
 
     m_usbDevice->requestPermission([&](bool granted) {
-        std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice.get()->getDeviceName()) : "NULL") << " PermissionCallback: " << granted << std::endl;
+        std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice->getDeviceName()) : "NULL") << " PermissionCallback: " << granted << std::endl;
         if(granted) {
             m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
             startReadDataThread();
@@ -59,7 +57,7 @@ RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice) : m_
     m_ensembleFinishedCb = DabEnsemble::registerEnsembleCollectDoneCallback(std::bind(&RaonTunerInput::ensembleCollectFinished, this));
 }
 
-RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice, const std::string recordPath)
+RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice, const std::string & recordPath)
     : RaonTunerInput(usbDevice)  {
     if (recordPath.length() > 0) {
         m_recordPath = recordPath;
@@ -178,11 +176,12 @@ void RaonTunerInput::addFicCallback(DabInput::CallbackFunction cb) {
 
 void RaonTunerInput::startService(std::shared_ptr<JDabService>& serviceLink) {
     //check if this service is already running
-    if(m_startServiceLink != nullptr) {
-        if(m_startServiceLink->getEnsembleFrequency() == serviceLink->getEnsembleFrequency() &&
-           m_startServiceLink->getEnsembleEcc() == serviceLink->getEnsembleEcc() &&
-           m_startServiceLink->getEnsembleId() == serviceLink->getEnsembleId() &&
-           m_startServiceLink->getServiceId() == serviceLink->getServiceId()) {
+    auto & service = m_startServiceLink;
+    if(service != nullptr) {
+        if(service->getEnsembleFrequency() == serviceLink->getEnsembleFrequency() &&
+                service->getEnsembleEcc() == serviceLink->getEnsembleEcc() &&
+                service->getEnsembleId() == serviceLink->getEnsembleId() &&
+                service->getServiceId() == serviceLink->getServiceId()) {
             std::cout << LOG_TAG << "Starting service is already running" << std::endl;
             return;
         }
@@ -201,12 +200,15 @@ void RaonTunerInput::startServiceSync(const std::shared_ptr<JDabService>& servic
     }
 
     std::cout << LOG_TAG << "Starting service... 0x" << std::hex << serviceLink->getServiceId() << std::dec << std::endl;
-    if(m_startServiceLink != nullptr) {
-        m_startServiceLink->decodeAudio(false);
-        m_startServiceLink->unlinkDabService();
-        if(m_startServiceLink->getJavaDabServiceObject() != nullptr) {
+
+    // stop potential existing service
+    auto & service = m_startServiceLink;
+    if(service != nullptr) {
+        service->decodeAudio(false);
+        service->unlinkDabService();
+        if(service->getJavaDabServiceObject() != nullptr) {
             if (m_usbDevice != nullptr) {
-                m_usbDevice->serviceStopped(m_startServiceLink->getJavaDabServiceObject());
+                m_usbDevice->serviceStopped(service->getJavaDabServiceObject());
             }
         }
         m_startServiceLink.reset();
@@ -217,9 +219,9 @@ void RaonTunerInput::startServiceSync(const std::shared_ptr<JDabService>& servic
     // open raw recording file
     rawRecordOpen(serviceLink);
 
-    if(m_currentFrequency != serviceLink.get()->getEnsembleFrequency()) {
+    if(m_currentFrequency != serviceLink->getEnsembleFrequency()) {
         m_ensembleCollectFinished = false;
-        tuneFrequency(serviceLink.get()->getEnsembleFrequency());
+        tuneFrequency(serviceLink->getEnsembleFrequency());
         return;
     }
 
@@ -292,7 +294,7 @@ void RaonTunerInput::stopScanCommand() {
     stopReadFicThread();
     m_isScanning = false;
     m_currentScanningEnsembleNum = 0;
-    tuneFrequency(0xFFFFFFFF);
+    tuneFrequency(-1);
     if (m_usbDevice != nullptr) {
         m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
     }
@@ -425,20 +427,22 @@ void RaonTunerInput::threadedFicRead() {
 }
 
 void RaonTunerInput::setService() {
-    if(m_startServiceLink != nullptr) {
+    auto & service = m_startServiceLink;
+    if(service != nullptr) {
         std::cout << LOG_TAG << "Starting service 0x" << std::hex
-                  << +m_startServiceLink->getServiceId() << std::dec << std::endl;
+                  << +service->getServiceId() << std::dec << std::endl;
 
-        if(m_startServiceLink->getEnsembleFrequency() != m_currentFrequency) {
-            m_commandQueue.push(std::bind(&RaonTunerInput::tuneFrequencySync, this, m_startServiceLink->getEnsembleFrequency()));
+        if(service->getEnsembleFrequency() != m_currentFrequency) {
+            m_commandQueue.push(std::bind(&RaonTunerInput::tuneFrequencySync, this,
+                                          service->getEnsembleFrequency()));
             return;
         }
 
         bool foundSId = false, foundSrvComp = false;
 
         for(const auto& srv : getDabServices()) {
-            if(srv->getServiceId() == m_startServiceLink->getServiceId()) {
-                m_startServiceLink->setLinkDabService(srv);
+            if(srv->getServiceId() == service->getServiceId()) {
+                service->setLinkDabService(srv);
 
                 for (const auto& srvComp : srv->getServiceComponents()) {
                     if((srvComp->getServiceComponentType() == DabServiceComponent::MSC_STREAM_AUDIO) &&
@@ -449,10 +453,10 @@ void RaonTunerInput::setService() {
                         clearAndSetupMscMemory();
                         openSubChannel(srvComp->getSubChannelId());
 
-                        m_startServiceLink->decodeAudio(true);
+                        service->decodeAudio(true);
                         if (m_usbDevice != nullptr &&
-                            m_startServiceLink->getJavaDabServiceObject() != nullptr) {
-                            m_usbDevice->serviceStarted(m_startServiceLink->getJavaDabServiceObject());
+                                service->getJavaDabServiceObject() != nullptr) {
+                            m_usbDevice->serviceStarted(service->getJavaDabServiceObject());
                         }
                         foundSrvComp = true;
                         break;
@@ -465,11 +469,13 @@ void RaonTunerInput::setService() {
 
         if (!foundSId) {
             std::clog << LOG_TAG << "setService: not found SId " << std::hex
-                      << +m_startServiceLink->getServiceId() << std::dec << std::endl;
+                      << +service->getServiceId() << std::dec << std::endl;
         } else if (!foundSrvComp) {
             std::clog << LOG_TAG << "setService: not found primary srv " << std::hex
-                      << +m_startServiceLink->getServiceId() << std::dec << std::endl;
+                      << +service->getServiceId() << std::dec << std::endl;
         }
+    } else {
+        std::clog << LOG_TAG << "setService: nullptr" << std::endl;
     }
 }
 
@@ -802,6 +808,11 @@ bool RaonTunerInput::changedAdcClock(uint8_t adcClkType) {
             setRegister(0x43,0x00); //PNCO
             break;
         }
+        default: {
+            std::clog << LOG_TAG << "unhandled adcClkType " << +adcClkType << std::endl;
+            setOk = false;
+            break;
+        }
     }
 
     return setOk;
@@ -1124,7 +1135,7 @@ void RaonTunerInput::rtvRFInitilize() {
     setRegister(0x37, 0x3B);
     setRegister(0x39, 0x2C);
 
-    short checkVal = (short)(((readRegister(0x10) << 8) | readRegister(0x11)) & 0xFFFF);
+    auto checkVal = (short)(((readRegister(0x10) << 8) | readRegister(0x11)) & 0xFFFF);
     if(checkVal != (short)0xFFFF) {
         setRegister(0x2C, 0x48);
         setRegister(0x47, 0xE0);
@@ -1189,24 +1200,24 @@ void RaonTunerInput::rtvEcho() {
     }
 }
 
-void RaonTunerInput::setFrequency(uint32_t frequencyKhz) {
+void RaonTunerInput::setFrequency(uint32_t frequencyHz) {
     int nNumTblEntry = 0;
 
-    int freqMhz = frequencyKhz/1000;
-    int nIdx = (freqMhz - DAB_CH_BAND3_START_FREQ_KHz) / DAB_CH_BAND3_STEP_FREQ_KHz;
+    const uint32_t freqKhz = frequencyHz / 1000;
+    uint32_t nIdx = (freqKhz - DAB_CH_BAND3_START_FREQ_KHz) / DAB_CH_BAND3_STEP_FREQ_KHz;
 
-    if(freqMhz >= 224096) {
+    if(freqKhz >= 224096) {
         nIdx += 3;
-    }  else if(freqMhz >= 217008) {
+    }  else if(freqKhz >= 217008) {
         nIdx += 2;
-    } else if(freqMhz >= 210096) {
+    } else if(freqKhz >= 210096) {
         nIdx += 1;
     }
     uint8_t adcClkFrqType;
     if (nIdx >= 0 && nIdx < (sizeof(g_aeAdcClkTypeTbl_DAB_B3) / sizeof(uint8_t))) {
         adcClkFrqType = g_aeAdcClkTypeTbl_DAB_B3[nIdx];
     } else {
-        std::clog << LOG_TAG << " freq " << +freqMhz << " MHz caused nIdx " << +nIdx << " out of bounds" << std::endl;
+        std::clog << LOG_TAG << " freq " << +freqKhz << " MHz caused nIdx " << +nIdx << " out of bounds" << std::endl;
         return;
     }
 
@@ -1228,11 +1239,11 @@ void RaonTunerInput::setFrequency(uint32_t frequencyKhz) {
         uint8_t verifyByte13 = readRegister(0x13);
         uint8_t verifyByte14 = readRegister(0x14);
         
-        if( (verifyByte15 & 0x02) == 0x02) {
+        /*if( (verifyByte15 & 0x02) == 0x02) {
 
         } else {
             //setRegister(0x20, 0x00);
-        }
+        }*/
 
         switchPage(REGISTER_PAGE_FM);
         setRegister(0x10, 0x48);
@@ -1317,12 +1328,13 @@ void RaonTunerInput::closeSubchannel(uint8_t subchanId) {
 
     m_currentSubchanId = 0xFF;
 
-    if(m_startServiceLink != nullptr) {
-        m_startServiceLink->decodeAudio(false);
-        m_startServiceLink->unlinkDabService();
-        if(m_startServiceLink->getJavaDabServiceObject() != nullptr) {
+    auto & service = m_startServiceLink;
+    if(service != nullptr) {
+        service->decodeAudio(false);
+        service->unlinkDabService();
+        if(service->getJavaDabServiceObject() != nullptr) {
             if (m_usbDevice != nullptr) {
-                m_usbDevice->serviceStopped(m_startServiceLink->getJavaDabServiceObject());
+                m_usbDevice->serviceStopped(service->getJavaDabServiceObject());
             }
         }
 
@@ -1461,7 +1473,7 @@ void RaonTunerInput::rawRecordOpen(const std::shared_ptr<JDabService>& serviceLi
     std::stringstream serviceidstring, ensembleidstring;
 
     if (serviceLink != nullptr) {
-        std::shared_ptr<DabService> dabService = serviceLink.get()->getLinkDabService();
+        std::shared_ptr<DabService> dabService = serviceLink->getLinkDabService();
         if (dabService != nullptr) {
             labelstring = dabService->getServiceLabel();
         } else {
@@ -1911,7 +1923,7 @@ void RaonTunerInput::getAntennaLevel() {
     } else {
         cer_period_cnt = 0;
         if (m_usbDevice != nullptr) {
-            m_usbDevice.get()->receptionStatistics(false, 0);
+            m_usbDevice->receptionStatistics(false, 0);
         }
         return;
     }
@@ -1959,7 +1971,7 @@ void RaonTunerInput::getAntennaLevel() {
         m_prevAntennaLvl = static_cast<uint8_t>(prevLevel);
     }
     if (m_usbDevice != nullptr) {
-        m_usbDevice.get()->receptionStatistics(true, prevLevel);
+        m_usbDevice->receptionStatistics(true, prevLevel);
     }
 }
 

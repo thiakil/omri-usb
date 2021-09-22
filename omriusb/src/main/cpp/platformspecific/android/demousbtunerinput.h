@@ -1,3 +1,4 @@
+#include "androidlogbuf.h"
 /*
  * Copyright (C) 2020 realzoulou
  *
@@ -37,7 +38,7 @@ public:
     constexpr static uint32_t FILEMARKER_FIC = 0xDEADAFFE;
 
 public:
-    explicit DemoUsbTunerInput(JavaVM* javaVm, JNIEnv* env);
+    explicit DemoUsbTunerInput(JavaVM* javaVm, __unused JNIEnv* env);
     virtual ~DemoUsbTunerInput();
 
     //delete copy and assignment constructors

@@ -36,7 +36,7 @@ class RaonTunerInput final : public DabUsbTunerInput, DabEnsemble {
 
 public:
     explicit RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice);
-    explicit RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice, const std::string recordPath);
+    explicit RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice, const std::string & recordPath);
     virtual ~RaonTunerInput();
 
     //delete copy and assignment constructors
@@ -337,7 +337,7 @@ private:
     void rtvEcho();
     void rtvVersion();
 
-    void setFrequency(uint32_t frequencyKhz);
+    void setFrequency(uint32_t frequencyHz);
 
     void softReset();
     void setupMemoryFIC();

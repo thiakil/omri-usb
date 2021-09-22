@@ -1,3 +1,4 @@
+#include <__bit_reference>
 /*
  * Copyright (C) 2020 realzoulou
  *
@@ -23,7 +24,7 @@
 #include <sys/endian.h>
 #include "demousbtunerinput.h"
 
-DemoUsbTunerInput::DemoUsbTunerInput(JavaVM* javaVm, JNIEnv* env) {
+DemoUsbTunerInput::DemoUsbTunerInput(JavaVM* javaVm, __unused JNIEnv* env) {
     std::cout << LOG_TAG << "Constructing...." << std::endl;
     m_javaVm = javaVm;
 
@@ -98,13 +99,13 @@ void DemoUsbTunerInput::startService(std::shared_ptr<JDabService>& serviceLink) 
         // need to refer to serviceLink, otherwise it may be destroyed
         m_startServiceLink = serviceLink;
 
-        jobject javaDabServiceObject = serviceLink.get()->getJavaDabServiceObject();
+        jobject javaDabServiceObject = serviceLink->getJavaDabServiceObject();
         if (javaDabServiceObject != nullptr) {
             std::string description = callJavaRadioServiceGetDescription(javaDabServiceObject);
             std::cout << LOG_TAG << "startService " << description << std::endl;
 
             m_ensembleCollectFinished = false;
-            tuneFrequency(serviceLink.get()->getEnsembleFrequency());
+            tuneFrequency(serviceLink->getEnsembleFrequency());
 
             inputStreamOpen(description); // description contains the absolute filename
             readDataThreadStart();
@@ -125,15 +126,16 @@ void DemoUsbTunerInput::ensembleCollectFinished() {
 }
 
 void DemoUsbTunerInput::setService() {
-    if(m_startServiceLink != nullptr) {
+    auto & service = m_startServiceLink;
+    if(service != nullptr) {
         std::cout << LOG_TAG << "Starting service 0x" << std::hex
-            << +m_startServiceLink->getServiceId() << std::dec << std::endl;
+            << +service->getServiceId() << std::dec << std::endl;
 
         bool foundSId = false, foundSrvComp = false;
 
         for(const auto& srv : getDabServices()) {
-            if(srv->getServiceId() == m_startServiceLink->getServiceId()) {
-                m_startServiceLink->setLinkDabService(srv);
+            if(srv->getServiceId() == service->getServiceId()) {
+                service->setLinkDabService(srv);
 
                 for (const auto& srvComp : srv->getServiceComponents()) {
                     if((srvComp->getServiceComponentType() == DabServiceComponent::MSC_STREAM_AUDIO) &&
@@ -141,7 +143,7 @@ void DemoUsbTunerInput::setService() {
                         std::cout << LOG_TAG << "Starting SubChanId: " << +srvComp->getSubChannelId() << std::endl;
                         m_currentSubchanId = srvComp->getSubChannelId();
 
-                        m_startServiceLink->decodeAudio(true);
+                        service->decodeAudio(true);
                         foundSrvComp = true;
                         break;
                     }
@@ -153,11 +155,13 @@ void DemoUsbTunerInput::setService() {
 
         if (!foundSId) {
             std::clog << LOG_TAG << "setService: not found SId " << std::hex
-                      << +m_startServiceLink->getServiceId() << std::dec << std::endl;
+                      << +service->getServiceId() << std::dec << std::endl;
         } else if (!foundSrvComp) {
             std::clog << LOG_TAG << "setService: not found primary srv " << std::hex
-                      << +m_startServiceLink->getServiceId() << std::dec << std::endl;
+                      << +service->getServiceId() << std::dec << std::endl;
         }
+    } else {
+        std::clog << LOG_TAG << "setService: nullptr" << std::endl;
     }
 }
 
@@ -169,13 +173,14 @@ void DemoUsbTunerInput::stopService(const DabService &service) {
 void DemoUsbTunerInput::stopAllRunningServices() {
     readDataThreadStop();
     inputStreamClose();
-    if (m_startServiceLink != nullptr) {
-        jobject radioService = m_startServiceLink.get()->getJavaDabServiceObject();
+    auto & service = m_startServiceLink;
+    if (service != nullptr) {
+        jobject radioService = service->getJavaDabServiceObject();
         if (radioService != nullptr) {
             serviceStopped(radioService);
         }
-        m_startServiceLink->decodeAudio(false);
-        m_startServiceLink->unlinkDabService();
+        service->decodeAudio(false);
+        service->unlinkDabService();
         m_startServiceLink.reset();
         m_startServiceLink = nullptr;
     }
@@ -216,7 +221,7 @@ void DemoUsbTunerInput::serviceStarted(jobject radioService) {
 
     int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
     if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if (m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
@@ -244,7 +249,7 @@ void DemoUsbTunerInput::serviceStopped(jobject radioService) {
 
     int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
     if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if (m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
@@ -274,7 +279,7 @@ std::string DemoUsbTunerInput::callJavaRadioServiceGetDescription(jobject radioS
 
     int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
     if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if (m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
@@ -282,12 +287,12 @@ std::string DemoUsbTunerInput::callJavaRadioServiceGetDescription(jobject radioS
         }
     }
     const char *strReturn;
-    std::string retString("");
+    std::string retString;
     if (radioService != nullptr
         && m_radioServiceGetLongDescriptionMId != nullptr ) {
 
         jstr = (jstring) enve->CallObjectMethod(radioService, m_radioServiceGetLongDescriptionMId);
-        strReturn = enve->GetStringUTFChars(jstr, 0);
+        strReturn = enve->GetStringUTFChars(jstr, nullptr);
         retString = strReturn;
         enve->ReleaseStringUTFChars(jstr, strReturn);
     }
@@ -331,7 +336,7 @@ void DemoUsbTunerInput::readThreadProc() {
         std::clog << LOG_TAG << "readThreadProc: startServiceLink null" << std::endl;
         return;
     }
-    jobject radioService = m_startServiceLink.get()->getJavaDabServiceObject();
+    jobject radioService = m_startServiceLink->getJavaDabServiceObject();
 
     if (radioService == nullptr) {
         m_readThreadRunning = false;
