@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
 import android.content.Context;
 import android.util.Log;
 
@@ -17,7 +19,6 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -25,8 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.omri.BuildConfig.DEBUG;
 
 class VisualLogoManager {
 
@@ -233,12 +232,13 @@ class VisualLogoManager {
 			mDeserializingInProgress.set(true);
 
 			if (DEBUG) Log.d(TAG, "Restoring LogoJson");
-			if (((RadioImpl) Radio.getInstance()).mContext == null) {
+			final Context context = ((RadioImpl) Radio.getInstance()).mContext;
+			if (context == null) {
 				Log.w(TAG, "deserializeLogos: Radio context null");
 				mDeserializingInProgress.set(false);
 				return;
 			}
-			File visCacheFile = new File(((RadioImpl) Radio.getInstance()).mContext.getCacheDir().getAbsolutePath()
+			final File visCacheFile = new File(context.getCacheDir().getAbsolutePath()
 					+ File.separatorChar + VIS_CACHE_DIR + File.separatorChar + LOGOS_FILENAME);
 			if (visCacheFile.exists()) {
 				if (mLogoList != null) {
@@ -310,12 +310,8 @@ class VisualLogoManager {
 					mLogoList.addAll(deserList);
 
 					if (DEBUG) Log.d(TAG, "Restoring LogoJson done");
-				} catch (JSONException jsonExc) {
-					if (DEBUG) jsonExc.printStackTrace();
-				} catch (FileNotFoundException fnfExc) {
-					if (DEBUG) fnfExc.printStackTrace();
-				} catch (IOException ioExc) {
-					if (DEBUG) ioExc.printStackTrace();
+				} catch (Throwable e) {
+					if (DEBUG) e.printStackTrace();
 				} finally {
 					mDeserializingInProgress.set(false);
 
