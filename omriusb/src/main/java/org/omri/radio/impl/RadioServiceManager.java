@@ -1,9 +1,13 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
+import android.content.Context;
 import android.util.Base64;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -35,10 +39,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import eu.hradio.core.radiodns.radioepg.radiodns.RadioDns;
-
-import static org.omri.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -62,15 +65,16 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 
 	private final static String TAG = "RadioServiceManager";
 
-	private static RadioServiceManager INSTANCE = null;
+	@Nullable private static RadioServiceManager INSTANCE = null;
+	static final AtomicBoolean instanceGuard = new AtomicBoolean();
 
 	private final ConcurrentHashMap<RadioServiceType, CopyOnWriteArrayList<RadioService>> mServicesMap = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<RadioServiceType, Boolean> mServicesDeSerializingInProgress = new ConcurrentHashMap<>();
 
-	private final String SERVICES_DIR;
-	private final String SERVICES_JSON_DAB;
-	private final String SERVICES_JSON_IP;
-	private final String SERVICES_JSON_EDI;
+	@Nullable private final String SERVICES_DIR;
+	@Nullable private final String SERVICES_JSON_DAB;
+	@Nullable private final String SERVICES_JSON_IP;
+	@Nullable private final String SERVICES_JSON_EDI;
 
 	private boolean mFirstInitDab = true;
 	private boolean mFirstInitEdi = true;
@@ -78,8 +82,9 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 
 	private RadioServiceManager() {
 		if (DEBUG) Log.d(TAG, "Constructor");
-		if (((RadioImpl) Radio.getInstance()).mContext != null) {
-			SERVICES_DIR = ((RadioImpl) Radio.getInstance()).mContext.getFilesDir() + "/services/";
+		final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
+		if (context != null) {
+			SERVICES_DIR = context.getFilesDir() + "/services/";
 			SERVICES_JSON_DAB = SERVICES_DIR + "dabservices.json";
 			SERVICES_JSON_IP = SERVICES_DIR + "ipservices.json";
 			SERVICES_JSON_EDI = SERVICES_DIR + "ediservices.json";
@@ -118,11 +123,16 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		}).start();
 	}
 
+	@NonNull
 	static RadioServiceManager getInstance() {
-	    if (INSTANCE == null) {
-	        INSTANCE = new RadioServiceManager();
-        }
-		return INSTANCE;
+		RadioServiceManager ret = null;
+		synchronized (instanceGuard) {
+			if (INSTANCE == null) {
+				INSTANCE = new RadioServiceManager();
+			}
+			ret = INSTANCE;
+		}
+		return ret;
 	}
 
 	void destroyInstance() {
@@ -140,8 +150,9 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 			}
 		}
 		mServicesMap.clear();
-
-        INSTANCE = null;
+		synchronized (instanceGuard) {
+			INSTANCE = null;
+		}
 	}
 
 	final boolean isServiceListReady(RadioServiceType type) {
@@ -1011,5 +1022,3 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		return false;
 	}
 }
-
-

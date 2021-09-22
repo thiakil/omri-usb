@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.usb.UsbDevice;
@@ -10,6 +12,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import org.omri.radio.Radio;
 import org.omri.radio.RadioErrorCode;
@@ -30,8 +33,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
-
-import static org.omri.BuildConfig.DEBUG;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -67,14 +69,24 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	private final static long NANO_PART = 1000000;
 	private static boolean mNtpSync = false;
 
-	Context mContext = null;
+	private final AtomicBoolean mContextGuard = new AtomicBoolean();
+	@Nullable private Context mContext = null;
 
 	File getStorageDir() {
-		if(mContext != null) {
-			return mContext.getExternalCacheDir();
+		final Context context = getAppContext();
+		if (context != null) {
+			return context.getExternalCacheDir();
 		}
 
 		return null;
+	}
+
+	Context getAppContext() {
+		final Context ret;
+		synchronized (mContextGuard) {
+			ret = mContext;
+		}
+		return ret;
 	}
 
 	public RadioImpl() {
@@ -83,7 +95,9 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 	
 	private RadioImpl(Context context) {
-		this.mContext = context;
+		synchronized (mContextGuard) {
+			this.mContext = context;
+		}
 		this.mTunerList = Collections.synchronizedList(new ArrayList<>());
 		this.mRadioserviceList = Collections.synchronizedList(new ArrayList<>());
 		this.mRadioStatusListeners = Collections.synchronizedList(new ArrayList<>());
@@ -120,7 +134,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	@Override
 	public RadioErrorCode initialize() {
 		if(DEBUG)Log.d(TAG, "Initializing...!");
-		return initialize(mContext);
+		return initialize(getAppContext());
 	}
 
 	@Override
@@ -131,10 +145,12 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public RadioErrorCode initialize(Context appContext, Bundle bundle) {
-
-		mContext = appContext.getApplicationContext();
-
-		if(mContext != null) {
+		final Context context;
+		synchronized (mContextGuard) {
+			mContext = appContext.getApplicationContext();
+			context = mContext;
+		}
+		if(context != null) {
 
 			int ntpRetries = 5;
 			while(!mNtpSync && ntpRetries > 0) {
@@ -145,7 +161,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 				SystemClock.sleep(10);
 			}
 
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getAppContext());
 			boolean useLookupOnMobile = prefs.getBoolean("omri_use_iplookup_onmobile", false);
 			boolean useIpStreamOnMobile = prefs.getBoolean("omri_use_ipstream_onmobile", false);
 			boolean useIpStreamHqOnMobile = prefs.getBoolean("omri_use_ipstream_hq_onmobile", false);
@@ -168,7 +184,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 				}
 			}
 
-			UsbHelper.create(mContext, this, redirectCoutToALog, rawRecordingPath);
+			UsbHelper.create(getAppContext(), this, redirectCoutToALog, rawRecordingPath);
 
 			//List of Pairs consisiting of first.VendorId and second.ProductId
 			ArrayList<Pair<Integer, Integer>> wantedDevices = new ArrayList<>();

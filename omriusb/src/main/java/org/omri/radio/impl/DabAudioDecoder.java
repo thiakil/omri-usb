@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -27,8 +29,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import de.irt.dabaudiodecoderplugininterface.IDabPluginCallback;
 import de.irt.dabaudiodecoderplugininterface.IDabPluginInterface;
-
-import static org.omri.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -140,8 +140,9 @@ class DabAudioDecoder {
 
 	private boolean mpegDecPluginInstalled() {
 		if(DEBUG)Log.d(TAG, "Searching installed Codec Plugins!");
-		if (((RadioImpl)Radio.getInstance()).mContext != null) {
-			PackageManager packageManager = ((RadioImpl) Radio.getInstance()).mContext.getPackageManager();
+		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
+		if (context != null) {
+			PackageManager packageManager = context.getPackageManager();
 			List<ApplicationInfo> apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA);
 			for (ApplicationInfo appInfo : apps) {
 				if (appInfo.packageName.equalsIgnoreCase("de.irt.dabmpg123decoderplugin")) {
@@ -154,7 +155,7 @@ class DabAudioDecoder {
 	}
 
 	private boolean mpegDecPluginInstalled2() {
-		final Context context = ((RadioImpl)Radio.getInstance()).mContext;
+		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
 		PackageManager packageManager = null;
 		if (context != null) {
 			packageManager = context.getPackageManager();
@@ -188,7 +189,7 @@ class DabAudioDecoder {
 		final Intent srvIntent = new Intent("de.irt.dabmpg123decoderplugin.Mpg123Decoder");
 		srvIntent.setPackage("de.irt.dabmpg123decoderplugin");
 
-		Context radioContext = ((RadioImpl)Radio.getInstance()).mContext;
+		final Context radioContext = ((RadioImpl)Radio.getInstance()).getAppContext();
 		if (radioContext != null) {
 			return radioContext.bindService(srvIntent, mDecoderConnection, Context.BIND_AUTO_CREATE);
 		} else {
@@ -206,7 +207,7 @@ class DabAudioDecoder {
 
 		Thread t = new Thread(){
 			public void run(){
-				final Context context = ((RadioImpl)Radio.getInstance()).mContext;
+				final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
 				if (context != null) {
 					context.bindService(srvIntent, mDecoderConnection, Context.BIND_AUTO_CREATE);
 				} else {
@@ -215,7 +216,7 @@ class DabAudioDecoder {
 			}
 		};
 		t.start();
-		final Context radioContext = ((RadioImpl)Radio.getInstance()).mContext;
+		final Context radioContext = ((RadioImpl)Radio.getInstance()).getAppContext();
 		if (radioContext != null) {
 			return radioContext.bindService(srvIntent, mDecoderConnection, Context.BIND_AUTO_CREATE);
 		} else {
@@ -226,7 +227,7 @@ class DabAudioDecoder {
 
 	private void unbindDecoderService() {
 		if(mDecoderServiceBound) {
-			final Context context = ((RadioImpl)Radio.getInstance()).mContext;
+			final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
 			if (context != null) {
 				if (DEBUG) Log.d(TAG, "unbind decoder");
 				context.unbindService(mDecoderConnection);

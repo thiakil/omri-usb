@@ -5,6 +5,9 @@ import static org.omri.BuildConfig.DEBUG;
 import android.content.Context;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -33,16 +36,17 @@ class VisualLogoManager {
 	private final static String VIS_CACHE_DIR = "logo_cache";
     private final static String LOGOS_FILENAME = "logos.json";
 
-	private static VisualLogoManager mManagerInstance = null;
+	@Nullable private static VisualLogoManager mManagerInstance = null;
+	static final AtomicBoolean instanceGuard = new AtomicBoolean();
 
 	private CopyOnWriteArrayList<VisualLogoImpl> mLogoList = new CopyOnWriteArrayList<>();
-	private AtomicBoolean mSerializingInProgress = new AtomicBoolean();
-	private AtomicBoolean mDeserializingInProgress = new AtomicBoolean();
+	private final AtomicBoolean mSerializingInProgress = new AtomicBoolean();
+	private final AtomicBoolean mDeserializingInProgress = new AtomicBoolean();
 
-	private Thread mDeSerThread = null;
+	@Nullable private Thread mDeSerThread = null;
 
 	private VisualLogoManager() {
-		final Context context = ((RadioImpl) Radio.getInstance()).mContext;
+		final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
 		if (context != null) {
 			File logoDir = new File(context.getCacheDir(), VIS_CACHE_DIR);
 			if (DEBUG) Log.d(TAG, "LogoCacheDir: " + logoDir.getAbsolutePath());
@@ -67,12 +71,16 @@ class VisualLogoManager {
 		}
 	}
 
+	@NonNull
 	static VisualLogoManager getInstance() {
-		if(mManagerInstance == null) {
-			mManagerInstance = new VisualLogoManager();
+		VisualLogoManager ret;
+		synchronized (instanceGuard) {
+			if (mManagerInstance == null) {
+				mManagerInstance = new VisualLogoManager();
+			}
+			ret = mManagerInstance;
 		}
-
-		return mManagerInstance;
+		return ret;
 	}
 
 	void destroyInstance() {
@@ -89,7 +97,9 @@ class VisualLogoManager {
 		if (mLogoList != null) {
 			mLogoList.clear();
 		}
-		mManagerInstance = null;
+		synchronized (instanceGuard) {
+			mManagerInstance = null;
+		}
 	}
 
 	boolean isReady() {
@@ -149,9 +159,9 @@ class VisualLogoManager {
 			mSerializingInProgress.set(true);
 
 			if (DEBUG) Log.d(TAG, "LogoJson Serializing " + mLogoList.size() + " LogoVisuals");
-
-			if (((RadioImpl) Radio.getInstance()).mContext != null) {
-				File visCacheDir = new File(((RadioImpl) Radio.getInstance()).mContext.getCacheDir(), VIS_CACHE_DIR);
+			final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
+			if (context != null) {
+				File visCacheDir = new File(context.getCacheDir(), VIS_CACHE_DIR);
 				if (!visCacheDir.exists()) {
 					boolean cacheDirCreated = visCacheDir.mkdir();
 					if (DEBUG) {
@@ -232,7 +242,7 @@ class VisualLogoManager {
 			mDeserializingInProgress.set(true);
 
 			if (DEBUG) Log.d(TAG, "Restoring LogoJson");
-			final Context context = ((RadioImpl) Radio.getInstance()).mContext;
+			final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
 			if (context == null) {
 				Log.w(TAG, "deserializeLogos: Radio context null");
 				mDeserializingInProgress.set(false);

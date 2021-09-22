@@ -1,5 +1,8 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
+import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -57,8 +60,6 @@ import eu.hradio.httprequestwrapper.listener.OnErrorListener;
 import eu.hradio.httprequestwrapper.listener.OnSearchResultListener;
 import eu.hradio.httprequestwrapper.service.ServiceSearchClient;
 import eu.hradio.httprequestwrapper.service.ServiceSearchClientImpl;
-
-import static org.omri.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -422,7 +423,8 @@ public class IpServiceScanner {
 
 	private volatile boolean mEnrichInProgress = false;
 	void enrichServices(List<RadioService> services) {
-		if(((RadioImpl)Radio.getInstance()).mContext != null && !mEnrichInProgress) {
+		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
+		if(context != null && !mEnrichInProgress) {
 			mEnrichInProgress = true;
 
 			for(RadioService enrichSrv : services) {
@@ -582,7 +584,8 @@ public class IpServiceScanner {
 
 	private void scanHradioServices(Bundle optBundle) {
 		if(DEBUG)Log.d(TAG, "Starting HRadio ServiceScan: " + mIsScanning);
-		if(((RadioImpl)Radio.getInstance()).mContext != null) {
+		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
+		if(context != null) {
 			if (!mIsScanning) {
 				mIsScanning = true;
 
@@ -893,7 +896,8 @@ public class IpServiceScanner {
 
 	private void scanRdnsServices(@Nullable Bundle searchOptions) {
 		if(DEBUG)Log.d(TAG, "Starting ServiceScan: " + mIsScanning);
-		if(((RadioImpl)Radio.getInstance()).mContext != null) {
+		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
+		if(context != null) {
 			if (!mIsScanning) {
 				mIsScanning = true;
 
@@ -932,7 +936,7 @@ public class IpServiceScanner {
 				mCoreCallbacksTotal = mLookups.size();
 
 				for (RadioDnsCore core : mLookups.values()) {
-					core.coreLookup(mCoreCallback, ((RadioImpl) Radio.getInstance()).mContext);
+					core.coreLookup(mCoreCallback, context);
 				}
 
 				notifyListeners(5, false);
@@ -959,8 +963,9 @@ public class IpServiceScanner {
 
 	@Nullable private File createLogoFilesCacheDir() {
 		File dir = null;
-		if(((RadioImpl)Radio.getInstance()).mContext != null) {
-			dir = new File(((RadioImpl)Radio.getInstance()).mContext.getCacheDir(), "logofiles_cache");
+		final android.content.Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
+		if(context != null) {
+			dir = new File(context.getCacheDir(), "logofiles_cache");
 			if(DEBUG)Log.d(TAG, "LogoFilesCacheDir: " + dir.getAbsolutePath());
 			if(!dir.exists()) {
 				boolean logoCacheCreated = dir.mkdirs();

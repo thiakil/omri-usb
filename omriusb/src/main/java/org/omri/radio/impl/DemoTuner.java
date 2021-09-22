@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -18,8 +20,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
-import static org.omri.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2020 realzoulou
@@ -292,7 +292,8 @@ public class DemoTuner implements Tuner {
 				Log.w(TAG, "not a dir:'" + mInputFilesPath + "'");
 			}
 
-			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB) || !VisualLogoManager.getInstance().isReady()) {
+			final RadioServiceManager rsm = RadioServiceManager.getInstance();
+			while (!rsm.isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB) || !VisualLogoManager.getInstance().isReady()) {
 				try {
 					Thread.sleep(10);
 					if(DEBUG)Log.d(TAG, "Waiting for servicelist or VisualLogoManager to be ready");
@@ -300,8 +301,6 @@ public class DemoTuner implements Tuner {
 					if(DEBUG)e.printStackTrace();
 				}
 			}
-
-			RadioServiceManager rsm = RadioServiceManager.getInstance();
 			rsm.clearServiceList(RadioServiceType.RADIOSERVICE_TYPE_DAB);
 			for (RadioService service : mServices) {
 				rsm.addRadioService(service);

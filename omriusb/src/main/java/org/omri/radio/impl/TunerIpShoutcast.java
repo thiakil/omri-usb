@@ -462,7 +462,7 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 		mCurrentStream = mCurrentRadioService.getIpStreams().get(0);
 
 		Allocator allocator = new DefaultAllocator(false, BUFFER_SIZE);
-		final Context context = ((RadioImpl) Radio.getInstance()).mContext;
+		final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
 		if (context != null) {
 			String userAgent = Util.getUserAgent(context, "OMRI");
 
