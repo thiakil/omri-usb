@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
 import android.annotation.SuppressLint;
 import android.hardware.usb.UsbDevice;
 import android.os.AsyncTask;
@@ -23,8 +25,6 @@ import org.omri.tuner.TunerType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import static org.omri.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -370,11 +370,11 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
-	public void scanProgressCallback(int percentDone) {
-		if(DEBUG)Log.d(TAG, "Scan Progress: " + percentDone);
+	public void scanProgressCallback(int percentDone, int freqHz) {
+		if(DEBUG)Log.d(TAG, "Scan Progress: " + percentDone + "%, " + freqHz / 1000 + " kHz");
 		synchronized (mTunerlisteners) {
 			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerScanProgress(this, percentDone);
+				listener.tunerScanProgress(this, percentDone, freqHz);
 			}
 		}
 	}

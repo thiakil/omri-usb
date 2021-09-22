@@ -1,5 +1,8 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+import static org.omri.tuner.TunerStatus.TUNER_STATUS_SCANNING;
+
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -44,9 +47,6 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import static org.omri.BuildConfig.DEBUG;
-import static org.omri.tuner.TunerStatus.TUNER_STATUS_SCANNING;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -245,7 +245,7 @@ public class TunerEdistream implements Tuner, IpServiceScanner.IpScannerListener
 		if (DEBUG) Log.d(TAG, "Service scan progress: " + percent + " at Tunerstate: " + mTunerStatus.toString());
 		if(mTunerStatus == TUNER_STATUS_SCANNING) {
 			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerScanProgress(this, percent);
+				listener.tunerScanProgress(this, percent, -1);
 			}
 		}
 	}
@@ -337,7 +337,7 @@ public class TunerEdistream implements Tuner, IpServiceScanner.IpScannerListener
 	private void updateTunerListenerScanStatus(int left) {
 		if(DEBUG)Log.d(TAG, "updateTunerListenerScanStatus: " + left);
 		for (TunerListener listener : mTunerlisteners) {
-			listener.tunerScanProgress(this, left);
+			listener.tunerScanProgress(this, left, -1);
 		}
 	}
 
@@ -355,7 +355,7 @@ public class TunerEdistream implements Tuner, IpServiceScanner.IpScannerListener
 
 			mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
 			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerScanProgress(this, 100);
+				listener.tunerScanProgress(this, 100, -1);
 				listener.tunerScanFinished(this);
 				listener.tunerStatusChanged(this, mTunerStatus);
 			}

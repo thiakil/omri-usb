@@ -282,7 +282,7 @@ void RaonTunerInput::startScanCommand() {
     m_startServiceLink = nullptr;
     if (m_usbDevice != nullptr) {
         m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_SCAN_IN_PROGRESS);
-        m_usbDevice->scanProgress(0);
+        m_usbDevice->scanProgress(0, -1);
     }
 }
 
@@ -358,14 +358,15 @@ void RaonTunerInput::scanNext() {
         tuneFrequency(freqKhz);
 
         if (m_usbDevice != nullptr) {
-            m_usbDevice->scanProgress(m_currentScanningEnsembleNum * 100 / NUM_DAB_ENSEMBLES);
+            m_usbDevice->scanProgress(m_currentScanningEnsembleNum * 100 / NUM_DAB_ENSEMBLES,
+                                      freqHz);
         }
     } else {
         std::stringstream logStr;
         logStr << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Scan finished: " << +m_currentScanningEnsembleNum;
         std::cout << logStr.str() << std::endl;
          if (m_usbDevice != nullptr) {
-            m_usbDevice->scanProgress(100);
+            m_usbDevice->scanProgress(100, -1);
             m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
         }
         m_isScanning = false;

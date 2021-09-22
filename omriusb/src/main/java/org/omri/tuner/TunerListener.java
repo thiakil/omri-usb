@@ -37,8 +37,9 @@ public interface TunerListener extends RadioListener {
 	/**
 	 * Tuner scan progress indicator
 	 * @param percentScanned the percentage finished so far
+	 * @param frequencyHz current tuner frequency in Hz, -1 if no frequency is available
 	 */
-	public void tunerScanProgress(Tuner tuner, int percentScanned);
+	public void tunerScanProgress(Tuner tuner, int percentScanned, int frequencyHz);
 
 	/**
 	 * Tuner finished scan for services

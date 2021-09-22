@@ -42,7 +42,7 @@ public:
     virtual const JavaVM* getJavaVM() const;
 
     virtual void callCallback(TUNER_CALLBACK_TYPE callbackType);
-    virtual void scanProgress(int percentDone);
+    virtual void scanProgress(int percentDone, int freqHz);
     virtual void ensembleReady(DabEnsemble& ensemble);
     virtual void serviceStarted(jobject dabService);
     virtual void serviceStopped(jobject dabService);

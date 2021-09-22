@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
 import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -59,8 +61,6 @@ import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSocketFactory;
-
-import static org.omri.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -250,7 +250,7 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 	public void scanProgress(int percent) {
 		if(mTunerStatus == TunerStatus.TUNER_STATUS_SCANNING) {
 			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerScanProgress(this, percent);
+				listener.tunerScanProgress(this, percent, -1);
 			}
 		}
 	}
@@ -302,7 +302,7 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 
 	private void updateTunerListenerScanStatus(int left) {
 		for (TunerListener listener : mTunerlisteners) {
-			listener.tunerScanProgress(this, left);
+			listener.tunerScanProgress(this, left, -1);
 		}
 	}
 

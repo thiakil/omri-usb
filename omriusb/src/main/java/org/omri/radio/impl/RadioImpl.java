@@ -494,7 +494,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	@Override
-	public void tunerScanProgress(Tuner tuner, int percentScanned) {
+	public void tunerScanProgress(Tuner tuner, int percentScanned, int currentFrequencyHz) {
 
 	}
 

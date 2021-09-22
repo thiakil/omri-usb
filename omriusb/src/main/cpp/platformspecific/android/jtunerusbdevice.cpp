@@ -44,7 +44,7 @@ void JTunerUsbDevice::setJavaClassUsbTuner(JNIEnv* env, jclass usbTunerClass) {
 
     m_usbTunerCallbackMId = env->GetMethodID(m_usbTunerClass, "callBack", "(I)V");
     m_usbTunerGetServicesMId = env->GetMethodID(m_usbTunerClass, "getRadioServices", "()Ljava/util/List;");
-    m_usbTunerScanProgressMId = env->GetMethodID(m_usbTunerClass, "scanProgressCallback", "(I)V");
+    m_usbTunerScanProgressMId = env->GetMethodID(m_usbTunerClass, "scanProgressCallback", "(II)V");
     m_usbTunerServiceFoundMId = env->GetMethodID(m_usbTunerClass, "serviceFound", "(Lorg/omri/radioservice/RadioServiceDab;)V");
     m_usbTunerServiceStartedMId = env->GetMethodID(m_usbTunerClass, "serviceStarted", "(Lorg/omri/radioservice/RadioServiceDab;)V");
     m_usbTunerServiceStoppedMId = env->GetMethodID(m_usbTunerClass, "serviceStopped", "(Lorg/omri/radioservice/RadioServiceDab;)V");
@@ -150,8 +150,9 @@ const JavaVM* JTunerUsbDevice::getJavaVM() const {
     return m_javaVm;
 }
 
-void JTunerUsbDevice::scanProgress(int percentDone) {
-    std::cout << m_logTag << "Calling tuner scanprogress: " << +percentDone << std::endl;
+void JTunerUsbDevice::scanProgress(int percentDone, int freqHz) {
+    std::cout << m_logTag << "scanProgress: " << +percentDone << "%, freq "
+        << +(freqHz/1000) << " kHz" << std::endl;
 
     bool wasDetached = false;
     JNIEnv* enve;
@@ -166,7 +167,7 @@ void JTunerUsbDevice::scanProgress(int percentDone) {
         }
     }
 
-    enve->CallVoidMethod(m_usbTunerObject, m_usbTunerScanProgressMId, percentDone);
+    enve->CallVoidMethod(m_usbTunerObject, m_usbTunerScanProgressMId, percentDone, freqHz);
 
     if(wasDetached) {
         m_javaVm->DetachCurrentThread();

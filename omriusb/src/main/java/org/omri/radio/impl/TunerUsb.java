@@ -29,7 +29,7 @@ interface TunerUsb extends Tuner {
 
 	void callBack(int callbackType);
 
-	void scanProgressCallback(int percentDone);
+	void scanProgressCallback(int percentDone, int freqHz);
 
 	void serviceFound(RadioServiceDab service);
 
