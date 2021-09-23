@@ -100,16 +100,18 @@ JUsbDevice::~JUsbDevice() {
     JNIEnv* env;
     // close an open UsbDeviceConnection
     m_javaVm->GetEnv((void **)&env, JNI_VERSION_1_6);
-    if (m_usbDeviceConnectionObject != nullptr && m_usbHelperClass != nullptr) {
-        jobject usbHelper = env->CallStaticObjectMethod(m_usbHelperClass, m_usbHelperGetInstanceMId);
-        if (usbHelper != nullptr) {
-            env->CallVoidMethod(usbHelper,
-                m_usbHelperCloseDeviceConnectionMId, m_usbDeviceConnectionObject);
+    auto usbDeviceConnection = m_usbDeviceConnectionObject;
+    auto usbHelperClass = m_usbHelperClass;
+    if (usbDeviceConnection != nullptr && usbHelperClass != nullptr) {
+        jobject usbHelper = env->CallStaticObjectMethod(usbHelperClass, m_usbHelperGetInstanceMId);
+        auto usbHelperCloseDeviceConnectionMId = m_usbHelperCloseDeviceConnectionMId;
+        if (usbHelper != nullptr && usbHelperCloseDeviceConnectionMId != nullptr) {
+            env->CallVoidMethod(usbHelper, usbHelperCloseDeviceConnectionMId, usbDeviceConnection);
         }
-        env->DeleteGlobalRef(m_usbDeviceConnectionObject);
+        env->DeleteGlobalRef(usbDeviceConnection);
     }
     env->DeleteGlobalRef(m_usbDeviceObject);
-    env->DeleteGlobalRef(m_usbHelperClass);
+    env->DeleteGlobalRef(usbHelperClass);
     env->DeleteGlobalRef(m_usbDeviceClass);
     env->DeleteGlobalRef(m_usbDeviceConnectionClass);
     env->DeleteGlobalRef(m_usbDeviceInterfaceClass);
