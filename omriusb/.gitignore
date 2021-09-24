@@ -6,3 +6,4 @@
 /.externalNativeBuild
 /gradle
 /.cxx
+wrap.sh

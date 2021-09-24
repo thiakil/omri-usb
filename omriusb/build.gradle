@@ -2,6 +2,7 @@ apply plugin: 'com.android.library'
 
 // change to true if you want Address Sanitizer active in debug build
 def asanEnabledInDebugBuild = false
+def clangVersion = "12.0.5" // must match with ndkVersion !!
 
 android {
     compileSdkVersion 30
@@ -82,16 +83,16 @@ dependencies {
 }
 
 // Copy libclang_rt.asan-*.so files from NDK folder to jniLibs folder
-// currently on arm64 is supported by following lines
+// currently for arm64 only
 task copyNativeAsanLibs(type: Copy) {
     if (asanEnabledInDebugBuild) {
         def ndkDir = project.android.ndkDirectory.absolutePath
         if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
-            from(new File(ndkDir, 'toolchains/llvm/prebuilt/windows-x86_64/lib64/clang/9.0.8/lib/linux'))
+            from(new File(ndkDir, 'toolchains/llvm/prebuilt/windows-x86_64/lib64/clang/' + clangVersion + '/lib/linux'))
                     { include 'libclang_rt.asan-aarch64-android.so' }
             into new File(project(':omriusb').projectDir, '/src/main/jniLibs/arm64-v8a')
         } else if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
-            from(new File(ndkDir, 'toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/9.0.8/lib/linux'))
+            from(new File(ndkDir, 'toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/' + clangVersion + '/lib/linux'))
                     { include 'libclang_rt.asan-aarch64-android.so' }
             into new File(projectDir, '/src/main/jniLibs/arm64-v8a')
         } else {
