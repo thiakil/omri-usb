@@ -9,7 +9,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
@@ -208,10 +207,8 @@ class VisualLogoManager {
 							logoListWriter = new BufferedWriter(new FileWriter(srvListFile));
 							logoListWriter.write(visArr.toString(2));
 							logoListWriter.close();
-						} catch (JSONException jsonExc) {
-							if (DEBUG) jsonExc.printStackTrace();
-						} catch (IOException ioExc) {
-							if (DEBUG) ioExc.printStackTrace();
+						} catch (Throwable e) {
+							if (DEBUG) e.printStackTrace();
 						} finally {
 							mSerializingInProgress.set(false);
 
@@ -223,8 +220,8 @@ class VisualLogoManager {
 								}
 							}
 						}
-					} catch (JSONException jsonExc) {
-						if (DEBUG) jsonExc.printStackTrace();
+					} catch (Throwable e) {
+						if (DEBUG) e.printStackTrace();
 					}
 				} else {
 					mSerializingInProgress.set(false);

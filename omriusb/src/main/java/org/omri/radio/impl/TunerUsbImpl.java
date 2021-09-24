@@ -64,9 +64,11 @@ public class TunerUsbImpl implements TunerUsb {
 
 	private boolean mRestoreServicesDone = false;
 	private boolean mRestoreServicesInProgress = false;
+	@Nullable private RestoreServicesTask mRestoreServicesTask = null;
 	private boolean mTunerInitDone = false;
 	private boolean mRestoreVisualsDone = false;
 	private boolean mRestoreVisualsInProgress = false;
+	@Nullable private RestoreVisualsTask mRestoreVisualsTask = null;
 
 	private boolean mHybridScanEnabled = false;
 
@@ -78,7 +80,8 @@ public class TunerUsbImpl implements TunerUsb {
 			UsbHelper.getInstance().attachDevice(this);
 			if(!mRestoreServicesInProgress) {
 				mRestoreServicesInProgress = true;
-				new RestoreServicesTask().execute();
+				mRestoreServicesTask = new RestoreServicesTask();
+				mRestoreServicesTask.execute();
 			}
 		}
 	}
@@ -155,6 +158,25 @@ public class TunerUsbImpl implements TunerUsb {
 					mScannedServices.clear();
 				}
 				mCurrentlyRunningService = null;
+
+				// stop restore service list
+				if (mRestoreServicesInProgress && mRestoreServicesTask != null) {
+					mRestoreServicesTask.cancel(true);
+				}
+				mRestoreServicesTask = null;
+				mRestoreServicesInProgress = false;
+				mRestoreServicesDone = false;
+
+				// stop restore visuals list
+				if (mRestoreVisualsInProgress && mRestoreVisualsTask != null) {
+					mRestoreVisualsTask.cancel(true);
+				}
+				mRestoreVisualsTask = null;
+				mRestoreVisualsInProgress = false;
+				mRestoreVisualsDone = false;
+
+				// tuner deinit complete
+				mTunerInitDone = false;
 			}
 		}
 	}
@@ -495,7 +517,7 @@ public class TunerUsbImpl implements TunerUsb {
 		@Override
 		protected Void doInBackground(Void... params) {
 			if(DEBUG)Log.d(TAG, "Restoring services....");
-			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB)) {
+			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB) && !isCancelled() ) {
 				SystemClock.sleep(100);
 				if(DEBUG)Log.d(TAG, "Waiting for servicelist to be ready");
 			}
@@ -511,12 +533,29 @@ public class TunerUsbImpl implements TunerUsb {
 			if(DEBUG)Log.d(TAG, "Restore services finished");
 			callBack(TunerUsbCallbackTypes.TUNER_READY.getIntValue());
 
-			if (!mRestoreVisualsDone && !mRestoreVisualsInProgress) {
-				new RestoreVisualsTask().execute();
+			return null;
+		}
+
+		@Override
+		protected void onPostExecute(Void unused) {
+			super.onPostExecute(unused);
+
+			if (!mRestoreVisualsDone && !mRestoreVisualsInProgress && !isCancelled()) {
+				mRestoreVisualsTask = new RestoreVisualsTask();
+				mRestoreVisualsTask.execute();
 				mRestoreVisualsInProgress = true;
 			}
+		}
 
-			return null;
+		@Override
+		protected void onCancelled(Void unused) {
+			super.onCancelled(unused);
+
+			if (!mRestoreVisualsDone && mRestoreVisualsTask != null) {
+				mRestoreVisualsTask.cancel(true);
+				mRestoreVisualsInProgress = false;
+				mRestoreVisualsTask = null;
+			}
 		}
 	}
 
@@ -526,7 +565,7 @@ public class TunerUsbImpl implements TunerUsb {
 		@Override
 		protected Void doInBackground(Void... params) {
 			if(DEBUG)Log.d(TAG, "Restoring visuals....");
-			while (!VisualLogoManager.getInstance().isReady() ||  !mTunerInitDone) {
+			while ((!VisualLogoManager.getInstance().isReady() ||  !mTunerInitDone) && !isCancelled()) {
 				SystemClock.sleep(100);
 				if(DEBUG)Log.d(TAG, "Waiting for VisualLogoManager or tuner to be ready");
 			}
