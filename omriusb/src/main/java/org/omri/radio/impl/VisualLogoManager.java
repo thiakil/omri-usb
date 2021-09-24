@@ -279,7 +279,15 @@ class VisualLogoManager {
 						VisualLogoImpl logo = new VisualLogoImpl();
 
 						logo.setLogoUrl(logoObj.getString("logoUrl"));
-						logo.setVisualMimeType(VisualMimeType.valueOf(logoObj.getString("mimeType")));
+						final String mimeTypeStr = logoObj.getString("mimeType");
+						VisualMimeType mimeType = VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN;
+						try {
+							mimeType = VisualMimeType.valueOf(mimeTypeStr);
+						} catch (Exception e) {
+							if (DEBUG)
+								e.printStackTrace();
+						}
+						logo.setVisualMimeType(mimeType);
 						logo.setFilePath(logoObj.getString("filePath"));
 						logo.setWidth(logoObj.getInt("width"));
 						logo.setHeight(logoObj.getInt("height"));
