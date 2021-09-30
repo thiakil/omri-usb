@@ -200,8 +200,9 @@ void FicParser::processFib() {
 }
 
 void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
-    //ficData[0] ensured by the calling thread - figLEngth > 0
-    switch (ficData[0] & 0x1Fu) {
+    //ficData[0] ensured by the calling thread - figLength > 0
+    const auto figType = static_cast<Fig::FIG_00_TYPE>(ficData[0] & 0x1Fu);
+    switch (figType) {
         case Fig::FIG_00_TYPE::ENSEMBLE_INFORMATION: {
             Fig_00_Ext_00 extZero(ficData);
             m_fig00_00dispatcher.invoke(extZero);
@@ -212,7 +213,11 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             } else {
                 done = true;
             }
-
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+            }
+#endif
             if (done) {
                 m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::ENSEMBLE_INFORMATION);
             }
@@ -228,7 +233,11 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             } else {
                 done = true;
             }
-
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+            }
+#endif
             if (done) {
                 m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::BASIC_SUBCHANNEL_ORGANIZATION);
             }
@@ -244,7 +253,13 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             } else {
                 done = true;
             }
-
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            std::string hexStr = Fig::toHexString(ficData);
+            std::cout << M_LOG_TAG << "FIG 0/" << +figType << " : " << hexStr << std::endl;
+            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+            }
+#endif
             if (done) {
                 m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::BASIC_SERVICE_COMPONENT_DEFINITION);
             }
@@ -286,7 +301,13 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             } else {
                 done = true;
             }
-
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            std::string hexStr = Fig::toHexString(ficData);
+            std::cout << M_LOG_TAG << "FIG 0/" << +figType << " : " << hexStr << std::endl;
+            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+            }
+#endif
             if (done) {
                 m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::SERVICE_COMPONENT_GLOBAL_DEFINITION);
             }
@@ -312,6 +333,11 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             } else {
                 done = true;
             }
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+            }
+#endif
             if (done) {
                 m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::USERAPPLICATION_INFORMATION);
             }
@@ -369,7 +395,7 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             break;
         }
         default:
-            std::clog << M_LOG_TAG << "Unknown FIG 0/" << +(ficData[0] & 0x1Fu) << std::endl;
+            std::clog << M_LOG_TAG << "Unknown FIG 0/" << +figType << std::endl;
             break;
     }
 }
@@ -544,6 +570,14 @@ std::shared_ptr<FicParser::Fig_01_05_Callback> FicParser::registerFig_01_05_Call
 
 std::shared_ptr<FicParser::Fig_01_06_Callback> FicParser::registerFig_01_06_Callback(Fig_01_06_Callback cb) {
     return m_fig01_06dispatcher.add(cb);
+}
+
+std::shared_ptr<FicParser::Fig_00_isComplete_Callback> FicParser::registerFig_00_Complete_Callback(Fig_00_isComplete_Callback cb) {
+    return m_fig00IsCompleteDispatcher.add(cb);
+}
+
+std::shared_ptr<FicParser::Fig_01_isComplete_Callback> FicParser::registerFig_01_Complete_Callback(Fig_01_isComplete_Callback cb) {
+    return m_fig01IsCompleteDispatcher.add(cb);
 }
 
 void FicParser::reset() {

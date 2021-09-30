@@ -136,9 +136,10 @@ void DabServiceComponent::setServiceComponentIdWithinService(uint8_t scIdS) {
      * service component within the service.
      * The combination of the SId and the SCIdS provides a service component identifier which is valid globally.
      */
-
-    /* std::cout << m_logTag << " Setting SCIdS: " << std::hex << +scIdS << " for subChanId: " << +m_subChanId << std::dec
-            << "label: '" << m_serviceComponentLabel << "'" << std::endl; */
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+    std::cout << m_logTag << " Setting SCIdS: " << std::hex << +scIdS << " for subChanId: " << +m_subChanId << std::dec
+            << "label: '" << m_serviceComponentLabel << "'" << std::endl;
+#endif
 }
 
 void DabServiceComponent::setMscStartAddress(uint16_t startAddress) {

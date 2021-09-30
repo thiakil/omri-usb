@@ -137,7 +137,7 @@ void DabService::addServiceComponent(const std::shared_ptr<DabServiceComponent>&
     m_components.push_back(component);
     std::cout << m_logTag << "Adding ServicecomponentPtr with SubChanId: " << std::hex << +component->getSubChannelId()
         << " for SId: " << +m_serviceId << std::dec << " as Servicecomponent# " << +m_components.size()
-        << " isPrim:" << +component->isPrimary()
+        << " isPrim:" << +component->isPrimary() << " SCIdS:" << +component->getServiceComponentIdWithinService()
         << std::endl;
 }
 

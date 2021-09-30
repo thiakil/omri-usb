@@ -57,6 +57,9 @@
 
 #include "callbackhandle.h"
 
+// enable for very verbose logs for deep analysis of FIGs
+// #define LOG_DETAILLED_FIG_ANALYSIS
+
 class DabEnsemble;
 class FicParser {
 
@@ -72,7 +75,6 @@ public:
     using Fig_00_08_Callback = std::function<void(const Fig_00_Ext_08&)>;
     using Fig_00_09_Callback = std::function<void(const Fig_00_Ext_09&)>;
     using Fig_00_10_Callback = std::function<void(const Fig_00_Ext_10&)>;
-
     using Fig_00_13_Callback = std::function<void(const Fig_00_Ext_13&)>;
     using Fig_00_14_Callback = std::function<void(const Fig_00_Ext_14&)>;
     using Fig_00_17_Callback = std::function<void(const Fig_00_Ext_17&)>;
@@ -83,12 +85,14 @@ public:
     using Fig_00_24_Callback = std::function<void(const Fig_00_Ext_24&)>;
     using Fig_00_25_Callback = std::function<void(const Fig_00_Ext_25&)>;
     using Fig_00_26_Callback = std::function<void(const Fig_00_Ext_26&)>;
+    using Fig_00_isComplete_Callback = std::function<bool(const Fig::FIG_00_TYPE)>;
 
     using Fig_01_00_Callback = std::function<void(const Fig_01_Ext_00&)>;
     using Fig_01_01_Callback = std::function<void(const Fig_01_Ext_01&)>;
     using Fig_01_04_Callback = std::function<void(const Fig_01_Ext_04&)>;
     using Fig_01_05_Callback = std::function<void(const Fig_01_Ext_05&)>;
     using Fig_01_06_Callback = std::function<void(const Fig_01_Ext_06&)>;
+    using Fig_01_isComplete_Callback = std::function<bool(const Fig::FIG_01_TYPE)>;
 
     using Fig_00_Done_Callback = std::function<void(Fig::FIG_00_TYPE)>;
     using Fig_01_Done_Callback = std::function<void(Fig::FIG_01_TYPE)>;
@@ -101,6 +105,9 @@ public:
 
     std::shared_ptr<Fig_00_Done_Callback> registerFig_00_Done_Callback(Fig_00_Done_Callback cb);
     std::shared_ptr<Fig_01_Done_Callback> registerFig_01_Done_Callback(Fig_01_Done_Callback cb);
+    std::shared_ptr<Fig_00_isComplete_Callback> registerFig_00_Complete_Callback(Fig_00_isComplete_Callback cb);
+    std::shared_ptr<Fig_01_isComplete_Callback> registerFig_01_Complete_Callback(Fig_01_isComplete_Callback cb);
+
     std::shared_ptr<Fig_00_00_Callback> registerFig_00_00_Callback(Fig_00_00_Callback cb);
     std::shared_ptr<Fig_00_01_Callback> registerFig_00_01_Callback(Fig_00_01_Callback cb);
     std::shared_ptr<Fig_00_02_Callback> registerFig_00_02_Callback(Fig_00_02_Callback cb);
@@ -179,6 +186,9 @@ private:
 
     CallbackDispatcher<Fig_00_Done_Callback> m_fig00DoneDispatcher;
     CallbackDispatcher<Fig_01_Done_Callback> m_fig01DoneDispatcher;
+
+    CallbackDispatcher<Fig_00_isComplete_Callback> m_fig00IsCompleteDispatcher;
+    CallbackDispatcher<Fig_01_isComplete_Callback> m_fig01IsCompleteDispatcher;
 
     ConcurrentQueue<std::vector<uint8_t> > m_fibDataQueue;
     mutable std::mutex m_fibThreadMutex;

@@ -57,8 +57,8 @@ public:
         this->callbacks.clear();
     }
 
-    template <typename ...A>
-    void invoke(A && ... args) {
+    template <typename ... A>
+    void invoke(A && ... args)  {
         // Remove all callbacks that are gone
         hasCallbacks();
 
@@ -77,6 +77,29 @@ public:
         }
 
         this->concurrent_dispatcher_count--;
+    }
+
+    // template for invoking a callback with variable arguments AND with return type R
+    template <typename R, typename ... A>
+    R invokeAndReturn(const R def, A && ... args) {
+        // Remove all callbacks that are gone
+        hasCallbacks();
+
+        this->concurrent_dispatcher_count++;
+        R r = def;
+        size_t current = 0;
+        while (current < this->callbacks.size()) {
+            try {
+                if (auto callback = this->callbacks[current++].lock()) {
+                    if (callback != nullptr &&
+                        ((static_cast<std::shared_ptr<C>>(callback)).get() != nullptr)) {
+                        r = (*callback)(std::forward<A>(args)...);
+                    }
+                }
+            } catch (...) {}
+        }
+        this->concurrent_dispatcher_count--;
+        return r;
     }
 
 private:

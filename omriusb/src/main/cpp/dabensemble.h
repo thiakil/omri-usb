@@ -71,6 +71,9 @@ public:
     using ServiceFollowingCallback = std::function<void()>;
     virtual std::shared_ptr<DabEnsemble::ServiceFollowingCallback> registerServiceFollowingCallback(DabEnsemble::ServiceFollowingCallback cb);
 
+    virtual bool isFig00Complete(const Fig::FIG_00_TYPE fig00Type);
+    virtual bool isFig01Complete(const Fig::FIG_01_TYPE fig01Type);
+
 protected:
     virtual void dataInput(const std::vector<uint8_t>& data, uint8_t subChId, bool synchronized, bool rfLock = true);
     virtual void flushBufferedComponentData(uint8_t subChId);
@@ -155,11 +158,15 @@ private:
     std::shared_ptr<std::function<void (const Fig_00_Ext_18&)>> m_18Ptr;
     std::shared_ptr<std::function<void (const Fig_00_Ext_19&)>> m_19Ptr;
 
+    std::shared_ptr<std::function<bool (const Fig::FIG_00_TYPE)>> m_00CompletePtr;
+    std::shared_ptr<std::function<bool (const Fig::FIG_01_TYPE)>> m_01CompletePtr;
+
 private:
     bool m_isInitializing{false};
     std::atomic<bool> m_resetting{false};
 
     const std::chrono::seconds ENSEMBLE_COLLECT_WARNING_THREASHOLD = std::chrono::seconds(3);
+    const std::chrono::seconds ENSEMBLE_COLLECT_TIMEOUT = std::chrono::seconds(5);
     const std::chrono::seconds ENSEMBLE_COLLECT_FIG013_TIMEOUT = std::chrono::seconds(3);
     std::chrono::steady_clock::time_point m_ensembleCollectStartTime = std::chrono::steady_clock::now();
 
@@ -194,10 +201,23 @@ private:
     bool m_fig001done{false};
     bool m_fig002done{false};
     bool m_fig003done{false};
+    bool m_fig004done{false};
+    bool m_fig005done{false};
+    bool m_fig006done{false};
+    bool m_fig007done{false};
     bool m_fig008done{false};
+    bool m_fig009done{false};
+    bool m_fig010done{false};
     bool m_fig013done{false};
     bool m_fig014done{false};
     bool m_fig017done{false};
+    bool m_fig018done{false};
+    bool m_fig019done{false};
+    bool m_fig020done{false};
+    bool m_fig021done{false};
+    bool m_fig024done{false};
+    bool m_fig025done{false};
+    bool m_fig026done{false};
     bool m_fig0done{false};
 
     bool m_fig100done{false};

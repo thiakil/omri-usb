@@ -108,8 +108,8 @@ public:
 
         for(auto i=0; i < size; i++) {
             result << "0x" << to_hex_string(data[i]);
-            if (i != size)
-                result << " ";
+            if (i < size-1)
+                result << "_";
         }
         return result.str();
     }

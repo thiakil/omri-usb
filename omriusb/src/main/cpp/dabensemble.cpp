@@ -166,6 +166,9 @@ void DabEnsemble::registerCbs() {
     //Announcements
     m_18Ptr = m_ficPtr.get()->registerFig_00_18_Callback(std::bind(&DabEnsemble::fig00_18_input, this, std::placeholders::_1));
     m_19Ptr = m_ficPtr.get()->registerFig_00_19_Callback(std::bind(&DabEnsemble::fig00_19_input, this, std::placeholders::_1));
+
+    m_00CompletePtr = m_ficPtr->registerFig_00_Complete_Callback(std::bind(&DabEnsemble::isFig00Complete, this, std::placeholders::_1));
+    m_01CompletePtr = m_ficPtr->registerFig_01_Complete_Callback(std::bind(&DabEnsemble::isFig01Complete, this, std::placeholders::_1));
 }
 
 void DabEnsemble::unregisterCbsAfterEnsembleCollect() {
@@ -693,13 +696,17 @@ void DabEnsemble::fig00_08_input(const Fig_00_Ext_08& fig08) {
         if(srvGlobalDef.isShortForm) {
             auto subChanIter = m_streamComponentsMap.find(srvGlobalDef.subchannelId);
             if(subChanIter != m_streamComponentsMap.cend()) {
-                //std::cout << m_logTag << " FIG 00 Ext 08 setting ScIdS for SId: " << std::hex << +srvGlobalDef.serviceId << ", SubChanId: " << +srvGlobalDef.subchannelId << ", SubChanId: " << +subChanIter->second->getSubChannelId() << " to: " << +srvGlobalDef.scIdS << std::dec << std::endl;
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+                std::cout << m_logTag << " FIG 00 Ext 08 setting ScIdS for SId: " << std::hex << +srvGlobalDef.serviceId << ", SubChanId: " << +srvGlobalDef.subchannelId << ", exp SubChanId: " << +subChanIter->second->getSubChannelId() << " to: " << +srvGlobalDef.scIdS << std::dec << std::endl;
+#endif
                 subChanIter->second->setServiceComponentIdWithinService(srvGlobalDef.scIdS);
             }
         } else {
             auto packCompIter = m_packetComponentsMap.find(srvGlobalDef.serviceComponentId);
             if(packCompIter != m_packetComponentsMap.cend()) {
-                //std::cout << m_logTag << " FIG 00 Ext 08 setting ScIdS for SId: " << std::hex << +srvGlobalDef.serviceId << ", ScId: " << +srvGlobalDef.serviceComponentId << ", SubChanId: " << +packCompIter->second->getSubChannelId() << " to: " << +srvGlobalDef.scIdS << std::dec << std::endl;
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+                std::cout << m_logTag << " FIG 00 Ext 08 setting ScIdS for SId: " << std::hex << +srvGlobalDef.serviceId << ", ScId: " << +srvGlobalDef.serviceComponentId << ", exp SubChanId: " << +packCompIter->second->getSubChannelId() << " to: " << +srvGlobalDef.scIdS << std::dec << std::endl;
+#endif
                 packCompIter->second->setServiceComponentIdWithinService(srvGlobalDef.scIdS);
             }
         }
@@ -1042,9 +1049,13 @@ void DabEnsemble::fig_01_done_cb(Fig::FIG_01_TYPE type) {
 void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
     std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
     bool logAsWarning = false;
+    bool ensembleCollectHasTimedout = false;
     const auto timeDiff = std::chrono::steady_clock::now() - m_ensembleCollectStartTime;
     if (timeDiff >= DabEnsemble::ENSEMBLE_COLLECT_WARNING_THREASHOLD) {
         logAsWarning = true;
+    }
+    if (timeDiff >= DabEnsemble::ENSEMBLE_COLLECT_TIMEOUT) {
+        ensembleCollectHasTimedout = true;
     }
 
     if (serviceId != DabService::SID_INVALID) {
@@ -1073,6 +1084,8 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
             return;
         }
     } else {
+        // vector of DabServices which failed the sanity check
+        std::vector<std::shared_ptr<DabService>> incompleteDabServices;
         // check all services in ensemble
         for (const auto &srvMapEntry : m_servicesMap) {
             bool wasSane = srvMapEntry.second.checkSanity();
@@ -1098,13 +1111,28 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
                 } else {
                     std::cout << logStr.str() << std::endl;
                 }
-                return;
+                incompleteDabServices.push_back(std::make_shared<DabService>(srvMapEntry.second));
+            }
+        }
+        if (!incompleteDabServices.empty()) {
+            if (ensembleCollectHasTimedout) {
+                std::stringstream logStr;
+                logStr << m_logTag << " ensemble collect TIMEOUT, prune SId";
+                for (const auto &failedDabService : incompleteDabServices) {
+                    logStr << " 0x" << std::hex << +failedDabService->getServiceId() << std::dec;
+                    m_servicesMap.erase(failedDabService->getServiceId());
+                }
+                std::cerr << logStr.str() << std::endl;
+                // no "return" because after pruning the DabServices in the ensemble should be fine,
+                // continue with checking the ensemble itself
+            } else {
+                return; // ensemble still incomplete, but no timeout yet
             }
         }
     }
     // service(s) checked, now ensemble itself
     std::stringstream logStr;
-    logStr << m_logTag << "checkServiceSanity failed EId=0x" << std::hex << +getEnsembleId() << std::dec;
+    logStr << m_logTag << " checkServiceSanity failed EId=0x" << std::hex << +getEnsembleId() << std::dec;
     if (getEnsembleEcc() == ECC_INVALID || getEnsembleId() == EID_INVALID
        || getEnsembleLabelCharset() == CHARSET_INVALID || getEnsembleLabel().empty() || getEnsembleShortLabel().empty()) {
         logStr << " ECC:0x" << std::hex << +getEnsembleEcc() << std::dec << " '"
@@ -1461,3 +1489,106 @@ std::vector<std::shared_ptr<LinkedServiceDab>> DabEnsemble::getLinkedDabServices
     return collectedServices;
 }
 
+bool DabEnsemble::isFig00Complete(const Fig::FIG_00_TYPE fig00Type) {
+    std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
+    bool isDone = false;
+    switch (fig00Type) {
+        case Fig::FIG_00_TYPE::ENSEMBLE_INFORMATION: { // FIG 0/0
+            isDone = m_fig000done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::BASIC_SUBCHANNEL_ORGANIZATION: { // FIG 0/1
+            isDone = m_fig001done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::BASIC_SERVICE_COMPONENT_DEFINITION: { // FIG 0/2
+            isDone = m_fig002done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::SERVICE_COMPONENT_PACKET_MODE: { // FIG 0/3
+            isDone = m_fig003done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::SERVICE_COMPONENT_STREAM_CA: { // FIG 0/4
+            isDone = m_fig004done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::SERVICE_COMPONENT_LANGUAGE: { // FIG 0/5
+            isDone = m_fig005done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::SERVICE_LINKING_INFORMATION: { // FIG 0/6
+            isDone = m_fig006done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::CONFIGURATION_INFORMATION: { // FIG 0/7
+            isDone = m_fig007done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::SERVICE_COMPONENT_GLOBAL_DEFINITION: { // FIG 0/8
+            isDone = m_fig008done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::COUNTRY_LTO_INTERNATIONAL_TABLE: { // FIG 0/9
+            isDone = m_fig009done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::DATE_AND_TIME: { // FIG 0/10
+            isDone = m_fig010done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::USERAPPLICATION_INFORMATION: { // FIG 0/13
+            isDone = m_fig013done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::FEC_SUBCHANNEL_ORGANIZATION: { // FIG 0/14
+            isDone = m_fig014done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::PROGRAMME_NUMBER: { // FIG 0/16
+            // FIG 00 Extension 16 - Programme Number (v1.4.1, 8.1.4 Programme Number, no more contained in v2.1.1)
+            isDone = false;
+            break;
+        }
+        case Fig::FIG_00_TYPE::PROGRAMME_TYPE: { // FIG 0/17
+            isDone = m_fig017done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::ANNOUNCEMENT_SUPPORT: { // FIG 0/18
+            isDone = m_fig018done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::ANNOUNCEMENT_SWITCHING: { // FIG 0/19
+            isDone = m_fig019done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::SERVICE_COMPONENT_INFORMATION: { // FIG 0/20
+            isDone = m_fig020done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::FREQUENCY_INFORMATION: { // FIG 0/21
+            isDone = m_fig021done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::OE_SERVICES: { // FIG 0/24
+            isDone = m_fig024done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::OE_ANNOUNCEMENT_SUPPORT: { // FIG 0/25
+            isDone = m_fig025done;
+            break;
+        }
+        case Fig::FIG_00_TYPE::OE_ANNOUNCEMENT_SWITCHING: { // FIG 0/26
+            isDone = m_fig026done;
+            break;
+        }
+        default: {
+            std::cerr << m_logTag << " isFig00Complete unknown FIG 0/" << +fig00Type << std::endl;
+        }
+    }
+    return isDone;
+}
+bool DabEnsemble::isFig01Complete(const Fig::FIG_01_TYPE fig01Type) {
+    bool isDone = false;
+    return isDone;
+}
