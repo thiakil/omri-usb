@@ -40,9 +40,6 @@ constexpr uint8_t RaonTunerInput::g_aeAdcClkTypeTbl_DAB_B3[];
 constexpr int RaonTunerInput::g_atPllNF_DAB_BAND3[];
 constexpr uint_t RaonTunerInput::AntLvlTbl[DAB_MAX_NUM_ANTENNA_LEVEL];
 
-const int READ_MSC_TIMEOUT_MS = 200;
-const int READ_FIC_TIMEOUT_MS = 100;
-
 RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice) : m_usbDevice{usbDevice} {
     std::cout << LOG_TAG << "Constructing...." << std::endl;
 
@@ -158,7 +155,7 @@ void RaonTunerInput::tuneFrequencySync(int frequencyHz) {
     }
 }
 
-const DabEnsemble &RaonTunerInput::getEnsemble() const {
+const DabEnsemble & RaonTunerInput::getEnsemble() const {
     return *this;
 }
 
@@ -279,7 +276,7 @@ void RaonTunerInput::startScanCommand() {
     m_isScanning = true;
     m_currentScanningEnsembleNum = 0;
     m_maxCollectionWaitLoops = MAX_COLLECTION_LOOPS;
-    m_ficCollectionWaitLoops = 300;
+    m_ficCollectionWaitLoops = MAX_FIC_COLLECTION_LOOPS;
     tuneFrequency(DAB_FREQ_TABLE_KHZ[m_currentScanningEnsembleNum] * 1000);
     m_startServiceLink = nullptr;
     if (m_usbDevice != nullptr) {
@@ -337,7 +334,7 @@ void RaonTunerInput::stopServiceScan() {
 
 void RaonTunerInput::scanNext() {
     m_maxCollectionWaitLoops = MAX_COLLECTION_LOOPS;
-    m_ficCollectionWaitLoops = 300;
+    m_ficCollectionWaitLoops = MAX_FIC_COLLECTION_LOOPS;
 
     if (m_currentScanningEnsembleNum + 1 < NUM_DAB_ENSEMBLES) {
         std::stringstream logStr;
@@ -1347,12 +1344,12 @@ void RaonTunerInput::readFic() {
     uint8_t lockStatus = getLockStatus();
 
     if(lockStatus != RTV_DAB_CHANNEL_LOCK_OK) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(RaonTunerInput::WAITLOOP_WAIT_FOR_LOCK_MS));
         if(lockStatus == RTV_DAB_OFDM_LOCK_MASK || lockStatus == RTV_DAB_FEC_LOCK_MASK) {
-            m_maxCollectionWaitLoops += 8;
+            m_maxCollectionWaitLoops += WAITLOOP_LOCK_INCREMENT;
         }
 
-        m_maxCollectionWaitLoops -= 10;
+        m_maxCollectionWaitLoops -= WAITLOOP_NOLOCK_DECREMENT;
         if(m_maxCollectionWaitLoops <= 0) {
             m_scanCommandQueue.push(std::bind(&RaonTunerInput::scanNext, this));
         }

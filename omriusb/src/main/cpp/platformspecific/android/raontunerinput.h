@@ -94,9 +94,15 @@ private:
 
     int m_currentScanningEnsembleNum{0};
     //changed from 100
-    constexpr static int MAX_COLLECTION_LOOPS = 200;
-    int m_maxCollectionWaitLoops{MAX_COLLECTION_LOOPS}; //5 seconds
-    int m_ficCollectionWaitLoops{300};
+    constexpr static int MAX_COLLECTION_LOOPS{200};
+    constexpr static int MAX_FIC_COLLECTION_LOOPS{300};
+    int m_maxCollectionWaitLoops{MAX_COLLECTION_LOOPS};
+    const uint32_t WAITLOOP_WAIT_FOR_LOCK_MS{100u};
+    constexpr static int WAITLOOP_NOLOCK_DECREMENT{10};
+    constexpr static int WAITLOOP_LOCK_INCREMENT{8};
+    int m_ficCollectionWaitLoops{MAX_FIC_COLLECTION_LOOPS};
+    constexpr static int READ_MSC_TIMEOUT_MS{200};
+    constexpr static int READ_FIC_TIMEOUT_MS{100};
 
     std::recursive_mutex m_classmutex;
     std::recursive_mutex m_tunermutex;
