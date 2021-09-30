@@ -113,6 +113,13 @@ void DabServiceComponent::setIsCaApplied(bool caApplied) {
 
 void DabServiceComponent::setIsPrimary(bool primary) {
     m_isPrimary = primary;
+    /** "Update of the DAB system standard EN 300 401.pdf" (update to 2.1.1)
+     * [...] the SCIdS for primary service components is fixed as 0 [...]
+     */
+    if (m_isPrimary && m_scIdS == SCIDS_INVALID) {
+        // if SCIdS has not been set yet, then set to 0
+        m_scIdS = 0;
+    }
 }
 
 void DabServiceComponent::setServiceComponentIdWithinService(uint8_t scIdS) {
@@ -130,7 +137,7 @@ void DabServiceComponent::setServiceComponentIdWithinService(uint8_t scIdS) {
      * The combination of the SId and the SCIdS provides a service component identifier which is valid globally.
      */
 
-    /*std::cout << m_logTag << " Setting SCIdS: " << std::hex << +scIdS << " for subChanId: " << +m_subChanId << std::dec
+    /* std::cout << m_logTag << " Setting SCIdS: " << std::hex << +scIdS << " for subChanId: " << +m_subChanId << std::dec
             << "label: '" << m_serviceComponentLabel << "'" << std::endl; */
 }
 
