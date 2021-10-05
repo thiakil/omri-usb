@@ -46,12 +46,20 @@ public:
      */
     virtual uint8_t getCharset() const { return m_charSet; }
 
-    /*
-     * OE: this 1-bit flag shall indicate whether the information is related to this or another ensemble, as follows:
-     * 0: this ensemble;
-     * 1: other ensemble (or FM or AM services)
+    /* V1.4.1:
+     *  OE: this 1-bit flag shall indicate whether the information is related to this or another ensemble, as follows:
+     *  0: this ensemble;
+     *  1: other ensemble (or FM or AM services)
+     * V2.1.1
+     *  Rfu
      */
     virtual bool isOtherEnsemble() const { return m_isOtherEnsemble; }
+
+    /*
+     * Extension: this 3-bit field, expressed as an unsigned binary number, shall identify one of
+     * 8 interpretations of the FIG type 1 field (see clause 8.1).
+     * Those extensions, which are not defined, are reserved for future use.
+     */
 
 protected:
     Fig_01(const std::vector<uint8_t>& figData) : m_charSet((figData[0] & 0xF0) >> 4), m_isOtherEnsemble((figData[0] & 0x08) >> 3) {}
@@ -89,31 +97,29 @@ protected:
     inline void parseLabel(const std::vector<uint8_t>& labelData, std::string& label, std::string& shortLabel) {
         auto labelIter = labelData.begin();
         while(labelIter < labelData.end()) {
-            std::vector<uint8_t> labelData(labelIter, labelIter+16);
-            label = DynamiclabelDecoder::convertToStdStringUsingCharset(labelData,
+            std::vector<uint8_t> labelBytes(labelIter, labelIter + 16);
+            label = DynamiclabelDecoder::convertToStdStringUsingCharset(
+                    labelBytes,
                     static_cast<const registeredtables::CHARACTER_SET>(m_charSet));
-            labelData.clear();
-            label.resize(16);
 
             labelIter += 16;
 
-            shortLabel.resize(8);
-            int shortCnt = 0;
-            for(int i = 0; i < 2; i++) {
-                for(int j = 0; j <= 7; j++) {
+            const uint16_t characterFlags = ((*labelIter++) << 8) & 0xFF00 + (*labelIter++ & 0x00FF);
+            if (characterFlags == 0) {
+                // no short label can be built, use first 8 bytes of label
+                labelBytes.resize(8);
 
-                    //sanity check
-                    if(shortCnt > 7) {
-                        break;
-                    }
-
-                    if((((*labelIter << j) >> 7) & 0x01)) {
-                        shortLabel[shortCnt] = label.data()[j + i*7];
-                        shortCnt++;
+            } else {
+                labelBytes.clear();
+                for (int i = 15; i >= 0; i--) {
+                    if ((characterFlags & (1 << i)) == (1 << i)) {
+                        labelBytes.push_back(labelData[15 - i]);
                     }
                 }
-                labelIter++;
             }
+            shortLabel = DynamiclabelDecoder::convertToStdStringUsingCharset(
+                    labelBytes,
+                    static_cast<const registeredtables::CHARACTER_SET>(m_charSet));
         }
         DynamiclabelDecoder::rtrim(label);
         DynamiclabelDecoder::rtrim(shortLabel);
@@ -125,4 +131,3 @@ private:
 };
 
 #endif // FIG_01
-

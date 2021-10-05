@@ -422,7 +422,15 @@ void FicParser::parseFig_01(const std::vector<uint8_t>& ficData) {
         case Fig::FIG_01_TYPE::PROGRAMME_SERVICE_LABEL: {
             Fig_01_Ext_01 extOne(ficData);
             m_fig01_01dispatcher.invoke(extOne);
-
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            std::ostringstream logStr;
+            std::string hexStr = Fig::toHexString(ficData);
+            logStr << M_LOG_TAG << "FIG 1/1 : " << hexStr << " SId:" << std::hex <<
+                   +extOne.getProgrammeServiceId() << std::dec << " charset:"
+                   << +extOne.getCharset() << " '" << extOne.getProgrammeServiceLabel()
+                   << "' short:'" << extOne.getProgrammeServiceShortLabel() << "'";
+            std::cout << logStr.str() << std::endl;
+#endif
             bool done{false};
             if(!contains<Fig_01_Ext_01>(m_parsedFig0101, extOne)) {
                 m_parsedFig0101.push_back(extOne);
