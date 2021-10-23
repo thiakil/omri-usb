@@ -22,6 +22,7 @@
 
 #include <iostream>
 
+#include "dabservicecomponentmscstreamaudio.h"
 #include "dabservicecomponentmscpacketdata.h"
 #include "dabensemble.h"
 
@@ -140,10 +141,47 @@ void DabService::setServiceShortLabel(const std::string& shortLabel) {
 
 void DabService::addServiceComponent(const std::shared_ptr<DabServiceComponent>& component) {
     m_components.push_back(component);
-    std::cout << m_logTag << "Adding ServicecomponentPtr with SubChanId: " << std::hex << +component->getSubChannelId()
-        << " for SId: " << +m_serviceId << std::dec << " as Servicecomponent# " << +m_components.size()
-        << " isPrim:" << +component->isPrimary() << " SCIdS:" << +component->getServiceComponentIdWithinService()
-        << std::endl;
+    std::ostringstream logStr;
+    const DabServiceComponent::SERVICECOMPONENTTYPE type = component->getServiceComponentType();
+    logStr << m_logTag << "Adding ServiceComponent for SId: 0x" << std::hex << +m_serviceId
+           << std::dec << " as Servicecomponent #" << +m_components.size()
+           << " '" << component->getServiceComponentLabel() << "'"
+           << " isPrim:" << +component->isPrimary()
+           << " SubChanId:" << +component->getSubChannelId()
+           << " SCIdS:" << +component->getServiceComponentIdWithinService()
+           << " type:" << +type << ":";
+    switch (type) {
+        case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_STREAM_AUDIO: {
+            const auto mscStreamAudioComponent =
+                    std::static_pointer_cast<DabServiceComponentMscStreamAudio>(component);
+            const auto ascty = mscStreamAudioComponent->getAudioServiceComponentType();
+            switch (ascty) {
+                case DabServiceComponentMscStreamAudio::AUDIOTYPE_MP2:
+                    logStr << "MP2";
+                    break;
+                case DabServiceComponentMscStreamAudio::AUDIOTYPE_AAC:
+                    logStr << "AAC";
+                    break;
+                default:
+                    logStr << "streamaudioinvalid";
+                    break;
+            }
+            break;
+        }
+        case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_PACKET_MODE_DATA:
+            logStr << "packetdata";
+            break;
+        case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_STREAM_DATA:
+            logStr << "streamdata";
+            break;
+        case DabServiceComponent::SERVICECOMPONENTTYPE::RESERVED:
+            logStr << "reserved";
+            break;
+        default:
+            logStr << "?";
+            break;
+    }
+    std::cout << logStr.str() << std::endl;
 }
 
 void DabService::setProgrammeTypeCode(uint8_t intPtyCode) {
@@ -152,8 +190,13 @@ void DabService::setProgrammeTypeCode(uint8_t intPtyCode) {
         m_ptyNameFull = registeredtables::PROGRAMME_TYPE_NAME[m_ptyCode][0];
         m_ptyName16 = registeredtables::PROGRAMME_TYPE_NAME[m_ptyCode][1];
         m_ptyName8 = registeredtables::PROGRAMME_TYPE_NAME[m_ptyCode][2];
-
-        std::cout << m_logTag << "Setting " << (m_ptyIsDynamic ? "dynamic" : "static") << " PTY for SId: " << std::hex << +m_serviceId << std::dec << " to: " << +m_ptyCode << " : " << m_ptyNameFull << " : " << m_ptyName16 << " : " << m_ptyName8 << std::endl;
+        std::ostringstream logStr;
+        logStr << m_logTag << "Setting " << (isProgrammeTypeDynamic() ? "dynamic" : "static")
+               << " PTY for SId: 0x" << std::hex << +m_serviceId << std::dec
+               << " to: " << +getProgrammeTypeCode()
+               << " : " << getProgrammeTypeFullName() << " : " << getProgrammeType16charName()
+               << " : " << getProgrammeType8CharName();
+        std::cout << logStr.str() << std::endl;
     }
 }
 
@@ -175,7 +218,7 @@ DabEnsemble* DabService::getDabEnsemble() const {
 
 bool DabService::checkSanity() const {
     bool isSane = true;
-    std::stringstream logStr;
+    std::ostringstream logStr;
     logStr << m_logTag << "check sanity SId=0x" << std::hex << +getServiceId() << std::dec << ": ";
 
     if (getServiceId() == SID_INVALID) {

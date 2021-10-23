@@ -206,13 +206,11 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
         enve->CallVoidMethod(dabServiceObject, m_dabServiceSetEnsembleLabelMId, ensembleLabel);
         enve->CallVoidMethod(dabServiceObject, m_dabServiceSetEnsembleShortLabelMId, ensembleShortLabel);
         enve->CallVoidMethod(dabServiceObject, m_dabServiceSetEnsembleFrequencyMId, (jint)srv->getEnsembleFrequency());
-        //enve->CallVoidMethod(dabServiceObject, m_dabServiceSetIsCaAppliedMId, static_cast<jboolean>(srv->isCaApplied()));
-        if(srv->isCaApplied() > 0) {
+        if(srv->isCaApplied()) {
             enve->CallVoidMethod(dabServiceObject, m_dabServiceSetIsCaAppliedMId, JNI_TRUE);
         } else {
             enve->CallVoidMethod(dabServiceObject, m_dabServiceSetIsCaAppliedMId, JNI_FALSE);
         }
-
         enve->CallVoidMethod(dabServiceObject, m_dabServiceSetCaIdMId, (jint)srv->getCaId());
 
         jstring dabServiceLabel;
@@ -298,8 +296,7 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
 
             enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetPacketAddressMId, packetAddress);
             enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsDgUsedMId, dgUsed);
-            //enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsPrimaryMId, static_cast<jboolean>(srvComp->isPrimary()));
-            if(srvComp->isPrimary() > 0) {
+            if(srvComp->isPrimary()) {
                 enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsPrimaryMId, JNI_TRUE);
             } else {
                 enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsPrimaryMId, JNI_FALSE);
@@ -312,8 +309,7 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
             enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetProtectionLvlMId, (jint)srvComp->getProtectionLevel());
             enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetProtectionTypeMId, (jint)srvComp->getProtectionType());
             enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetUepTblIdxMId, (jint)srvComp->getUepTableIndex());
-            //enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsFecAppliedMId, static_cast<jboolean>(srvComp->isFecSchemeApplied()));
-            if(srvComp->isFecSchemeApplied() > 0) {
+            if(srvComp->isFecSchemeApplied()) {
                 enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsFecAppliedMId, JNI_TRUE);
             } else {
                 enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsFecAppliedMId, JNI_FALSE);
@@ -332,16 +328,14 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
 
                 jobject dabServiceUserapplicationObject = enve->NewObject(m_dabServiceUserApplicationClass, m_dabServiceUserApplicationConstructorMId);
                 enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetAppTypeMId, (jint)uApp.getUserApplicationType());
-                //enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsCaAppliedMId, uApp.isCaApplied() ? 1 : 0);
-                if(uApp.isCaApplied() > 0) {
+                if(uApp.isCaApplied()) {
                     enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsCaAppliedMId, JNI_TRUE);
                 } else {
                     enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsCaAppliedMId, JNI_FALSE);
                 }
 
                 enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetCaOrgMId, (jint)uApp.getCaOrganization());
-                //enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsXPadMId, uApp.isXpadApp() ? 1 : 0);
-                if(uApp.isXpadApp() > 0) {
+                if(uApp.isXpadApp()) {
                     enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsXPadMId, JNI_TRUE);
                 } else {
                     enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsXPadMId, JNI_FALSE);
@@ -349,8 +343,7 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
 
                 enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetXPadAppTypeMId, (jint)uApp.getXpadAppType());
 
-                //enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsDgUsedMId, uApp.dataGroupsUsed() ? 1 : 0);
-                if(uApp.dataGroupsUsed() > 0) {
+                if(uApp.dataGroupsUsed()) {
                     enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsDgUsedMId, JNI_TRUE);
                 } else {
                     enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsDgUsedMId, JNI_FALSE);

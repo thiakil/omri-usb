@@ -77,8 +77,8 @@ public:
 
     virtual void setMscStartAddress(uint16_t startAddress);
     virtual void setSubchannelSize(uint16_t subChanSize);
-    virtual void setConvolutionalCodingRate(std::string convo);
-    virtual void setProtectionLevelString(std::string protLevel);
+    virtual void setConvolutionalCodingRate(const std::string& convo);
+    virtual void setProtectionLevelString(const std::string& protLevel);
     virtual void setProtectionLevel(uint8_t protLevel);
     virtual void setProtectionType(uint8_t protType);
     virtual void setUepTableIndex(uint8_t tableIdx);

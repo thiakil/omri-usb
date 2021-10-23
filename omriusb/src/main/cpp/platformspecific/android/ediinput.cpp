@@ -296,7 +296,7 @@ void EdiInput::ensembleCollectFinished() {
 
                 enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetBitrateMId,
                                      (jint) srvComp->getSubchannelBitrate());
-                if (srvComp->isCaApplied() > 0) {
+                if (srvComp->isCaApplied()) {
                     enve->CallVoidMethod(dabServiceComponentObject,
                                          m_dabServiceComponentSetCaFlagMId, JNI_TRUE);
                 } else {
@@ -360,7 +360,7 @@ void EdiInput::ensembleCollectFinished() {
                                      m_dabServiceComponentSetPacketAddressMId, packetAddress);
                 enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsDgUsedMId,
                                      dgUsed);
-                if (srvComp->isPrimary() > 0) {
+                if (srvComp->isPrimary()) {
                     enve->CallVoidMethod(dabServiceComponentObject,
                                          m_dabServiceComponentSetIsPrimaryMId, JNI_TRUE);
                 } else {
@@ -387,7 +387,7 @@ void EdiInput::ensembleCollectFinished() {
                 enve->CallVoidMethod(dabServiceComponentObject,
                                      m_dabServiceComponentSetUepTblIdxMId,
                                      (jint) srvComp->getUepTableIndex());
-                if (srvComp->isFecSchemeApplied() > 0) {
+                if (srvComp->isFecSchemeApplied()) {
                     enve->CallVoidMethod(dabServiceComponentObject,
                                          m_dabServiceComponentSetIsFecAppliedMId, JNI_TRUE);
                 } else {
@@ -413,7 +413,7 @@ void EdiInput::ensembleCollectFinished() {
                     enve->CallVoidMethod(dabServiceUserapplicationObject,
                                          m_dabServiceUserApplicationSetAppTypeMId,
                                          (jint) uApp.getUserApplicationType());
-                    if (uApp.isCaApplied() > 0) {
+                    if (uApp.isCaApplied()) {
                         enve->CallVoidMethod(dabServiceUserapplicationObject,
                                              m_dabServiceUserApplicationSetIsCaAppliedMId,
                                              JNI_TRUE);
@@ -426,7 +426,7 @@ void EdiInput::ensembleCollectFinished() {
                     enve->CallVoidMethod(dabServiceUserapplicationObject,
                                          m_dabServiceUserApplicationSetCaOrgMId,
                                          (jint) uApp.getCaOrganization());
-                    if (uApp.isXpadApp() > 0) {
+                    if (uApp.isXpadApp()) {
                         enve->CallVoidMethod(dabServiceUserapplicationObject,
                                              m_dabServiceUserApplicationSetIsXPadMId, JNI_TRUE);
                     } else {
@@ -438,7 +438,7 @@ void EdiInput::ensembleCollectFinished() {
                                          m_dabServiceUserApplicationSetXPadAppTypeMId,
                                          (jint) uApp.getXpadAppType());
 
-                    if (uApp.dataGroupsUsed() > 0) {
+                    if (uApp.dataGroupsUsed()) {
                         enve->CallVoidMethod(dabServiceUserapplicationObject,
                                              m_dabServiceUserApplicationSetIsDgUsedMId, JNI_TRUE);
                     } else {

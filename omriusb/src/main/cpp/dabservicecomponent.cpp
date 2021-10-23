@@ -24,12 +24,9 @@
 #include <algorithm>
 #include <sstream>
 
-DabServiceComponent::DabServiceComponent() {
+DabServiceComponent::DabServiceComponent() = default;
 
-}
-
-DabServiceComponent::~DabServiceComponent() {
-}
+DabServiceComponent::~DabServiceComponent() = default;
 
 DabServiceComponent::SERVICECOMPONENTTYPE DabServiceComponent::getServiceComponentType() const {
     return m_componentType;
@@ -137,8 +134,10 @@ void DabServiceComponent::setServiceComponentIdWithinService(uint8_t scIdS) {
      * The combination of the SId and the SCIdS provides a service component identifier which is valid globally.
      */
 #if defined(LOG_DETAILLED_FIG_ANALYSIS)
-    std::cout << m_logTag << " Setting SCIdS: " << std::hex << +scIdS << " for subChanId: " << +m_subChanId << std::dec
-            << "label: '" << m_serviceComponentLabel << "'" << std::endl;
+    std::ostringstream logStr;
+    logStr << m_logTag << " Setting SCIdS: " << +scIdS << " for SubChanId: " << +m_subChanId
+           << "label: '" << m_serviceComponentLabel << "'";
+    std::cout << logStr.str() << std::endl;
 #endif
 }
 
@@ -150,11 +149,11 @@ void DabServiceComponent::setSubchannelSize(uint16_t subChanSize) {
     m_subChanSize = subChanSize;
 }
 
-void DabServiceComponent::setConvolutionalCodingRate(std::string convo) {
+void DabServiceComponent::setConvolutionalCodingRate(const std::string& convo) {
     m_convoCodingRate = convo;
 }
 
-void DabServiceComponent::setProtectionLevelString(std::string protLevel) {
+void DabServiceComponent::setProtectionLevelString(const std::string& protLevel) {
     m_protectionLevelString = protLevel;
 }
 
@@ -185,28 +184,35 @@ void DabServiceComponent::setLabelCharset(uint8_t charset) {
 void DabServiceComponent::setServiceComponentLabel(const std::string& label) {
     if(m_serviceComponentLabel.empty()) {
         m_serviceComponentLabel = label;
-
-        std::cout << m_logTag << " Setting ServiceComponentLabel: " << m_serviceComponentLabel << " to ScIdS: " << std::hex << +m_scIdS << std::dec << std::endl;
+        std::ostringstream logStr;
+        logStr << m_logTag << " Setting ServiceComponentLabel: " << m_serviceComponentLabel
+               << " to SCIdS: " << +getServiceComponentIdWithinService();
+        std::cout << logStr.str() << std::endl;
     }
 }
 
 void DabServiceComponent::setServiceComponentShortLabel(const std::string& shortLabel) {
     if(m_serviceComponentShortLabel.empty()) {
         m_serviceComponentShortLabel = shortLabel;
-
-        std::cout << m_logTag << " Setting ServiceComponentShortLabel: " << m_serviceComponentShortLabel << " to ScIdS: " << std::hex << +m_scIdS << std::dec << std::endl;
+        std::ostringstream logStr;
+        logStr << m_logTag << " Setting ServiceComponentShortLabel: "
+               << m_serviceComponentShortLabel << " to SCIdS: " << +getServiceComponentIdWithinService();
+        std::cout << logStr.str() << std::endl;
     }
 }
 
 void DabServiceComponent::addUserApplication(const DabUserApplication& uApp) {
-    for(const DabUserApplication& app : m_userApplications) {
-        if(app == uApp) {
+    for (const DabUserApplication &app : m_userApplications) {
+        if (app == uApp) {
             //std::cout << m_logTag << " UserAppType: " << +uApp.getUserApplicationType() << " already in list: " << std::hex << +m_subChanId << std::dec << std::endl;
             return;
         }
     }
-
-    std::cout << m_logTag << " ############## Adding UserApplicationType: " << +uApp.getUserApplicationType() << " with DataServiceComponentType: " << +uApp.getDataServiceComponentType() << " for SubChanId: " << std::hex << +m_subChanId << std::dec << std::endl;
+    std::ostringstream logStr;
+    logStr << m_logTag << " Adding UserApplicationType: " << +uApp.getUserApplicationType()
+           << " with DataServiceComponentType: " << +uApp.getDataServiceComponentType()
+           << " for SubChanId: " << +m_subChanId;
+    std::cout << logStr.str() << std::endl;
     m_userApplications.push_back(uApp);
 }
 
@@ -216,7 +222,7 @@ void DabServiceComponent::flushBufferedData() {
 
 bool DabServiceComponent::checkSanity() const {
     bool isSane = true;
-    std::stringstream logStr;
+    std::ostringstream logStr;
     logStr << m_logTag << "  check sanity SubChanId=" << +getSubChannelId() << ":"
            << " SCIdS:" << +getServiceComponentIdWithinService();
 

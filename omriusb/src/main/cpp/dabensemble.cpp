@@ -20,9 +20,9 @@
 
 #include <functional>
 #include <iostream>
-#include <sstream>
 
 #include "dabensemble.h"
+#include "dabservice.h"
 #include "timer.h"
 
 DabEnsemble::DabEnsemble() {
@@ -356,7 +356,6 @@ void DabEnsemble::fig00_02_input(const Fig_00_Ext_02 &fig02) {
                             componentPtr->setSubchannelId(srvCom.subChannelId);
 
                             m_streamComponentsMap.insert(std::make_pair(srvCom.subChannelId, componentPtr));
-
                             service.addServiceComponent(componentPtr);
                         } else {
                             service.addServiceComponent(compIter->second);
@@ -401,7 +400,14 @@ void DabEnsemble::fig00_03_input(const Fig_00_Ext_03& fig03) {
     for(const auto& packetDesc : fig03.getPacketModeServiceDescriptions()) {
         auto compIter = m_packetComponentsMap.find(packetDesc.serviceComponentId);
         if(compIter != m_packetComponentsMap.cend()) {
-            std::cout << m_logTag << " PacketComponent: " << std::hex << packetDesc.serviceComponentId << " setting SubchannelId: " << +packetDesc.subchannelId << std::dec << " PacketAddress: " << +packetDesc.packetAddress << " updating" << std::endl;
+            std::ostringstream logStr;
+            logStr << m_logTag << " PacketComponent SCId " << packetDesc.serviceComponentId
+                   << " : setting SubChanId:" << +packetDesc.subchannelId
+                   << " DGused:" << packetDesc.dataGroupTransportUsed
+                   << " DSCTy:" << +packetDesc.dataServiceComponentType
+                   << " PacketAddress:" << +packetDesc.packetAddress;
+            std::cout << logStr.str() << std::endl;
+
             compIter->second->setSubchannelId(packetDesc.subchannelId);
             compIter->second->setDataServiceComponentType(packetDesc.dataServiceComponentType);
             compIter->second->setCaOrganization(packetDesc.caOrganization);
@@ -1120,7 +1126,7 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
         }
         if (!incompleteDabServices.empty()) {
             if (ensembleCollectHasTimedout) {
-                std::stringstream logStr;
+                std::ostringstream logStr;
                 logStr << m_logTag << " ensemble collect TIMEOUT, prune SId";
                 for (const auto &failedDabService : incompleteDabServices) {
                     logStr << " 0x" << std::hex << +failedDabService->getServiceId() << std::dec;
@@ -1135,7 +1141,7 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
         }
     }
     // service(s) checked, now ensemble itself
-    std::stringstream logStr;
+    std::ostringstream logStr;
     logStr << m_logTag << " checkServiceSanity failed EId=0x" << std::hex << +getEnsembleId() << std::dec;
     if (getEnsembleEcc() == ECC_INVALID || getEnsembleId() == EID_INVALID
        || getEnsembleLabelCharset() == CHARSET_INVALID || getEnsembleLabel().empty() || getEnsembleShortLabel().empty()) {
