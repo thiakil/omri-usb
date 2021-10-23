@@ -245,3 +245,7 @@ bool DabServiceComponent::checkSanity() const {
     }
     return isSane;
 }
+
+bool DabServiceComponent::isAudioComponent() const {
+    return m_componentType == SERVICECOMPONENTTYPE::MSC_STREAM_AUDIO;
+}

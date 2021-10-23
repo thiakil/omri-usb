@@ -330,7 +330,6 @@ void DabEnsemble::fig00_02_input(const Fig_00_Ext_02 &fig02) {
                 service.setServiceId(srvDesc.serviceId);
             }
 
-            service.setIsProgrammeService(srvDesc.isProgrammeService);
             service.setCaId(srvDesc.caId);
             service.setNumberOfServiceComponents(srvDesc.numServiceComponents);
 
@@ -1089,21 +1088,26 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
         // check all services in ensemble
         for (const auto &srvMapEntry : m_servicesMap) {
             bool wasSane = srvMapEntry.second.checkSanity();
-            if (wasSane && srvMapEntry.second.isProgrammeService()) {
-                uint32_t numPrimAudioComponents = 0;
+            if (wasSane) {
+                std::vector<uint8_t> primAudioSubChannelIds;
                 for (const auto &srvCmp : srvMapEntry.second.getServiceComponents()) {
-                    if (srvCmp->isPrimary()) {
-                        numPrimAudioComponents++;
+                    if (srvCmp->isPrimary() && srvCmp->isAudioComponent()) {
+                        primAudioSubChannelIds.push_back(srvCmp->getSubChannelId());
                     }
                 }
-                if (numPrimAudioComponents > 1) {
-                    std::clog << m_logTag << "checkServiceSanity for PS SId 0x" << std::hex
+                if (primAudioSubChannelIds.size() > 1) {
+                    std::ostringstream logStr;
+                    logStr << m_logTag << "checkServiceSanity SId 0x" << std::hex
                               << +srvMapEntry.second.getServiceId() << std::dec << ": "
-                              << +numPrimAudioComponents << " prim audio stream components" << std::endl;
+                              << +primAudioSubChannelIds.size() << " prim audio SubChanIds:";
+                    for (const auto & subChanId : primAudioSubChannelIds) {
+                        logStr << " " << +subChanId;
+                    }
+                    std::clog << logStr.str() << std::endl;
                 }
             }
             if (!wasSane) {
-                std::stringstream logStr;
+                std::ostringstream logStr;
                 logStr << m_logTag << "checkServiceSanity failed for SId 0x" << std::hex
                        << +srvMapEntry.second.getServiceId() << std::dec;
                 if (logAsWarning) {

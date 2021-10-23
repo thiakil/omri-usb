@@ -52,8 +52,17 @@ uint8_t DabService::getNumberServiceComponents() const {
     return m_numSrvComps;
 }
 
-bool DabService::isProgrammeService() const {
-    return m_isProgrammeService;
+bool DabService::hasAudioServiceComponent() const {
+    // Following is not covered by DAB specs:
+    // A DabService is a Programme Service if it has at least one audio service component
+    bool hasProgrammeComponent = false;
+    for (const auto& srvComp : m_components) {
+        if (srvComp->isAudioComponent()) {
+            hasProgrammeComponent = true;
+            break;
+        }
+    }
+    return hasProgrammeComponent;
 }
 
 uint8_t DabService::getLabelCharset() const {
@@ -98,10 +107,6 @@ uint32_t DabService::getEnsembleFrequency() const {
 
 void DabService::setServiceId(uint32_t serviceId) {
     m_serviceId = serviceId;
-}
-
-void DabService::setIsProgrammeService(bool isProgramme) {
-    m_isProgrammeService = isProgramme;
 }
 
 void DabService::setCaId(uint8_t caId) {

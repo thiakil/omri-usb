@@ -272,7 +272,7 @@ void EdiInput::ensembleCollectFinished() {
             enve->CallVoidMethod(jDabService,
                                  m_dabServiceSetServiceIdMId, srv->getServiceId());
 
-            if (srv->isProgrammeService() > 0) {
+            if (srv->hasAudioServiceComponent()) {
                 enve->CallVoidMethod(jDabService,
                                      m_dabServiceSetServiceIsProgrammeMId, JNI_TRUE);
             } else {

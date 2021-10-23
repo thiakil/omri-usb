@@ -179,7 +179,7 @@ void JDabService::setLinkDabService(std::shared_ptr<DabService> linkedDabSrv) {
 
     std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
 
-    if (linkedDabSrv->isProgrammeService()) {
+    if (linkedDabSrv->hasAudioServiceComponent()) {
         std::cout << m_logTag << "Linking DABServices... for SId " << std::hex << m_serviceId
                   << std::dec << std::endl;
         m_linkedDabService = linkedDabSrv;
@@ -546,7 +546,7 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
         const auto ecc = pEnsemble->getEnsembleEcc();
         const auto efreqKHz = pService->getEnsembleFrequency() / 1000;
         const auto sid = pService->getServiceId();
-        const auto isPS = pService->isProgrammeService();
+        const auto isPS = pService->hasAudioServiceComponent();
 
         LinkedServiceDab currentService(ecc, sid, eid, efreqKHz, isPS);
         const auto & sfServices = pEnsemble->getLinkedDabServices(currentService);
@@ -622,5 +622,3 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
     }
 
 }
-
-

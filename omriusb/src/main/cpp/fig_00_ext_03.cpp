@@ -37,7 +37,6 @@ void Fig_00_Ext_03::parseFigData(const std::vector<uint8_t>& figData) {
     while(figIter < figData.cend()) {
         PacketModeServiceComponentDescription packetDesc;
 
-        packetDesc.isProgrammeService = !isDataService();
         packetDesc.serviceComponentId = (*figIter++ & 0xFF) << 4 | (*figIter & 0xF0) >> 4;
         //std::cout << m_logTag << " SCID: " << std::hex << +m_srvComponentId << std::dec << std::endl;
         //uint8_t rfa = (*figIter & 0x0E) >> 1;

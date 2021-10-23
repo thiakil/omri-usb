@@ -51,6 +51,7 @@ public:
     virtual DabServiceComponent::SERVICECOMPONENTTYPE getServiceComponentType() const;
     virtual uint8_t getSubChannelId() const;
     virtual bool isPrimary() const;
+    virtual bool isAudioComponent() const;
     virtual bool isCaApplied() const;
     virtual uint8_t getServiceComponentIdWithinService() const;
     virtual uint16_t getMscStartAddress() const;

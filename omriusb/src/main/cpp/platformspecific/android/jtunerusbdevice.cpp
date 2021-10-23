@@ -225,7 +225,7 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
         enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceShortLabelMId, dabServiceShortLabel);
         enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceIdMId, srv->getServiceId());
 
-        if(srv->isProgrammeService() > 0) {
+        if(srv->hasAudioServiceComponent()) {
             enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceIsProgrammeMId, JNI_TRUE);
         } else {
             enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceIsProgrammeMId, JNI_FALSE);

@@ -45,7 +45,7 @@ public:
     virtual bool isCaApplied() const;
     virtual uint8_t getCaId() const;
     virtual uint8_t getNumberServiceComponents() const;
-    virtual bool isProgrammeService() const;
+    virtual bool hasAudioServiceComponent() const;
 
     virtual uint8_t getLabelCharset() const;
     virtual std::string getServiceLabel() const;
@@ -63,7 +63,6 @@ public:
     virtual DabEnsemble * getDabEnsemble() const;
 
     virtual void setServiceId(uint32_t serviceId);
-    virtual void setIsProgrammeService(bool isProgramme);
     virtual void setCaId(uint8_t caId);
     virtual void setNumberOfServiceComponents(uint8_t numSc);
 
@@ -83,7 +82,6 @@ protected:
     const std::string m_logTag = "[DabService] ";
 
     uint32_t m_serviceId{SID_INVALID};
-    bool m_isProgrammeService{false};
     uint8_t m_caId{CAID_INVALID};
     bool m_caApplied{false};
     uint8_t m_numSrvComps{0};

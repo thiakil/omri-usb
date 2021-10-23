@@ -512,7 +512,7 @@ Java_org_omri_radio_impl_UsbHelper_getLinkedServices(JNIEnv *env, jobject thiz, 
             bool isProgrammeService = false;
             const auto & service = jDabService.getLinkDabService();
             if (service != nullptr) {
-                isProgrammeService = service->isProgrammeService();
+                isProgrammeService = service->hasAudioServiceComponent();
             }
 
             LinkedServiceDab inputService(jDabService.getEnsembleEcc(),
