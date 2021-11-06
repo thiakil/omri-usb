@@ -2,11 +2,11 @@ apply plugin: 'com.android.library'
 
 // change to true if you want Address Sanitizer active in debug build
 def asanEnabledInDebugBuild = false
-def clangVersion = "12.0.5" // must match with ndkVersion !!
+def clangVersion = "12.0.8" // must match with ndkVersion !!
 
 android {
     compileSdkVersion 30
-    ndkVersion "23.0.7599858"
+    ndkVersion "23.1.7779620"
 
     defaultConfig {
         minSdkVersion 19
