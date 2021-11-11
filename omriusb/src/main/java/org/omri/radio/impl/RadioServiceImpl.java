@@ -1,8 +1,11 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
@@ -28,8 +31,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.omri.BuildConfig.DEBUG;
-
 /**
  * Copyright (C) 2018 IRT GmbH
  *
@@ -48,6 +49,7 @@ import static org.omri.BuildConfig.DEBUG;
  * @author Fabian Sattler, IRT GmbH
  */
 
+@SuppressWarnings({"ClassWithTooManyMethods", "OverlyComplexClass", "OverlyCoupledClass"})
 public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 	private static final long serialVersionUID = 952156510217072036L;
@@ -56,12 +58,13 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 	private String mShortDescription = "";
 	private String mLongDescription = "";
-	private List<Visual> mLogoVisuals = new ArrayList<Visual>();
-	private List<TermId> mGenreList = new ArrayList<TermId>();
-	private List<String> mLinksList = new ArrayList<String>();
-	private List<Location> mLocationList = new ArrayList<Location>();
-	private List<String> mKeywordsList = new ArrayList<String>();
-	private List<Group> mGroupsList = new ArrayList<Group>();
+	@SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
+	private List<Visual> mLogoVisuals = new ArrayList<>();
+	private List<TermId> mGenreList = new ArrayList<>();
+	private List<String> mLinksList = new ArrayList<>();
+	private List<Location> mLocationList = new ArrayList<>();
+	private List<String> mKeywordsList = new ArrayList<>();
+	private List<Group> mGroupsList = new ArrayList<>();
 	private final List<RadioService> mSfServices = Collections.synchronizedList(new ArrayList<>());
 
 	final transient List<VisualMetadataListener> mSlideshowListeners = Collections.synchronizedList(new ArrayList<>());
@@ -77,12 +80,6 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	private boolean mSbrUsed = false;
 	private boolean mPsUsed = false;
 
-	private int mChannelConfig = 0;
-	private int mSamplingRate = 0;
-
-	private int mConfigChans = 0;
-	private int mConfigSampling = 0;
-
 	private String mHradioSearchSource = "";
 
 	void setHradioSearchSource(String source) {
@@ -91,6 +88,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		}
 	}
 
+	@SuppressWarnings("unused")
 	public String getHradioSearchSource() {
 		return mHradioSearchSource;
 	}
@@ -106,6 +104,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		stream.writeObject(mGroupsList);
 	}
 
+	@SuppressWarnings("unchecked")
 	private void readObject(java.io.ObjectInputStream stream) throws IOException, ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
 		mShortDescription = (String)stream.readObject();
 		mLongDescription  = (String)stream.readObject();
@@ -128,12 +127,6 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		mAscty = -1;
 		mSbrUsed = false;
 		mPsUsed = false;
-
-		mChannelConfig = 0;
-		mSamplingRate = 0;
-
-		mConfigChans = 0;
-		mConfigSampling = 0;
 	}
 
 	@Override
@@ -160,6 +153,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		return VisualLogoManager.getInstance().getLogoVisuals(this);
 	}
 
+	@SuppressWarnings("unused")
 	public void addLogo(Visual logoVisual) {
 		this.mLogoVisuals.add(logoVisual);
 	}
@@ -199,6 +193,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		return mLocationList;
 	}
 
+	@SuppressWarnings("unused")
 	public void addLocation(Location location) {
 		this.mLocationList.add(location);
 	}
@@ -225,10 +220,12 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		return mGroupsList;
 	}
 
+	@SuppressWarnings("unused")
 	public void addMembership(Group group) {
 		this.mGroupsList.add(group);
 	}
 
+	@SuppressWarnings("unused")
 	public void addMembership(List<Group> group) {
 		this.mGroupsList.addAll(group);
 	}
@@ -371,29 +368,38 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	//callbacks from the tuner
+	@SuppressWarnings("unused")
 	void slideshowReceived(VisualDabSlideShow slideShow) {
-		for(VisualMetadataListener slsListener : mSlideshowListeners) {
-			slsListener.newVisualMetadata(slideShow);
+		synchronized (mSlideshowListeners) {
+			for (VisualMetadataListener slsListener : mSlideshowListeners) {
+				slsListener.newVisualMetadata(slideShow);
+			}
 		}
 	}
 
 	void labelReceived(Textual label) {
-		for(TextualMetadataListener dlsListener : mLabelListeners) {
-			dlsListener.newTextualMetadata(label);
+		synchronized (mLabelListeners) {
+			for (TextualMetadataListener dlsListener : mLabelListeners) {
+				dlsListener.newTextualMetadata(label);
+			}
 		}
 	}
 
+	@SuppressWarnings("unused")
 	void spiReceived(String spiPath) {
 		if(DEBUG)Log.d(TAG, "RadioDns Spi Path: " + spiPath);
 
 		SpiProgrammeInformationImpl spiInfo = new SpiProgrammeInformationImpl(spiPath);
 
 		if(DEBUG)Log.d(TAG, "RadioDns DocsSize: " + spiInfo.getSpiDocument().getElementsByTagName("schedule").getLength());
-		for(ProgrammeServiceMetadataListener metaListener : mSpiListeners) {
-			metaListener.newProgrammeInformation(spiInfo);
+		synchronized (mSpiListeners) {
+			for (ProgrammeServiceMetadataListener metaListener : mSpiListeners) {
+				metaListener.newProgrammeInformation(spiInfo);
+			}
 		}
 	}
 
+	@SuppressWarnings("unused")
 	void audioData(final byte[] pcmData, final int channelCount, final int samplingRate) {
 		if(mDecodeAudio && mAudioDec != null) {
 			mAudioDec.feedData(pcmData);
@@ -450,6 +456,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	// called from JNI
+	@SuppressWarnings("unused")
 	void serviceFollowingReceived(ArrayList<RadioService> sfServices) {
 		if (sfServices != null) {
 			if(DEBUG) Log.d(TAG, "serviceFollowingReceived sz=" + sfServices.size() + " for " +
@@ -481,16 +488,15 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		return hasChanged;
 	}
 
-	private transient DabAudioDecoder mAudioDec = null;
+	private transient @Nullable DabAudioDecoder mAudioDec = null;
 	private RadioServiceMimeType mMimeType = RadioServiceMimeType.UNKNOWN;
+	@SuppressWarnings("unused")
 	void audioFormatChanged(final int ascty, final int channelCount, final int samplingRate, final boolean sbrUsed, final boolean psUsed) {
 		if(DEBUG)Log.d(TAG, "audioFormatChanged: ASCTY:" + ascty +", SBR: " + sbrUsed + ", PS: " + psUsed);
 		mMimeType = RadioServiceMimeType.UNKNOWN;
 		mAscty = ascty;
 		mSbrUsed = sbrUsed;
 		mPsUsed = psUsed;
-		mConfigChans = channelCount;
-		mConfigSampling = samplingRate;
 
 		if(mAscty == 0) {
 			mMimeType = RadioServiceMimeType.AUDIO_MPEG;
@@ -516,6 +522,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		}
 
 		if(mAudioDec != null) {
+			//noinspection AnonymousInnerClassWithTooManyMethods
 			mAudioDec.setCodecCallback(new DabAudioDecoder.DabDecoderCallback() {
 				@Override
 				public void decodedAudioData(byte[] pcmData, final int samplerate, final int channels) {
@@ -527,8 +534,6 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 				@Override
 				public void outputFormatChanged(int sampleRate, int chanCnt) {
 					Log.d(TAG, "outputFormatChanged: " + sampleRate + " : " + chanCnt);
-					mSamplingRate = sampleRate;
-					mChannelConfig = chanCnt;
 				}
 			});
 		} else {

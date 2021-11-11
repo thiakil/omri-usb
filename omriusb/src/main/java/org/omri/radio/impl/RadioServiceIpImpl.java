@@ -1,5 +1,8 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
+import android.annotation.SuppressLint;
 import android.os.Build;
 import android.util.Log;
 
@@ -24,8 +27,6 @@ import java.util.Objects;
 import eu.hradio.core.radiodns.radioepg.bearer.Bearer;
 import eu.hradio.core.radiodns.radioepg.radiodns.RadioDns;
 
-import static org.omri.BuildConfig.DEBUG;
-
 /**
  * Copyright (C) 2018 IRT GmbH
  *
@@ -44,16 +45,18 @@ import static org.omri.BuildConfig.DEBUG;
  * @author Fabian Sattler, IRT GmbH
  */
 
+@SuppressWarnings("OverlyCoupledClass")
 public class RadioServiceIpImpl extends RadioServiceImpl implements RadioServiceIp, Serializable {
 
 	private static final long serialVersionUID = 1604769239642356483L;
 
+	@SuppressWarnings("FieldCanBeLocal")
 	private final String TAG = "RadioServiceIp";
 
 	private String mServiceLabel = "";
-	private List<RadioServiceIpStream> mStreams = new ArrayList<>();
+	private final List<RadioServiceIpStream> mStreams = new ArrayList<>();
 
-	private List<RadioDnsEpgBearer> mBearers = new ArrayList<>();
+	private final List<RadioDnsEpgBearer> mBearers = new ArrayList<>();
 
 	private RadioDns mRadioDns = null;
 
@@ -78,6 +81,7 @@ public class RadioServiceIpImpl extends RadioServiceImpl implements RadioService
 		mStreams.add(ipStream);
 	}
 
+	@SuppressWarnings("unused")
 	void addStream(List<RadioServiceIpStream> ipStreams) {
 		mStreams.addAll(ipStreams);
 	}
@@ -125,40 +129,54 @@ public class RadioServiceIpImpl extends RadioServiceImpl implements RadioService
 	}
 
 
-	private List<RadioServiceRawAudiodataListener> mRawListeners = new ArrayList<>();
+	private final List<RadioServiceRawAudiodataListener> mRawListeners = new ArrayList<>();
 	@Override
 	public void subscribe(RadioServiceListener radioServiceListener) {
 		if(DEBUG)Log.d(TAG, "Subscribing RadioServiceListener: " + radioServiceListener);
 		if(radioServiceListener != null) {
 			if(radioServiceListener instanceof TextualMetadataListener) {
-				if(!mLabelListeners.contains(radioServiceListener)) {
-					if(DEBUG)Log.d(TAG, "Subscribing TextualMetadataListener: " + radioServiceListener);
-					this.mLabelListeners.add((TextualMetadataListener) radioServiceListener);
+				synchronized (mLabelListeners) {
+					if (!mLabelListeners.contains(radioServiceListener)) {
+						if (DEBUG)
+							Log.d(TAG, "Subscribing TextualMetadataListener: " + radioServiceListener);
+						this.mLabelListeners.add((TextualMetadataListener) radioServiceListener);
+					}
 				}
 			}
 			if(radioServiceListener instanceof VisualMetadataListener) {
-				if(!mSlideshowListeners.contains(radioServiceListener)) {
-					if(DEBUG)Log.d(TAG, "Subscribing VisualMetadataListener: " + radioServiceListener);
-					this.mSlideshowListeners.add((VisualMetadataListener) radioServiceListener);
+				synchronized(mSlideshowListeners) {
+					if (!mSlideshowListeners.contains(radioServiceListener)) {
+						if (DEBUG)
+							Log.d(TAG, "Subscribing VisualMetadataListener: " + radioServiceListener);
+						this.mSlideshowListeners.add((VisualMetadataListener) radioServiceListener);
+					}
 				}
 			}
 			if(radioServiceListener instanceof RadioServiceAudiodataListener) {
-				if(!mAudiodataListeners.contains(radioServiceListener)) {
-					if(DEBUG)Log.d(TAG, "Subscribing RadioServiceAudiodataListener: " + radioServiceListener);
-					mDecodeAudio = true;
-					this.mAudiodataListeners.add((RadioServiceAudiodataListener) radioServiceListener);
+				synchronized(mAudiodataListeners) {
+					if (!mAudiodataListeners.contains(radioServiceListener)) {
+						if (DEBUG)
+							Log.d(TAG, "Subscribing RadioServiceAudiodataListener: " + radioServiceListener);
+						mDecodeAudio = true;
+						this.mAudiodataListeners.add((RadioServiceAudiodataListener) radioServiceListener);
+					}
 				}
 			}
 			if(radioServiceListener instanceof RadioServiceRawAudiodataListener) {
-				if(!mRawListeners.contains(radioServiceListener)) {
-					if(DEBUG)Log.d(TAG, "Adding RawAudioListener");
-					mRawListeners.add((RadioServiceRawAudiodataListener)radioServiceListener);
+				synchronized (mRawListeners) {
+					if (!mRawListeners.contains(radioServiceListener)) {
+						if (DEBUG) Log.d(TAG, "Adding RawAudioListener");
+						mRawListeners.add((RadioServiceRawAudiodataListener) radioServiceListener);
+					}
 				}
 			}
 			if(radioServiceListener instanceof ProgrammeServiceMetadataListener) {
-				if(!mSpiListeners.contains(radioServiceListener)) {
-					if(DEBUG)Log.d(TAG, "Subscribing ProgrammeServiceMetadataListener: " + radioServiceListener);
-					this.mSpiListeners.add((ProgrammeServiceMetadataListener) radioServiceListener);
+				synchronized (mSpiListeners) {
+					if (!mSpiListeners.contains(radioServiceListener)) {
+						if (DEBUG)
+							Log.d(TAG, "Subscribing ProgrammeServiceMetadataListener: " + radioServiceListener);
+						this.mSpiListeners.add((ProgrammeServiceMetadataListener) radioServiceListener);
+					}
 				}
 			}
 		}
@@ -183,6 +201,7 @@ public class RadioServiceIpImpl extends RadioServiceImpl implements RadioService
 		return false;
 	}
 
+	@SuppressLint("ObsoleteSdkInt")
 	@Override
 	public int hashCode() {
 		if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
