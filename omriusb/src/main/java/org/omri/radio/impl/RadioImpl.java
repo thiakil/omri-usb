@@ -217,12 +217,15 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 				mTunerList.add(ipTuner);
 			}
 
-			if(DEBUG)Log.d(TAG, "Adding EdiStreamTuner");
-			TunerEdistream ediTuner = new TunerEdistream();
-			UsbHelper.getInstance().ediStreamTunerAttached(ediTuner);
-			ediTuner.subscribe(this);
-			synchronized (mTunerList) {
-				mTunerList.add(ediTuner);
+			final UsbHelper usbHelper = UsbHelper.getInstance();
+			if (usbHelper != null) {
+				if (DEBUG) Log.d(TAG, "Adding EdiStreamTuner");
+				TunerEdistream ediTuner = new TunerEdistream();
+				usbHelper.ediStreamTunerAttached(ediTuner);
+				ediTuner.subscribe(this);
+				synchronized (mTunerList) {
+					mTunerList.add(ediTuner);
+				}
 			}
 
 			if(DEBUG)Log.d(TAG, "Initialized with " + mTunerList.size() + " tuners");
