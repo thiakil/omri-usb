@@ -3,6 +3,7 @@ package eu.hradio.core.radiodns;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import org.minidns.dnsserverlookup.android21.AndroidUsingLinkProperties;
 import org.minidns.hla.ResolverApi;
@@ -12,7 +13,6 @@ import org.minidns.record.SRV;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -21,20 +21,21 @@ import java.util.concurrent.Executors;
 
 public class RadioDnsCore
 {
+    @SuppressWarnings("unused")
     private static final String TAG = "RadioDnsCore";
     private final RadioService mLookupSrv;
-    private final String mFqdn;
-    private final String mRdnsSrvId;
-    private final String mBearerUri;
+    private final @Nullable String mFqdn;
+    private final @Nullable String mRdnsSrvId;
+    private final @Nullable String mBearerUri;
     private volatile boolean mLookupRunning;
-    private ArrayList<RadioDnsService> mFoundServices;
-    private ExecutorService mCbExe;
-    private ConcurrentLinkedQueue<RadioDnsCoreLookupCallback> mCallbacks;
+    private final ArrayList<RadioDnsService> mFoundServices;
+    private final ExecutorService mCbExe;
+    private final ConcurrentLinkedQueue<RadioDnsCoreLookupCallback> mCallbacks;
 
     RadioDnsCore(@NonNull final RadioService lookupSrv) {
         this.mLookupRunning = false;
-        this.mFoundServices = new ArrayList<RadioDnsService>();
-        this.mCallbacks = new ConcurrentLinkedQueue<RadioDnsCoreLookupCallback>();
+        this.mFoundServices = new ArrayList<>();
+        this.mCallbacks = new ConcurrentLinkedQueue<>();
         this.mLookupSrv = lookupSrv;
         this.mCbExe = Executors.newFixedThreadPool(10);
         switch (this.mLookupSrv.getRadioServiceType()) {
@@ -60,27 +61,7 @@ public class RadioDnsCore
         if (this.mFoundServices.isEmpty() && this.mFqdn != null && this.mRdnsSrvId != null && this.mBearerUri != null) {
             if (!this.mLookupRunning) {
                 this.mLookupRunning = true;
-                final Thread lookupThread = new Thread() {
-                    @Override
-                    public void run() {
-                        try {
-                            AndroidUsingLinkProperties.setup(context);
-                            final ResolverResult<CNAME> result = (ResolverResult<CNAME>) ResolverApi.INSTANCE.resolve(RadioDnsCore.this.mFqdn, (Class)CNAME.class);
-                            if (result.wasSuccessful()) {
-                                for (final CNAME cname : result.getAnswers()) {
-                                    RadioDnsCore.this.resolveServiceRecords(cname, context);
-                                }
-                            }
-                        }
-                        catch (IOException ioExc) {
-                            ioExc.printStackTrace();
-                        }
-                        finally {
-                            RadioDnsCore.this.callCallbacks();
-                            RadioDnsCore.this.mLookupRunning = false;
-                        }
-                    }
-                };
+                final Thread lookupThread = new LookupThread(context);
                 lookupThread.start();
             }
         }
@@ -90,16 +71,13 @@ public class RadioDnsCore
     }
 
     private void callCallbacks() {
-        if (this.mCallbacks.size() > 0) {
-            final Object[] array;
-            final Object[] cbs = array = this.mCallbacks.toArray();
-            for (final Object cb : array) {
-                this.mCbExe.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        ((RadioDnsCoreLookupCallback)cb).coreLookupFinished(RadioDnsCore.this.mLookupSrv, RadioDnsCore.this.mFoundServices);
-                    }
-                });
+        synchronized (this.mCallbacks) {
+            for (final RadioDnsCoreLookupCallback cb : this.mCallbacks) {
+                try {
+                    this.mCbExe.execute(() -> cb.coreLookupFinished(RadioDnsCore.this.mLookupSrv, RadioDnsCore.this.mFoundServices));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
             }
             this.mCallbacks.clear();
         }
@@ -110,32 +88,60 @@ public class RadioDnsCore
             try {
                 AndroidUsingLinkProperties.setup(context);
                 final String appFqdn = String.format("_%s._%s.%s", rdnsType.getAppName(), "tcp", cname.getTarget().toString());
-                final ResolverResult<SRV> result = (ResolverResult<SRV>)ResolverApi.INSTANCE.resolve(appFqdn, (Class)SRV.class);
+                final ResolverResult<SRV> result = ResolverApi.INSTANCE.resolve(appFqdn, SRV.class);
                 if (result.wasSuccessful()) {
                     for (final SRV serviceRecord : result.getAnswers()) {
                         switch (rdnsType) {
                             case RADIO_VIS: {
                                 this.mFoundServices.add(new RadioDnsServiceVis(serviceRecord, this.mRdnsSrvId, this.mBearerUri, rdnsType, this.mLookupSrv));
-                                continue;
+                                break;
                             }
                             case RADIO_EPG: {
                                 this.mFoundServices.add(new RadioDnsServiceEpg(serviceRecord, this.mRdnsSrvId, this.mBearerUri, rdnsType, this.mLookupSrv));
-                                continue;
+                                break;
                             }
                             case RADIO_TAG: {
                                 this.mFoundServices.add(new RadioDnsServiceTag(serviceRecord, this.mRdnsSrvId, this.mBearerUri, rdnsType, this.mLookupSrv));
-                                continue;
+                                break;
                             }
                             case RADIO_WEB: {
                                 this.mFoundServices.add(new RadioDnsServiceWeb(serviceRecord, this.mRdnsSrvId, this.mBearerUri, rdnsType, this.mLookupSrv));
-                                continue;
+                                break;
                             }
                         }
                     }
                 }
             }
-            catch (IOException ioExc) {
-                ioExc.printStackTrace();
+            catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private class LookupThread extends Thread {
+        private final Context context;
+
+        public LookupThread(Context context) {
+            this.context = context;
+        }
+
+        @Override
+        public void run() {
+            try {
+                if (RadioDnsCore.this.mFqdn != null) {
+                    AndroidUsingLinkProperties.setup(context);
+                    final ResolverResult<CNAME> result = ResolverApi.INSTANCE.resolve(RadioDnsCore.this.mFqdn, CNAME.class);
+                    if (result.wasSuccessful()) {
+                        for (final CNAME cname : result.getAnswers()) {
+                            RadioDnsCore.this.resolveServiceRecords(cname, context);
+                        }
+                    }
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            } finally {
+                RadioDnsCore.this.callCallbacks();
+                RadioDnsCore.this.mLookupRunning = false;
             }
         }
     }
