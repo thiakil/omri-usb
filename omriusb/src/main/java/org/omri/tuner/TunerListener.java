@@ -3,6 +3,8 @@ package org.omri.tuner;
 import org.omri.radio.RadioListener;
 import org.omri.radioservice.RadioService;
 
+import java.util.Date;
+
 /**
  * Copyright (C) 2016 Open Mobile Radio Interface (OMRI) Group
  *
@@ -77,4 +79,11 @@ public interface TunerListener extends RadioListener {
 	 * @param data the raw data
 	 */
 	public void tunerRawData(Tuner tuner, byte[] data);
+
+	/**
+	 * Update on DAB date and time
+	 * @param tuner the {@link Tuner} from which the date and time was received
+	 * @param dabDateTime {@link Date}
+	 */
+	public void dabDateTime(Tuner tuner, Date dabDateTime);
 }
