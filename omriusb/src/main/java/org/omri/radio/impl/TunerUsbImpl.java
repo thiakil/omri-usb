@@ -24,6 +24,7 @@ import org.omri.tuner.TunerType;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -473,6 +474,15 @@ public class TunerUsbImpl implements TunerUsb {
 		synchronized (mTunerlisteners) {
 			for (TunerListener cb : mTunerlisteners) {
 				cb.tunerReceptionStatistics(this, rfLocked, ReceptionQuality.values()[qualLevel]);
+			}
+		}
+	}
+
+	@SuppressWarnings("unused") // called from JNI
+	public void dabTimeUpdate(Date dabDateTime) {
+		synchronized (mTunerlisteners) {
+			for (TunerListener cb : mTunerlisteners) {
+				cb.dabDateTime(this, dabDateTime);
 			}
 		}
 	}

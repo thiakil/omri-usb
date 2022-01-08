@@ -635,7 +635,10 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	private void dabTime(DabTime dabTime) {
-		if(DEBUG)Log.d(TAG, "DabTime: " + dabTime.getPosixMillis());
+	}
+
+	@Override
+	public void dabDateTime(Tuner tuner, Date dabTime) {
 	}
 
 	public void startDirectSbtStream(String streamUrl) {

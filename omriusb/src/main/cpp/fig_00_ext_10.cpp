@@ -64,13 +64,13 @@ void Fig_00_Ext_10::parseFigData(const std::vector<uint8_t>& figData) {
         // note: mktime interprets input as local time
         m_dabTime.unixEpoch = std::mktime(&dabDateTime) - timezone;
 
-        std::stringstream logStr;
+        /*std::stringstream logStr;
         logStr << m_logTag << " Y: " << +m_dabTime.year << ", M: " << +m_dabTime.month
                << ", D: " << +m_dabTime.day << ", h: " << +m_dabTime.hour << ", m: "
                << +m_dabTime.minute << ", s: " << +m_dabTime.second << ", ms: "
                << +m_dabTime.milliseconds << ", UnixEpoch: " << +m_dabTime.unixEpoch << ": "
                << std::put_time(std::gmtime(&m_dabTime.unixEpoch), "%c %Z");
-        std::cout << logStr.str() << std::endl;
+        std::cout << logStr.str() << std::endl;*/
     }
 }
 

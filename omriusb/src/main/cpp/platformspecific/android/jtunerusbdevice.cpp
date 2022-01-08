@@ -20,11 +20,16 @@
 
 #include <iostream>
 
+#include "jni-helper.h"
 #include "jtunerusbdevice.h"
-#include "../../dabservice.h"
 
-
-JTunerUsbDevice::JTunerUsbDevice(JavaVM* javaVm, JNIEnv* env, jobject tunerUsbDevice) : JUsbDevice(javaVm, env, env->CallObjectMethod(tunerUsbDevice, env->GetMethodID(env->FindClass("org/omri/radio/impl/TunerUsb"), "getUsbDevice", "()Landroid/hardware/usb/UsbDevice;"))) {
+JTunerUsbDevice::JTunerUsbDevice(JavaVM* javaVm, JNIEnv* env, jobject tunerUsbDevice)
+    : JUsbDevice(javaVm, env,
+                 env->CallObjectMethod(tunerUsbDevice,
+                                       env->GetMethodID(
+                                               env->FindClass("org/omri/radio/impl/TunerUsb"),
+                                               "getUsbDevice",
+                                               "()Landroid/hardware/usb/UsbDevice;"))) {
     std::cout << m_logTag << "Creating JTuner" << std::endl;
 
     m_javaVm = javaVm;
@@ -43,12 +48,12 @@ void JTunerUsbDevice::setJavaClassUsbTuner(JNIEnv* env, jclass usbTunerClass) {
     m_usbTunerClass = usbTunerClass;
 
     m_usbTunerCallbackMId = env->GetMethodID(m_usbTunerClass, "callBack", "(I)V");
-    m_usbTunerGetServicesMId = env->GetMethodID(m_usbTunerClass, "getRadioServices", "()Ljava/util/List;");
     m_usbTunerScanProgressMId = env->GetMethodID(m_usbTunerClass, "scanProgressCallback", "(II)V");
     m_usbTunerServiceFoundMId = env->GetMethodID(m_usbTunerClass, "serviceFound", "(Lorg/omri/radioservice/RadioServiceDab;)V");
     m_usbTunerServiceStartedMId = env->GetMethodID(m_usbTunerClass, "serviceStarted", "(Lorg/omri/radioservice/RadioServiceDab;)V");
     m_usbTunerServiceStoppedMId = env->GetMethodID(m_usbTunerClass, "serviceStopped", "(Lorg/omri/radioservice/RadioServiceDab;)V");
     m_usbTunerReceptionStatisticsMId = env->GetMethodID(m_usbTunerClass, "receptionStatistics", "(ZI)V");
+    m_dabTimeUpdateMId = env->GetMethodID(m_usbTunerClass, "dabTimeUpdate", "(Ljava/util/Date;)V");
 }
 
 void JTunerUsbDevice::setJavaClassDabService(JNIEnv* env, jclass dabServiceClass) {
@@ -118,8 +123,6 @@ void JTunerUsbDevice::setJavaClassTermId(JNIEnv *env, jclass dabServiceClass) {
     m_termIdClass = dabServiceClass;
 
     m_termIdConstructorMId = env->GetMethodID(m_termIdClass, "<init>", "()V");
-    m_termIdSetGenreHrefMId = env->GetMethodID(m_termIdClass, "setGenreHref", "(Ljava/lang/String;)V");
-    m_termIdSetTermIdMId = env->GetMethodID(m_termIdClass, "setTermId", "(Ljava/lang/String;)V");
     m_termIdSetGenreTextMId = env->GetMethodID(m_termIdClass, "setGenreText", "(Ljava/lang/String;)V");
 }
 
@@ -131,7 +134,7 @@ void JTunerUsbDevice::callCallback(TUNER_CALLBACK_TYPE callbackType) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -146,10 +149,6 @@ void JTunerUsbDevice::callCallback(TUNER_CALLBACK_TYPE callbackType) {
     }
 }
 
-const JavaVM* JTunerUsbDevice::getJavaVM() const {
-    return m_javaVm;
-}
-
 void JTunerUsbDevice::scanProgress(int percentDone, int freqHz) {
     std::cout << m_logTag << "scanProgress: " << +percentDone << "%, freq "
         << +(freqHz/1000) << " kHz" << std::endl;
@@ -159,7 +158,7 @@ void JTunerUsbDevice::scanProgress(int percentDone, int freqHz) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -175,8 +174,13 @@ void JTunerUsbDevice::scanProgress(int percentDone, int freqHz) {
 }
 
 void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
-    std::cout << m_logTag << " Scan ensemble ready: " << +ensemble.getDabServices().size() << " : "
-              << ensemble.getEnsembleId() << std::endl;
+    std::stringstream logStr;
+    logStr << m_logTag << " Ensemble ready: " << +ensemble.getDabServices().size()
+        << " services, EId: " << std::hex << +ensemble.getEnsembleId() << std::dec << std::endl;
+    std::cout << logStr.str() << std::endl;
+
+    m_dabTimeCallback = ensemble.registerDateTimeCallback(
+                std::bind(&JTunerUsbDevice::dabTimeUpdate, this, std::placeholders::_1));
 
     bool wasDetached = false;
     JNIEnv *enve;
@@ -260,7 +264,7 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
             jint packetAddress;
             uint8_t tmId;
             jint serviceComponentType;
-            jboolean dgUsed = 0;
+            jboolean dgUsed;
             switch(srvComp->getServiceComponentType()) {
                 case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_STREAM_AUDIO: {
                     auto audioComp = std::static_pointer_cast<DabServiceComponentMscStreamAudio>(srvComp);
@@ -395,7 +399,7 @@ void JTunerUsbDevice::serviceStarted(jobject dabService) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -416,7 +420,7 @@ void JTunerUsbDevice::serviceStopped(jobject dabService) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -437,7 +441,7 @@ void JTunerUsbDevice::receptionStatistics(bool rfLock, int qual) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -449,5 +453,38 @@ void JTunerUsbDevice::receptionStatistics(bool rfLock, int qual) {
 
     if(wasDetached) {
         m_javaVm->DetachCurrentThread();
+    }
+}
+
+void JTunerUsbDevice::setJavaClassDabTime(JNIEnv *env, jclass dabTimeClass) {
+    m_dabTimeClass = dabTimeClass;
+    m_dabTimeConstructorMId = env->GetMethodID(m_dabTimeClass, "<init>", "(J)V");
+}
+
+void JTunerUsbDevice::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
+    if (m_lastDabTimeEpoch == dabTime.unixEpoch) { // seconds since 1900-01-01 00:00
+        // rate-limit to only once per second
+        return;
+    }
+    m_lastDabTimeEpoch = dabTime.unixEpoch;
+    // Java Date(long) constructor requires milliseconds
+    auto t = dabTime.unixEpoch * 1000L;
+    t += dabTime.milliseconds;
+
+    bool wasDetached;
+    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
+        std::cerr << "jniEnv thread failed to attach!" << std::endl;
+        return;
+    }
+
+    JNIEnv *enve;
+    m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
+    jobject javaDateObject = enve->NewObject(m_dabTimeClass, m_dabTimeConstructorMId, t);
+    enve->CallVoidMethod(m_usbTunerObject, m_dabTimeUpdateMId, javaDateObject);
+
+    enve->DeleteLocalRef(javaDateObject);
+
+    if (!JNI_DETACH(m_javaVm, wasDetached)) {
+        std::cerr << "jniEnv thread failed to detach!" << std::endl;
     }
 }

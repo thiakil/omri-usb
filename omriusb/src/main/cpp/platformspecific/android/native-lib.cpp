@@ -62,6 +62,7 @@ static jclass m_slideshowClass = nullptr;
 
 static jclass m_ediTunerClass = nullptr;
 static jclass m_dabTimeClass = nullptr;
+static jclass m_javaDateClass = nullptr;
 
 static jclass m_demoTunerClass = nullptr;
 
@@ -87,7 +88,7 @@ static void cacheClassDefinitions(JavaVM *vm) {
     m_ArrayList_init_mId = env->GetMethodID(m_ArrayListClass, "<init>", "(I)V");
     m_ArrayList_add_mId = env->GetMethodID(m_ArrayListClass, "add", "(Ljava/lang/Object;)Z");
 
-    m_usbTunerClass = (jclass) env->NewGlobalRef(env->FindClass("org/omri/radio/impl/TunerUsb"));
+    m_usbTunerClass = (jclass) env->NewGlobalRef(env->FindClass("org/omri/radio/impl/TunerUsbImpl"));
     m_radioServiceImplClass = (jclass) env->NewGlobalRef(
             env->FindClass("org/omri/radio/impl/RadioServiceImpl"));
     m_radioServiceDabImplClass = (jclass) env->NewGlobalRef(
@@ -124,8 +125,10 @@ static void cacheClassDefinitions(JavaVM *vm) {
 
     m_ediTunerClass = (jclass) env->NewGlobalRef(
             env->FindClass("org/omri/radio/impl/TunerEdistream"));
-    //DABtime class
+    //OMRI DabTime class
     m_dabTimeClass = (jclass) env->NewGlobalRef(env->FindClass("org/omri/radio/impl/DabTime"));
+    //Java Date class
+    m_javaDateClass = (jclass) env->NewGlobalRef(env->FindClass("java/util/Date"));
 
     m_demoTunerClass = (jclass) env->NewGlobalRef(env->FindClass("org/omri/radio/impl/DemoTuner"));
     if (!JNI_DETACH(m_javaVm, wasDetached)) {
@@ -159,6 +162,7 @@ static void cleanClassDefinitions(JavaVM *vm) {
 
     env->DeleteGlobalRef(m_ediTunerClass);
     env->DeleteGlobalRef(m_dabTimeClass);
+    env->DeleteGlobalRef(m_javaDateClass);
     env->DeleteGlobalRef(m_demoTunerClass);
     if (!JNI_DETACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
@@ -283,6 +287,7 @@ Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv *env, jobject thiz, job
     jusbDevice->setJavaClassDabServiceComponent(env, m_dabServiceComponentClass);
     jusbDevice->setJavaClassDabServiceUserApplication(env, m_dabServiceUserApplicationClass);
     jusbDevice->setJavaClassTermId(env, m_termIdClass);
+    jusbDevice->setJavaClassDabTime(env, m_javaDateClass);
 
     m_usbDevices.push_back(jusbDevice);
 
