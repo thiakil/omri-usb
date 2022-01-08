@@ -162,7 +162,7 @@ void EdiInput::stopAllRunningServices() {
 }
 
 void EdiInput::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
-    //std::cout << LOG_TAG << "SBT DabTime: " << dabTime.unixTimestampSeconds << std::endl;
+    //std::cout << LOG_TAG << "SBT DabTime: " << dabTime.unixEpoch << std::endl;
 
     bool wasDetached = false;
     JNIEnv* enve;
