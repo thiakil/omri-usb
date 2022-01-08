@@ -20,7 +20,6 @@
 
 #include "fig_00_ext_10.h"
 
-#include <cerrno>
 #include <ctime>
 #include <iostream>
 
@@ -28,9 +27,7 @@ Fig_00_Ext_10::Fig_00_Ext_10(const std::vector<uint8_t>& figData) : Fig_00(figDa
     parseFigData(figData);
 }
 
-Fig_00_Ext_10::~Fig_00_Ext_10() {
-
-}
+Fig_00_Ext_10::~Fig_00_Ext_10() = default;
 
 void Fig_00_Ext_10::parseFigData(const std::vector<uint8_t>& figData) {
     auto figIter = figData.cbegin() +1;

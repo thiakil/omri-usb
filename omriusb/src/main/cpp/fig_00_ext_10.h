@@ -65,9 +65,9 @@ private:
 private:
     const std::string m_logTag = {"[Fig_00_Ext_10]"};
 
-    bool m_leapSecondPending;
+    bool m_leapSecondPending{false};
 
-    DabTime m_dabTime;
+    DabTime m_dabTime{};
 
     inline void mjd2ymd(long mjd, int* year, int* month, int* day) {
         long J, C, Y, M;
