@@ -348,9 +348,6 @@ public class TunerUsbImpl implements TunerUsb {
 					}
 				}
 				break;
-			case TUNER_FREQUENCY_LOCKED:
-			case TUNER_FREQUENCY_NOT_LOCKED:
-				break;
 
 			case TUNER_SCAN_IN_PROGRESS: {
 				mIsScanning = true;

@@ -28,10 +28,11 @@
 class JTunerUsbDevice : public JUsbDevice {
 
 public:
+    // Must match with org.omri.radio.impl.TunerUsbCallbackTypes
     enum TUNER_CALLBACK_TYPE {
         TUNER_CALLBACK_READY = 0,
-        TUNER_CALLBACK_FAILED,
-        TUNER_SCAN_IN_PROGRESS
+        TUNER_CALLBACK_FAILED = 1,
+        TUNER_SCAN_IN_PROGRESS = 4
     };
 
 public:
