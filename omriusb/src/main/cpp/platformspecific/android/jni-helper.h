@@ -27,7 +27,9 @@ extern "C" {
 
 bool JNI_ATTACH(JavaVM *javaVmPtr, bool &wasDetached);
 bool JNI_DETACH(JavaVM *javaVmPtr, bool wasDetached);
-
+#ifndef __STDC_NO_THREADS__
+void JNI_TSS_DTOR(void*);
+#endif
 };
 
 #endif //DAB_JNI_HELPER_H
