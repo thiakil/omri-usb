@@ -101,7 +101,7 @@ public:
     explicit FicParser();
     virtual ~FicParser();
 
-    virtual void call(const std::vector<uint8_t>& data, bool rfLock = true);
+    virtual void call(const std::vector<uint8_t>& data, bool rfLock);
 
     std::shared_ptr<Fig_00_Done_Callback> registerFig_00_Done_Callback(Fig_00_Done_Callback cb);
     std::shared_ptr<Fig_01_Done_Callback> registerFig_01_Done_Callback(Fig_01_Done_Callback cb);
