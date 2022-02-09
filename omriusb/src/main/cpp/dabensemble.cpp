@@ -47,7 +47,7 @@ void DabEnsemble::reset() {
     m_ensembleCollectFinished = false;
 
     if (m_ficPtr != nullptr) {
-        // m_ficPtr.get()->stop(); // causes crashes on Android 6
+        m_ficPtr->stop();
         m_ficPtr->reset();
         registerCbs();
         if (!m_ficPtr->isStarted()) {
