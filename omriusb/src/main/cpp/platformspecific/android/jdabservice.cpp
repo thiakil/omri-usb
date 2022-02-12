@@ -619,6 +619,10 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
                                  m_javaDabSrvServiceFollowingReceived, arrayList);
             enve->DeleteLocalRef(arrayList);
         }
+
+        if (!JNI_DETACH(m_javaVm, wasDetached)) {
+            std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
+        }
     }
 
 }

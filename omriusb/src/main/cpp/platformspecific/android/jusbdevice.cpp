@@ -21,6 +21,7 @@
 #include "jusbdevice.h"
 
 #include "iostream"
+#include "jni-helper.h"
 
 #include <linux/usbdevice_fs.h>
 #include <sys/ioctl.h>
@@ -68,6 +69,12 @@ JUsbDevice::JUsbDevice(JavaVM* javaVm, JNIEnv *env, jobject usbDevice) {
     m_usbDeviceEndpointGetDirectionMId = env->GetMethodID(m_usbDeviceEndpointClass, "getDirection", "()I");
     m_usbDeviceEndpointGetIntervalMId = env->GetMethodID(m_usbDeviceEndpointClass, "getInterval", "()I");
 
+    bool wasDetached;
+    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
+        return;
+    }
+
     if(usbDevice != nullptr) {
         m_usbDeviceObject = env->NewGlobalRef(usbDevice);
         if(m_usbDeviceObject != nullptr) {
@@ -92,10 +99,20 @@ JUsbDevice::JUsbDevice(JavaVM* javaVm, JNIEnv *env, jobject usbDevice) {
             std::cout << LOG_TAG << "ProductID: " << std::hex << +m_productId << " VendorID: " << +m_vendorId << std::dec << std::endl;
         }
     }
+
+    if (!JNI_DETACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
+    }
 }
 
 JUsbDevice::~JUsbDevice() {
     std::cout << LOG_TAG << "Destructor" << std::endl;
+
+    bool wasDetached;
+    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
+        return;
+    }
 
     JNIEnv* env;
     // close an open UsbDeviceConnection
@@ -116,6 +133,10 @@ JUsbDevice::~JUsbDevice() {
     env->DeleteGlobalRef(m_usbDeviceConnectionClass);
     env->DeleteGlobalRef(m_usbDeviceInterfaceClass);
     env->DeleteGlobalRef(m_usbDeviceEndpointClass);
+
+    if (!JNI_DETACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
+    }
 }
 
 std::string JUsbDevice::getDeviceName() const {
@@ -136,13 +157,30 @@ bool JUsbDevice::isPermissionGranted() const {
 
 void JUsbDevice::requestPermission(JUsbDevice::PermissionCallbackFunction permissionCallback) {
     m_permissionCallback = permissionCallback;
+
+    bool wasDetached;
+    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
+        return;
+    }
+
     JNIEnv* env;
     m_javaVm->GetEnv((void **)&env, JNI_VERSION_1_6);
     env->CallVoidMethod(env->CallStaticObjectMethod(m_usbHelperClass, m_usbHelperGetInstanceMId), m_usbHelperRequestPermissionMId, m_usbDeviceObject);
+
+    if (!JNI_DETACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
+    }
 }
 
 void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
     std::cout << LOG_TAG << "Device permission granted: " << std::boolalpha << granted << std::noboolalpha << std::endl;
+
+    bool wasDetached;
+    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
+        return;
+    }
 
     if(granted) {
         m_permissionGranted = true;
@@ -176,6 +214,10 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
     }
 
     m_permissionCallback(m_permissionGranted);
+
+    if (!JNI_DETACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
+    }
 }
 
 int JUsbDevice::writeBulkTransferDataDirect(uint8_t endPointAddress, const std::vector<uint8_t> &buffer, int timeOutMs) const {
