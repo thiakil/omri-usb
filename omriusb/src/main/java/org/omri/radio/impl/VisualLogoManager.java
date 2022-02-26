@@ -85,7 +85,7 @@ class VisualLogoManager {
 	void destroyInstance() {
 		if (mDeSerThread != null && mDeSerThread.isAlive()) {
 			try {
-				mDeSerThread.join();
+				mDeSerThread.join(1000);
 			} catch (Exception e) {
 				if (DEBUG) e.printStackTrace();
 			} finally {
