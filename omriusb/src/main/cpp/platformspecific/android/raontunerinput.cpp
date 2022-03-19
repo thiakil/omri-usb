@@ -46,7 +46,7 @@ RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice) : m_
     m_usbDevice->requestPermission([&](bool granted) {
         std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice->getDeviceName()) : "NULL") << " PermissionCallback: " << granted << std::endl;
         if(granted) {
-            m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
+            initialize();
             startReadDataThread();
         }
     });
