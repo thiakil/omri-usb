@@ -85,7 +85,7 @@ private:
     bool m_isScanning{false};
 
     std::shared_ptr<JDabService> m_startServiceLink{nullptr};
-    std::shared_ptr<std::function<void()>> m_ensembleFinishedCb;
+    __attribute__((unused)) std::shared_ptr<std::function<void()>> m_ensembleFinishedCb; // it *is* used
 
     std::atomic<bool> m_readFicThreadRunning{false};
     std::thread m_readFicThread;
@@ -135,7 +135,7 @@ private:
     void commandProcessing();
 
     void initializeSync();
-    void tuneFrequencySync(int frequencyHz);
+    void tuneFrequencySync(uint32_t frequencyHz);
     void startServiceSync(const std::shared_ptr<JDabService>& serviceLink);
     inline void nop() const {}; // no operation
 
@@ -144,7 +144,7 @@ private:
 
     void setService();
 
-    void threadedFicRead();
+    void threadedScanningFicRead();
     bool hasUsbIoErrors();
 
     void scanNext();
@@ -163,16 +163,16 @@ private:
 
 private:
     enum REGISTER_PAGE {
-        REGISTER_PAGE_OFDM = 0x02,  //For 1seg
-        REGISTER_PAGE_FEC =  0x03,  //For 1seg
+        REGISTER_PAGE_OFDM __attribute__((unused)) = 0x02,  //For 1seg
+        REGISTER_PAGE_FEC __attribute__((unused)) =  0x03,  //For 1seg
         REGISTER_PAGE_COMM = 0x04,
         REGISTER_PAGE_FM =   0x06,  //T-DMB OFDM/FM
         REGISTER_PAGE_HOST = 0x07,
-        REGISTER_PAGE_CAS =  0x08,
+        REGISTER_PAGE_CAS __attribute__((unused)) =  0x08,
         REGISTER_PAGE_DD =   0x09,	//FEC for T-DMB, DAB, FM
 
         REGISTER_PAGE_FIC =  0x0A,
-        REGISTER_PAGE_MSC0 = 0x0B,
+        REGISTER_PAGE_MSC0 __attribute__((unused)) = 0x0B,
         REGISTER_PAGE_MSC1 = 0x0C,
         REGISTER_PAGE_RF =   0x0F
     };
@@ -287,13 +287,13 @@ private:
     static constexpr uint8_t MSC0_E_UNDER_FLOW = 0x04;
     static constexpr uint8_t MSC0_E_INT        = 0x02;
     static constexpr uint8_t FIC_E_INT         = 0x01;
-    static constexpr uint8_t RE_CONFIG_E_INT   = 0x04;
+    __attribute__((unused)) static constexpr uint8_t RE_CONFIG_E_INT   = 0x04;
 
-    static constexpr uint8_t MSC1_INTR_BITS = (MSC1_E_INT|MSC1_E_UNDER_FLOW|MSC1_E_OVER_FLOW);
-    static constexpr uint8_t MSC0_INTR_BITS	= (MSC0_E_INT|MSC0_E_UNDER_FLOW|MSC0_E_OVER_FLOW);
+    __attribute__((unused)) static constexpr uint8_t MSC1_INTR_BITS = (MSC1_E_INT|MSC1_E_UNDER_FLOW|MSC1_E_OVER_FLOW);
+    __attribute__((unused)) static constexpr uint8_t MSC0_INTR_BITS	= (MSC0_E_INT|MSC0_E_UNDER_FLOW|MSC0_E_OVER_FLOW);
 
     static constexpr uint8_t INT_E_UCLRL        = 0x35;  /// [2]MSC1 int clear [1]MSC0 int clear [0]FIC int clear
-    static constexpr uint8_t INT_E_UCLRH        = 0x36;  /// [6]OFDM TII done clear
+    __attribute__((unused)) static constexpr uint8_t INT_E_UCLRH        = 0x36;  /// [6]OFDM TII done clear
 
     static constexpr uint8_t INT_E_STATL        = 0x33;  /// [7]OFDM Lock status [6]MSC1 overrun [5]MSC1 underrun [4]MSC1 int [3]MSC0 overrun [2]MSC0 underrun [1]MSC0 int [0]FIC int
     static constexpr uint8_t INT_E_STATH        = 0x34;  /// [7]OFDM NIS [6]OFDM TII [5]OFDM scan [4]OFDM window position [3]OFDM unlock [2]FEC re-configuration [1]FEC CIF end [0]FEC soft reset
@@ -353,16 +353,11 @@ private:
     void openSubChannel(uint8_t subchanId);
     void closeSubchannel(uint8_t subchanId);
 
-    void readFic();
-    void readMsc();
+    void scanningReadFic();
 
     void readData();
 
-    /* ** */
-    void readMscData();
     void readFicData(bool rfLock);
-    void clearMscBuffer();
-    /* ** */
 
     void startReadFicThread();
     void stopReadFicThread();

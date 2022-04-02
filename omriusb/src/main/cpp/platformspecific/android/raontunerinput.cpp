@@ -315,10 +315,7 @@ void RaonTunerInput::startServiceScan() {
     if(!m_isScanning) {
         stopReadDataThread();
 
-        m_scanCommandThreadRunning = false;
-        if(m_scanCommandThread.joinable()) {
-            m_scanCommandThread.join();
-        }
+        stopScanCommandThread(); // in case it is still running
 
         m_scanCommandThreadRunning = true;
         m_scanCommandThread = std::thread(&RaonTunerInput::processScanCommands, this);
@@ -383,7 +380,7 @@ std::string RaonTunerInput::getDeviceName() {
     if (m_usbDevice != nullptr) {
         return m_usbDevice->getDeviceName();
     } else {
-        return nullptr;
+        return "null";
     }
 }
 std::string RaonTunerInput::getHardwareVersion() const {
@@ -412,15 +409,6 @@ bool RaonTunerInput::hasUsbIoErrors() {
         return true;
     }
     return false;
-}
-
-void RaonTunerInput::threadedFicRead() {
-    pthread_setname_np(pthread_self(), "FicRead");
-    while (m_readFicThreadRunning) {
-        if (!hasUsbIoErrors()) {
-            readFic();
-        }
-    }
 }
 
 void RaonTunerInput::setService() {
@@ -1340,7 +1328,20 @@ void RaonTunerInput::closeSubchannel(uint8_t subchanId) {
     }
 }
 
-void RaonTunerInput::readFic() {
+void RaonTunerInput::threadedScanningFicRead() {
+    long tid = syscall(SYS_gettid);
+    std::stringstream threadName;
+    threadName << "FicRead-" << +tid;
+    pthread_setname_np(pthread_self(), threadName.str().c_str());
+
+    while (m_readFicThreadRunning) {
+        if (!hasUsbIoErrors()) {
+            scanningReadFic();
+        }
+    }
+}
+
+void RaonTunerInput::scanningReadFic() {
     uint8_t lockStatus = getLockStatus();
 
     if(lockStatus != RTV_DAB_CHANNEL_LOCK_OK) {
@@ -1355,7 +1356,6 @@ void RaonTunerInput::readFic() {
         }
 
         std::stringstream logMsg;
-
         logMsg << LOG_TAG << "ScanRetries: " << +m_maxCollectionWaitLoops
             << " Freq: " << +(m_currentFrequency/1000) << " kHz"
             << " LockStat: " << +lockStatus;
@@ -1378,90 +1378,6 @@ void RaonTunerInput::readFic() {
         if(m_ficCollectionWaitLoops <= 0) {
             m_scanCommandQueue.push(std::bind(&RaonTunerInput::scanNext, this));
         }
-    }
-}
-
-void RaonTunerInput::readMsc() {
-    switchPage(REGISTER_PAGE_DD);
-
-    uint8_t int_type_val1 = readRegister(INT_E_STATL);
-    bool ofdmLock = static_cast<bool>((int_type_val1 & 0x80) >> 7);
-    bool msc1Overrun = (int_type_val1 & MSC1_E_OVER_FLOW) >> 6;
-    bool msc1Underrun = (int_type_val1 & MSC1_E_UNDER_FLOW) >> 5;
-    bool msc1Int = (int_type_val1 & MSC1_E_INT) >> 4;
-    bool msc0Overrun = (int_type_val1 & MSC0_E_OVER_FLOW) >> 3;
-    bool msc0Underrun = (int_type_val1 & MSC0_E_UNDER_FLOW) >> 2;
-    bool msc0Int = (int_type_val1 & MSC0_E_INT) >> 1;
-    bool ficInt = (int_type_val1 & FIC_E_INT);
-
-    //std::cout << LOG_TAG << "STATL OFDM: " << std::boolalpha << ofdmLock << \
-                            " MSC1_O: " << msc1Overrun << \
-                            " MSC1_U: " << msc1Underrun << \
-                            " MSC1_I: " << msc1Int << \
-                            " MSC0_O: " << msc0Overrun << \
-                            " MSC0_U: " << msc0Underrun << \
-                            " MSC0_I: " << msc0Int << \
-                            " FIC0_I: " << ficInt << \
-                            std::noboolalpha << std::endl;
-
-    uint8_t int_type_val2 = readRegister(INT_E_STATH);
-    bool ofdmNis = static_cast<bool>((int_type_val2 & 0x80) >> 7);
-    bool ofdmTii = static_cast<bool>((int_type_val2 & 0x40) >> 6);
-    bool ofdmScan = static_cast<bool>((int_type_val2 & 0x20) >> 5);
-    bool ofdmWindowPos = static_cast<bool>((int_type_val2 & 0x10) >> 4);
-    bool ofdmUnlock = static_cast<bool>((int_type_val2 & 0x08) >> 3);
-    bool fecReconfig = static_cast<bool>((int_type_val2 & 0x04) >> 2);
-    bool fecCifEnd = static_cast<bool>((int_type_val2 & 0x02) >> 1);
-    bool fecSoftreset = static_cast<bool>((int_type_val2 & 0x01));
-
-    //std::cout << LOG_TAG << "STATH OFDMNis: " << std::boolalpha << ofdmNis << \
-              " OFDMTii: " << ofdmTii << \
-              " OFDMScan: " << ofdmScan << \
-              " OFDMWinPos: " << ofdmWindowPos << \
-              " OFDMUnlock: " << ofdmUnlock << \
-              " FECReconfig: " << fecReconfig << \
-              " FecCifEnd: " << fecCifEnd << \
-              " FecSoftReset: " << fecSoftreset << \
-              std::noboolalpha << std::endl;
-
-
-    if(msc1Overrun || msc1Underrun) {
-        std::cout << LOG_TAG << "Clearing MSC memory for OverUnderRun" << std::endl;
-
-        //ClearAndSetupMSCMemory
-        /*
-        switchPage(REGISTER_PAGE_DD);
-        setRegister(0x48, 0x00);
-        setRegister(0x48, 0x05);
-        */
-        clearAndSetupMscMemory();
-
-        setRegister(INT_E_UCLRL, 0x04);
-        return;
-    }
-
-    if(msc1Int) {
-        std::cout << LOG_TAG << "Reading MSC memory" << std::endl;
-
-        switchPage(REGISTER_PAGE_MSC1);
-
-        std::vector<uint8_t> mscReqBuf = {0x22, 0x00, 0xD8, 0x00, 0x10};
-        std::vector<uint8_t> mscRecBuff(1536);
-
-        int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, mscReqBuf);
-        bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, mscRecBuff, READ_MSC_TIMEOUT_MS);
-
-        if(m_startServiceLink != nullptr) {
-            const std::vector<uint8_t> mscData(mscRecBuff.begin()+4, mscRecBuff.begin()+bytesTransfered);
-            rawRecordMscWrite(mscData);
-            dataInput(mscData, m_currentSubchanId, false);
-        } else {
-            std::cout << LOG_TAG << "StartServiceLink is null" << std::endl;
-        }
-
-        //clear buffer
-        switchPage(REGISTER_PAGE_DD);
-        setRegister(INT_E_UCLRL, 0x04);
     }
 }
 
@@ -1624,11 +1540,12 @@ void RaonTunerInput::rawRecordClose() {
 }
 
 void RaonTunerInput::startReadFicThread() {
-    std::cout << LOG_TAG << "Starting FIC thread..." << std::endl;
-
     if(!m_readFicThreadRunning) {
+        std::cout << LOG_TAG << "Starting FIC thread..." << std::endl;
         m_readFicThreadRunning = true;
-        m_readFicThread = std::thread(&RaonTunerInput::threadedFicRead, this);
+        m_readFicThread = std::thread(&RaonTunerInput::threadedScanningFicRead, this);
+    } else {
+        std::clog << LOG_TAG << "FIC thread already running" << std::endl;
     }
 }
 
@@ -1682,32 +1599,6 @@ void RaonTunerInput::stopReadDataThread() {
         std::clog << LOG_TAG << "Stop Read Data thread: not running!" << std::endl;
     }
 }
-
-void RaonTunerInput::readMscData() {
-    switchPage(REGISTER_PAGE_MSC1);
-
-    //std::vector<uint8_t> mscReqBuf = {0x22, 0x00, 0xD8, 0x00, 0x10};
-    //std::vector<uint8_t> mscRecBuff(1536);
-    //std::vector<uint8_t> mscReqBuf = {0x22, 0x00, 0xFF, 0x00, 0x10};
-
-    //1024
-    //std::vector<uint8_t> mscReqBuf = {0x22, 0x04, 0x00, 0x00, 0x10};
-
-    //2048
-    //std::vector<uint8_t> mscReqBuf = {0x22, 0x00, 0x00, 0x08, 0x10};
-    std::vector<uint8_t> mscReqBuf = {0x22, 0x00, 0x00, 0x08, 0x10};
-    std::vector<uint8_t> mscRecBuff(4096);
-
-    if (m_usbDevice != nullptr) {
-        int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, mscReqBuf);
-        bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, mscRecBuff, READ_FIC_TIMEOUT_MS);
-
-        //std::cout << LOG_TAG << "ReadData: " << +bytesTransfered << std::endl;
-
-        if (m_startServiceLink != nullptr && bytesTransfered > 0) {
-            const std::vector<uint8_t> mscData(mscRecBuff.begin()+4, mscRecBuff.begin()+bytesTransfered);
-            rawRecordMscWrite(mscData);
-            dataInput(mscData, m_currentSubchanId, false);
         } else {
             std::cout << LOG_TAG << "StartServiceLink is null" << std::endl;
         }
@@ -1758,14 +1649,6 @@ void RaonTunerInput::readFicData(bool rfLock) {
     } else {
         std::clog << LOG_TAG << "readFicData no USB device" << std::endl;
     }
-}
-
-void RaonTunerInput::clearMscBuffer() {
-    switchPage(REGISTER_PAGE_DD);
-    setRegister(0x48, 0x00);
-    setRegister(0x48, 0x05);
-
-    setRegister(INT_E_UCLRL, 0x04);
 }
 
 void RaonTunerInput::readData() {
@@ -1968,7 +1851,7 @@ void RaonTunerInput::getAntennaLevel() {
         m_prevAntennaLvl = static_cast<uint8_t>(prevLevel);
     }
     if (m_usbDevice != nullptr) {
-        m_usbDevice->receptionStatistics(true, prevLevel);
+        m_usbDevice->receptionStatistics(true, (int) prevLevel);
     }
 }
 
