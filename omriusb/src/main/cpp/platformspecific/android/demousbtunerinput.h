@@ -47,8 +47,8 @@ public:
 
     void initialize() override;
     bool isInitialized() const override;
-    int getCurrentTunedFrequency() const override;
-    void tuneFrequency(int frequencyKHz) override;
+    uint32_t getCurrentTunedFrequency() const override;
+    void tuneFrequency(uint32_t frequencyKHz) override;
     const DabEnsemble &getEnsemble() const override;
     int getMaximumConcurrentSubChannels() const override;
     void addMscCallback(CallbackFunction cb, uint8_t subchanId) override;

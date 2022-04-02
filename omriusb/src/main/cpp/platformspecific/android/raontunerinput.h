@@ -45,8 +45,8 @@ public:
 
     void initialize() override;
     bool isInitialized() const override;
-    int getCurrentTunedFrequency() const override;
-    void tuneFrequency(int frequencyHz) override;
+    uint32_t getCurrentTunedFrequency() const override;
+    void tuneFrequency(uint32_t frequencyHz) override;
     const DabEnsemble& getEnsemble() const override;
     int getMaximumConcurrentSubChannels() const override;
 
@@ -77,7 +77,7 @@ private:
     std::string m_HwVersion{""};
     std::string m_SwVersion{""};
 
-    uint32_t m_currentFrequency{0};
+    uint32_t m_currentFrequency{0}; // Hz
 
     std::shared_ptr<JTunerUsbDevice> m_usbDevice{nullptr};
     bool m_isInitialized{false};

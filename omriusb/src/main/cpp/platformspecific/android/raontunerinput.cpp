@@ -114,11 +114,11 @@ bool RaonTunerInput::isInitialized() const {
     return m_isInitialized;
 }
 
-int RaonTunerInput::getCurrentTunedFrequency() const {
+uint32_t RaonTunerInput::getCurrentTunedFrequency() const {
     return m_currentFrequency;
 }
 
-void RaonTunerInput::tuneFrequency(int frequencyHz) {
+void RaonTunerInput::tuneFrequency(uint32_t frequencyHz) {
     if(!m_isScanning) {
         m_commandQueue.push(std::bind(&RaonTunerInput::tuneFrequencySync, this, frequencyHz));
     } else {
@@ -126,7 +126,7 @@ void RaonTunerInput::tuneFrequency(int frequencyHz) {
     }
 }
 
-void RaonTunerInput::tuneFrequencySync(int frequencyHz) {
+void RaonTunerInput::tuneFrequencySync(uint32_t frequencyHz) {
     if(!m_isInitialized) {
         std::clog << LOG_TAG << "Device not initialized" << std::endl;
         return;

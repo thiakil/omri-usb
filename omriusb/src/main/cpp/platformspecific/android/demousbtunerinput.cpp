@@ -64,11 +64,11 @@ bool DemoUsbTunerInput::isInitialized() const {
     return m_isInitialized;
 }
 
-int DemoUsbTunerInput::getCurrentTunedFrequency() const {
+uint32_t DemoUsbTunerInput::getCurrentTunedFrequency() const {
     return m_currentFrequency;
 }
 
-void DemoUsbTunerInput::tuneFrequency(int frequencyKHz) {
+void DemoUsbTunerInput::tuneFrequency(uint32_t frequencyKHz) {
     std::cout << LOG_TAG << "Demo Tuning Frequency: " << +frequencyKHz << " kHz" << std::endl;
     m_currentFrequency = static_cast<uint32_t>(frequencyKHz);
     m_ensembleFrequency = static_cast<uint32_t>(frequencyKHz);
