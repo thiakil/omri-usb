@@ -19,6 +19,7 @@
  */
 
 #include <iostream>
+#include <syscall.h>
 #include <unistd.h>
 
 #include "ficparser.h"
@@ -131,12 +132,11 @@ void FicParser::call(const std::vector<uint8_t> &data, bool rfLock) {
 }
 
 void FicParser::processFib() {
-    pthread_t self = pthread_self();
-    char name[13]; // 4 + 8 + '\0'
-    snprintf(name, 12, "FIB-%08lx", (long) self);
-    name[12] = '\0';
-    pthread_setname_np(self, name);
-    m_ficProcessorThreadName = name;
+    long tid = syscall(SYS_gettid);
+    std::stringstream threadName;
+    threadName << "FIB-" << +tid;
+    pthread_setname_np(pthread_self(), threadName.str().c_str());
+    m_ficProcessorThreadName = threadName.str();
 
     std::cout << M_LOG_TAG << "FIB thread started: " << getParserThreadName() << std::endl;
 
@@ -196,7 +196,9 @@ void FicParser::processFib() {
             }
         }
     }
-    std::cout << M_LOG_TAG << "FIB Processor thread stopped: " << name << std::endl;
+    std::ostringstream logMsg;
+    logMsg << M_LOG_TAG << "FIB Processor thread stopped: " << threadName.str();
+    std::cout << logMsg.str() << std::endl;
 }
 
 void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
