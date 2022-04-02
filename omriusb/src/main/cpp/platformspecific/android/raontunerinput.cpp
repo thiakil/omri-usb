@@ -28,6 +28,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <syscall.h>
 #include <sys/endian.h>
 #include <sys/stat.h>
 
@@ -304,9 +305,17 @@ void RaonTunerInput::stopScanCommandThread() {
         std::cout << LOG_TAG << "Stopping ScanCommand thread..." << std::endl;
         m_scanCommandThreadRunning = false;
         if (m_scanCommandThread.joinable()) {
-            std::cout << LOG_TAG << "Joining ScanCommand thread..." << std::endl;
-            m_scanCommandThread.join();
-            std::cout << LOG_TAG << "Joining ScanCommand thread done" << std::endl;
+            if (std::this_thread::get_id() != m_scanCommandThread.get_id()) {
+                std::cout << LOG_TAG << "Joining ScanCommand thread..." << std::endl;
+                m_scanCommandThread.join();
+                std::cout << LOG_TAG << "Joining ScanCommand thread done" << std::endl;
+            } else {
+                // cannot join myself
+                std::clog << LOG_TAG << "Can't join ScanCommand thread: it's me" << std::endl;
+                m_scanCommandThread.detach(); // forget about this thread
+            }
+        } else {
+            std::clog << LOG_TAG << "ScanCommand thread not joinable" << std::endl;
         }
     }
 }
@@ -1355,7 +1364,7 @@ void RaonTunerInput::scanningReadFic() {
             m_scanCommandQueue.push(std::bind(&RaonTunerInput::scanNext, this));
         }
 
-        std::stringstream logMsg;
+        std::ostringstream logMsg;
         logMsg << LOG_TAG << "ScanRetries: " << +m_maxCollectionWaitLoops
             << " Freq: " << +(m_currentFrequency/1000) << " kHz"
             << " LockStat: " << +lockStatus;
@@ -1374,7 +1383,9 @@ void RaonTunerInput::scanningReadFic() {
         readFicData(RTV_DAB_CHANNEL_LOCK_OK == lockStatus);
 
         --m_ficCollectionWaitLoops;
-        std::cout << LOG_TAG << "FicRetries: " << +m_ficCollectionWaitLoops << std::endl;
+        std::ostringstream logMsg;
+        logMsg << LOG_TAG << "FicRetries: " << +m_ficCollectionWaitLoops;
+        std::cout << logMsg.str() << std::endl;
         if(m_ficCollectionWaitLoops <= 0) {
             m_scanCommandQueue.push(std::bind(&RaonTunerInput::scanNext, this));
         }
@@ -1555,9 +1566,17 @@ void RaonTunerInput::stopReadFicThread() {
         std::cout << LOG_TAG << "Stopping FIC thread..." << std::endl;
         m_readFicThreadRunning = false;
         if(m_readFicThread.joinable()) {
-            std::cout << LOG_TAG << "Joining FIC thread..." << std::endl;
-            m_readFicThread.join();
-            std::cout << LOG_TAG << "Joining FIC thread done" << std::endl;
+            if (std::this_thread::get_id() != m_readFicThread.get_id()) {
+                std::cout << LOG_TAG << "Joining FIC thread..." << std::endl;
+                m_readFicThread.join();
+                std::cout << LOG_TAG << "Joining FIC thread done" << std::endl;
+            } else {
+                // cannot join myself
+                std::clog << LOG_TAG << "Can't join FIC thread: it's me" << std::endl;
+                m_readFicThread.detach(); // forget about this thread
+            }
+        } else {
+            std::clog << LOG_TAG << "FIC thread not joinable" << std::endl;
         }
     }
 }
@@ -1594,18 +1613,10 @@ void RaonTunerInput::stopReadDataThread() {
                 // cannot join myself, trigger myself with a NOP
                 m_commandQueue.push(std::bind(&RaonTunerInput::nop, this));
             }
-        }
-    } else {
-        std::clog << LOG_TAG << "Stop Read Data thread: not running!" << std::endl;
-    }
-}
         } else {
-            std::cout << LOG_TAG << "StartServiceLink is null" << std::endl;
+            std::cout << LOG_TAG << "Data thread not joinable" << std::endl;
         }
     }
-    //clear buffer
-    switchPage(REGISTER_PAGE_DD);
-    setRegister(INT_E_UCLRL, 0x04);
 }
 
 void RaonTunerInput::readFicData(bool rfLock) {
@@ -1744,7 +1755,9 @@ void RaonTunerInput::readData() {
             rawRecordMscWrite(mscData);
             dataInput(mscData, m_currentSubchanId, false);
         } else {
-            std::cout << LOG_TAG << "StartServiceLink is null" << std::endl;
+            std::ostringstream logMsg;
+            logMsg << LOG_TAG << "m_startServiceLink is null or bytesTransfered<4: " << +bytesTransfered;
+            std::clog << logMsg.str() << std::endl;
         }
 
         //clear buffer
