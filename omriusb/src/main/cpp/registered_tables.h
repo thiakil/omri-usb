@@ -26,7 +26,7 @@
 namespace registeredtables {
 
 enum CHARACTER_SET {
-    EBU_LATIN,
+    EBU_LATIN = 0,
     UCS_2 = 6,
     UTF_8 = 15
 };

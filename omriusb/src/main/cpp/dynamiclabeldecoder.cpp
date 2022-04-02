@@ -321,31 +321,36 @@ void DynamiclabelDecoder::invokeDispatcher(const DabDynamicLabel& label) {
     m_isFirstDL = false;
 }
 
-std::string DynamiclabelDecoder::convertEbuToUtf(const std::vector<uint8_t> & ebuData) {
+std::string DynamiclabelDecoder::convertEbuToUtf(const std::vector<uint8_t> & ebuData, bool& isOk) {
     std::string utfString;
     for(const auto& temp : ebuData) {
         utfString.append(EBU_SET[(temp >> 4) & 0x0F][temp & 0x0F]);
     }
     rtrim(utfString);
+    isOk = true;
     return utfString;
 }
 
 std::string DynamiclabelDecoder::convertToStdStringUsingCharset(const std::vector<uint8_t> & data,
-        const registeredtables::CHARACTER_SET characterSet) {
+        const registeredtables::CHARACTER_SET characterSet, bool& isOk) {
     std::string ret;
 
     switch(characterSet) {
         case registeredtables::EBU_LATIN:
-            ret = convertEbuToUtf(data);
-            break;
-        case registeredtables::UCS_2:
-            // not implemented: return empty string
+            bool wasOk;
+            ret = convertEbuToUtf(data, wasOk);
+            isOk = wasOk;
             break;
         case registeredtables::UTF_8:
-        default:
             for (const auto & c : data) {
-                ret.push_back(c);
+                ret.push_back(static_cast<char>(c));
             }
+            isOk = true;
+            break;
+        case registeredtables::UCS_2:
+        default:
+            // not implemented: return empty string
+            isOk = false;
             break;
     }
     rtrim(ret);

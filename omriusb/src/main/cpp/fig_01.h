@@ -22,7 +22,6 @@
 #define FIG_01
 
 #include <vector>
-#include <string>
 
 #include "dynamiclabeldecoder.h"
 #include "fig.h"
@@ -64,66 +63,9 @@ public:
 protected:
     Fig_01(const std::vector<uint8_t>& figData) : m_charSet((figData[0] & 0xF0) >> 4), m_isOtherEnsemble((figData[0] & 0x08) >> 3) {}
 
-    inline void parseLabel(std::vector<uint8_t>::const_iterator& labelIter, std::string& label, std::string& shortLabel) {
-        std::vector<uint8_t> labelData(labelIter, labelIter+16);
-        label = DynamiclabelDecoder::convertToStdStringUsingCharset(labelData,
-                static_cast<const registeredtables::CHARACTER_SET>(m_charSet));
-        labelData.clear();
-        label.resize(16);
+    void parseLabel(std::vector<uint8_t>::const_iterator& labelIter, std::string& label, std::string& shortLabel) const;
 
-        labelIter += 16;
-
-        shortLabel.resize(8);
-        int shortCnt = 0;
-        for(int i = 0; i < 2; i++) {
-            for(int j = 0; j <= 7; j++) {
-
-                //sanity check
-                if(shortCnt > 7) {
-                    break;
-                }
-
-                if((((*labelIter << j) >> 7) & 0x01)) {
-                    shortLabel[shortCnt] = label.data()[j + i*7];
-                    shortCnt++;
-                }
-            }
-            labelIter++;
-        }
-        DynamiclabelDecoder::rtrim(label);
-        DynamiclabelDecoder::rtrim(shortLabel);
-    }
-
-    inline void parseLabel(const std::vector<uint8_t>& labelData, std::string& label, std::string& shortLabel) {
-        auto labelIter = labelData.begin();
-        while(labelIter < labelData.end()) {
-            std::vector<uint8_t> labelBytes(labelIter, labelIter + 16);
-            label = DynamiclabelDecoder::convertToStdStringUsingCharset(
-                    labelBytes,
-                    static_cast<const registeredtables::CHARACTER_SET>(m_charSet));
-
-            labelIter += 16;
-
-            const uint16_t characterFlags = ((*labelIter++) << 8) & 0xFF00 + (*labelIter++ & 0x00FF);
-            if (characterFlags == 0) {
-                // no short label can be built, use first 8 bytes of label
-                labelBytes.resize(8);
-
-            } else {
-                labelBytes.clear();
-                for (int i = 15; i >= 0; i--) {
-                    if ((characterFlags & (1 << i)) == (1 << i)) {
-                        labelBytes.push_back(labelData[15 - i]);
-                    }
-                }
-            }
-            shortLabel = DynamiclabelDecoder::convertToStdStringUsingCharset(
-                    labelBytes,
-                    static_cast<const registeredtables::CHARACTER_SET>(m_charSet));
-        }
-        DynamiclabelDecoder::rtrim(label);
-        DynamiclabelDecoder::rtrim(shortLabel);
-    }
+    void parseLabel(const std::vector<uint8_t>& labelData, std::string& label, std::string& shortLabel) const;
 
 private:
     const uint8_t m_charSet;

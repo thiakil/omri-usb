@@ -44,7 +44,12 @@ public:
     virtual void reset() override;
 
     static std::string convertToStdStringUsingCharset(const std::vector<uint8_t> & data,
-            const registeredtables::CHARACTER_SET characterSet);
+            const registeredtables::CHARACTER_SET characterSet, bool& isOk);
+    inline static std::string convertToStdStringUsingCharset(const std::vector<uint8_t> & data,
+            const registeredtables::CHARACTER_SET characterSet) {
+        bool unused;
+        return convertToStdStringUsingCharset(data, characterSet, unused);
+    }
 
     // trim from start (in place)
     static inline void ltrim(std::string &s) {
@@ -86,7 +91,11 @@ public:
 
 private:
     void invokeDispatcher(const DabDynamicLabel& label);
-    static std::string convertEbuToUtf(const std::vector<uint8_t> & ebuData);
+    static std::string convertEbuToUtf(const std::vector<uint8_t> & ebuData, bool& isOk);
+    inline static std::string convertEbuToUtf(const std::vector<uint8_t> & ebuData) {
+        bool unused;
+        return convertEbuToUtf(ebuData, unused);
+    }
 
 public:
     enum DL_PLUS_CONTENT_TYPE {
