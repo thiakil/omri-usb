@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -32,9 +33,7 @@ import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.trackselection.TrackSelector;
-import com.google.android.exoplayer2.upstream.Allocator;
 import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultAllocator;
 import com.google.android.exoplayer2.util.Util;
 
 import org.omri.radio.Radio;
@@ -88,13 +87,9 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 
 	private final TunerType mTunertype = TunerType.TUNER_TYPE_IP_SHOUTCAST;
 	private TunerStatus mTunerStatus = TunerStatus.TUNER_STATUS_NOT_INITIALIZED;
-	private List<TunerListener> mTunerlisteners = Collections.synchronizedList(new ArrayList<TunerListener>());
-	private List<RadioService> mServiceList = new ArrayList<>();
-	private List<RadioService> mScannedServices = new ArrayList<>();
+	private final List<TunerListener> mTunerlisteners = Collections.synchronizedList(new ArrayList<>());
 
 	private boolean mIsInitializing = false;
-
-	private boolean mScanDeleteServices = false;
 
 	private RadioServiceIp mCurrentRadioService = null;
 	private RadioServiceIpStream mCurrentStream = null;
@@ -102,7 +97,7 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 	/* Exo HandlerThread */
 	Handler mHandler;
 
-	private ExoPlayer mExoPlayer = null;
+	private final ExoPlayer mExoPlayer;
 
 	TunerIpShoutcast() {
 		if(DEBUG)Log.d(TAG, "Creating Tuner");
@@ -135,10 +130,11 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 	public void suspendTuner() {
 		if(mTunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED) {
 			mTunerStatus = TunerStatus.TUNER_STATUS_SUSPENDED;
-			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerStatusChanged(this, mTunerStatus);
+			synchronized (mTunerlisteners) {
+				for (TunerListener listener : mTunerlisteners) {
+					listener.tunerStatusChanged(this, mTunerStatus);
+				}
 			}
-
 			mIsInitializing = false;
 		}
 	}
@@ -147,8 +143,10 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 	public void resumeTuner() {
 		if(mTunerStatus == TunerStatus.TUNER_STATUS_SUSPENDED) {
 			mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
-			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerStatusChanged(this, mTunerStatus);
+			synchronized (mTunerlisteners) {
+				for (TunerListener listener : mTunerlisteners) {
+					listener.tunerStatusChanged(this, mTunerStatus);
+				}
 			}
 
 			mIsInitializing = false;
@@ -160,10 +158,11 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 		if(mTunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED || mTunerStatus == TunerStatus.TUNER_STATUS_SUSPENDED) {
 			if(DEBUG)Log.d(TAG, "Deinitializing tuner...");
 			mTunerStatus = TunerStatus.TUNER_STATUS_NOT_INITIALIZED;
-			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerStatusChanged(this, mTunerStatus);
+			synchronized (mTunerlisteners) {
+				for (TunerListener listener : mTunerlisteners) {
+					listener.tunerStatusChanged(this, mTunerStatus);
+				}
 			}
-
 			if(mCurrentRadioService != null) {
 				stopStream();
 			}
@@ -239,9 +238,11 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 	@Override
 	public void scanStarted() {
 		if(mTunerStatus == TunerStatus.TUNER_STATUS_SCANNING) {
-			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerStatusChanged(this, mTunerStatus);
-				listener.tunerScanStarted(this);
+			synchronized (mTunerlisteners) {
+				for (TunerListener listener : mTunerlisteners) {
+					listener.tunerStatusChanged(this, mTunerStatus);
+					listener.tunerScanStarted(this);
+				}
 			}
 		}
 	}
@@ -249,13 +250,15 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 	@Override
 	public void scanProgress(int percent) {
 		if(mTunerStatus == TunerStatus.TUNER_STATUS_SCANNING) {
-			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerScanProgress(this, percent, -1);
+			synchronized (mTunerlisteners) {
+				for (TunerListener listener : mTunerlisteners) {
+					listener.tunerScanProgress(this, percent, -1);
+				}
 			}
 		}
 	}
 
-	private List<RadioService> mScannedServicesWithoutStream = new ArrayList<>();
+	private final List<RadioService> mScannedServicesWithoutStream = new ArrayList<>();
 	@Override
 	public void foundStreamingServices(List<RadioService> ipStreamservices) {
 		if(DEBUG)Log.d(TAG, "foundStreamingServices at tunerstate: " + mTunerStatus.toString());
@@ -287,22 +290,28 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 			new SerializeServicesTask().execute();
 
 			mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
-			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerScanFinished(this);
-				listener.tunerStatusChanged(this, mTunerStatus);
+			synchronized (mTunerlisteners) {
+				for (TunerListener listener : mTunerlisteners) {
+					listener.tunerScanFinished(this);
+					listener.tunerStatusChanged(this, mTunerStatus);
+				}
 			}
 		}
 	}
 
 	private void updateTunerListenerScanServiceFound(RadioService srv) {
-		for (TunerListener listener : mTunerlisteners) {
-			listener.tunerScanServiceFound(this, srv);
+		synchronized (mTunerlisteners) {
+			for (TunerListener listener : mTunerlisteners) {
+				listener.tunerScanServiceFound(this, srv);
+			}
 		}
 	}
 
 	private void updateTunerListenerScanStatus(int left) {
-		for (TunerListener listener : mTunerlisteners) {
-			listener.tunerScanProgress(this, left, -1);
+		synchronized (mTunerlisteners) {
+			for (TunerListener listener : mTunerlisteners) {
+				listener.tunerScanProgress(this, left, -1);
+			}
 		}
 	}
 
@@ -336,12 +345,9 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 
 				mCurrentRadioService = srv;
 
-				Thread parseThread = new Thread(new Runnable() {
-					@Override
-					public void run() {
-						//TODO choosable bitrate, alternative stream urls
-						parseStreamUrls(mCurrentRadioService.getIpStreams());
-					}
+				Thread parseThread = new Thread(() -> {
+					//TODO choose-able bitrate, alternative stream urls
+					parseStreamUrls(mCurrentRadioService.getIpStreams());
 				});
 				parseThread.start();
 			}
@@ -362,14 +368,18 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 
 	@Override
 	public void subscribe(TunerListener tunerListener) {
-		if(!mTunerlisteners.contains(tunerListener)) {
-			mTunerlisteners.add(tunerListener);
+		synchronized (mTunerlisteners) {
+			if (!mTunerlisteners.contains(tunerListener)) {
+				mTunerlisteners.add(tunerListener);
+			}
 		}
 	}
 
 	@Override
 	public void unsubscribe(TunerListener tunerListener) {
-		mTunerlisteners.remove(tunerListener);
+		synchronized (mTunerlisteners) {
+			mTunerlisteners.remove(tunerListener);
+		}
 	}
 
 	private void parseStreamUrls(List<RadioServiceIpStream> streams) {
@@ -416,9 +426,6 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 				int responseCode = m3uConnection.getResponseCode();
 				//if(DEBUG)Log.d(TAG, "ResponseCode: " + responseCode);
 				if(responseCode == 200) {
-					String contentLengthHeader = m3uConnection.getHeaderField("Content-Length");
-					//if(DEBUG)Log.d(TAG, "ContentLength: " + contentLengthHeader);
-
 					BufferedReader m3uInBuf = new BufferedReader(new InputStreamReader(m3uConnection.getInputStream()));
 
 					String m3uLine;
@@ -461,7 +468,6 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 		Uri streamUri = Uri.parse(url);
 		mCurrentStream = mCurrentRadioService.getIpStreams().get(0);
 
-		Allocator allocator = new DefaultAllocator(false, BUFFER_SIZE);
 		final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
 		if (context != null) {
 			String userAgent = Util.getUserAgent(context, "OMRI");
@@ -478,22 +484,20 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 		}
 	}
 
-	IcyStreamDataSource.RawStreamDataListener mRawListener = new IcyStreamDataSource.RawStreamDataListener() {
-		@Override
-		public void rawAudioData(byte[] rawData) {
-			if(mCurrentRadioService != null) {
-				((RadioServiceIpImpl) mCurrentRadioService).rawStreamData(rawData, mCurrentStream.getMimeType());
-			} else if(DEBUG) {
-				if(DEBUG)Log.d(TAG, "CurrentRadioService is null at rawAudioData");
-			}
+	IcyStreamDataSource.RawStreamDataListener mRawListener = rawData -> {
+		if(mCurrentRadioService != null) {
+			((RadioServiceIpImpl) mCurrentRadioService).rawStreamData(rawData, mCurrentStream.getMimeType());
+		} else {
+			if (DEBUG)Log.d(TAG, "CurrentRadioService is null at rawAudioData");
 		}
 	};
 
 	private void stopStream() {
 		if(DEBUG)Log.d(TAG, "Stopping Stream");
-
-		for(TunerListener listener : mTunerlisteners) {
-			listener.radioServiceStopped(this, mCurrentRadioService);
+		synchronized (mTunerlisteners) {
+			for (TunerListener listener : mTunerlisteners) {
+				listener.radioServiceStopped(this, mCurrentRadioService);
+			}
 		}
 
 		mCurrentRadioService = null;
@@ -550,8 +554,10 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 			case Player.STATE_IDLE: {
 				if(DEBUG)Log.d(TAG, "onPlayerStateChanged: Player.STATE_IDLE");
 				if(mCurrentRadioService != null) {
-					for (TunerListener listener : mTunerlisteners) {
-						listener.radioServiceStopped(this, mCurrentRadioService);
+					synchronized (mTunerlisteners) {
+						for (TunerListener listener : mTunerlisteners) {
+							listener.radioServiceStopped(this, mCurrentRadioService);
+						}
 					}
 				}
 
@@ -562,8 +568,10 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 				if(DEBUG)Log.d(TAG, "onPlayerStateChanged: Player.STATE_READY");
 				if(mPlayerState != playbackState) {
 					if(mCurrentRadioService != null) {
-						for (TunerListener listener : mTunerlisteners) {
-							listener.radioServiceStarted(this, mCurrentRadioService);
+						synchronized (mTunerlisteners) {
+							for (TunerListener listener : mTunerlisteners) {
+								listener.radioServiceStarted(this, mCurrentRadioService);
+							}
 						}
 					}
 
@@ -574,8 +582,10 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 			case Player.STATE_ENDED: {
 				if(DEBUG)Log.d(TAG, "onPlayerStateChanged: Player.STATE_ENDED");
 				if(mCurrentRadioService != null) {
-					for (TunerListener listener : mTunerlisteners) {
-						listener.radioServiceStopped(this, mCurrentRadioService);
+					synchronized (mTunerlisteners) {
+						for (TunerListener listener : mTunerlisteners) {
+							listener.radioServiceStopped(this, mCurrentRadioService);
+						}
 					}
 				}
 
@@ -808,19 +818,20 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 
 		@Override
 		protected Void doInBackground(Void... params) {
-			if(DEBUG)Log.d(TAG, "Restoring Servicelist in background, ready: " + RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_IP));
-			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_IP) || !VisualLogoManager.getInstance().isReady()) {
-				try {
-					if(DEBUG)Log.d(TAG, "Waiting for servicelist and VisualLogoManager to be ready");
-					Thread.sleep(10);
-				} catch(InterruptedException interExc) {
-					if(DEBUG)interExc.printStackTrace();
-				}
+			final RadioServiceManager sm = RadioServiceManager.getInstance();
+			if(DEBUG) {
+				Log.d(TAG, "Restoring Servicelist in background, ready: "
+						+ sm.isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_IP));
+			}
+			while (!sm.isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_IP) || !VisualLogoManager.getInstance().isReady()) {
+				if(DEBUG)Log.d(TAG, "Waiting for servicelist and VisualLogoManager to be ready");
+				SystemClock.sleep(100);
 			}
 
-			mServiceList = RadioServiceManager.getInstance().getRadioServices(RadioServiceType.RADIOSERVICE_TYPE_IP);
-
-			if(DEBUG)Log.d(TAG, "Restore services finished with " + mServiceList.size() + " services");
+			if (DEBUG) {
+				List<RadioService> mServiceList = RadioServiceManager.getInstance().getRadioServices(RadioServiceType.RADIOSERVICE_TYPE_IP);
+				Log.d(TAG, "Restore services finished with " + mServiceList.size() + " IP services");
+			}
 
 			mIsInitializing = false;
 			mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
@@ -832,8 +843,12 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 	}
 
 	private void sayReady() {
-		for (TunerListener listener : mTunerlisteners) {
-			listener.tunerStatusChanged(this, mTunerStatus);
+		synchronized (mTunerlisteners) {
+			for (TunerListener listener : mTunerlisteners) {
+				if (listener != null) {
+					listener.tunerStatusChanged(this, TunerStatus.TUNER_STATUS_INITIALIZED);
+				}
+			}
 		}
 	}
 }
