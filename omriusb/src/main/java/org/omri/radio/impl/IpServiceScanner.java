@@ -42,7 +42,6 @@ import eu.hradio.core.radiodns.RadioDnsCoreLookupCallback;
 import eu.hradio.core.radiodns.RadioDnsFactory;
 import eu.hradio.core.radiodns.RadioDnsServiceEpg;
 import eu.hradio.core.radiodns.RadioDnsServiceEpgSiCallback;
-import eu.hradio.core.radiodns.RadioEpgServiceInformation;
 import eu.hradio.core.radiodns.radioepg.bearer.Bearer;
 import eu.hradio.core.radiodns.radioepg.bearer.BearerType;
 import eu.hradio.core.radiodns.radioepg.description.Description;
@@ -98,7 +97,7 @@ public class IpServiceScanner {
 
 	private Bundle mScanRdnsOptionsBundle = null;
 
-	private IpServiceScanner() {
+ 	private IpServiceScanner() {
 		createLogoFilesCacheDir();
 	}
 
@@ -582,7 +581,7 @@ public class IpServiceScanner {
 		}
 	}
 
-	private void scanHradioServices(Bundle optBundle) {
+	synchronized private void scanHradioServices(Bundle optBundle) {
 		if(DEBUG)Log.d(TAG, "Starting HRadio ServiceScan: " + mIsScanning);
 		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
 		if(context != null) {
@@ -616,266 +615,262 @@ public class IpServiceScanner {
 		}
 	}
 
-	private boolean mSorted  = false;
-	private RadioDnsServiceEpgSiCallback mSiCallback = new RadioDnsServiceEpgSiCallback() {
-		@Override
-		public void serviceInformationRetrieved(RadioEpgServiceInformation radioEpgServiceInformation, RadioDnsServiceEpg service) {
-			if(!mIsScanning) {
-				return;
-			}
+	private final RadioDnsServiceEpgSiCallback mSiCallback = (radioEpgServiceInformation, service) -> {
+		if(!mIsScanning) {
+			return;
+		}
 
-			if(radioEpgServiceInformation != null) {
-				List<RadioService> foundIpServices = new ArrayList<>();
-				final List<Service> siServices = radioEpgServiceInformation.getServices();
-				for (Service siSrv : siServices) {
-					if (siSrv != null) {
+		if(radioEpgServiceInformation != null) {
+			List<RadioService> foundIpServices = new ArrayList<>();
+			final List<Service> siServices = radioEpgServiceInformation.getServices();
+			for (Service siSrv : siServices) {
+				if (siSrv != null) {
+					if (DEBUG)
+						Log.d(TAG, "SI ServiceName: " + (siSrv.getNames().size() > 0 ? siSrv.getNames().get(0).getName() : ""));
+					RadioServiceIpImpl ipSrv = new RadioServiceIpImpl();
+
+					for (Bearer bearer : siSrv.getBearers()) {
 						if (DEBUG)
-							Log.d(TAG, "SI ServiceName: " + (siSrv.getNames().size() > 0 ? siSrv.getNames().get(0).getName() : ""));
-						RadioServiceIpImpl ipSrv = new RadioServiceIpImpl();
+							Log.d(TAG, "SI Bearer: " + bearer.getBearerIdString() + ", MIME: " + bearer.getMimeType());
+						ipSrv.addBearer(bearer);
 
-						for (Bearer bearer : siSrv.getBearers()) {
-							if (DEBUG)
-								Log.d(TAG, "SI Bearer: " + bearer.getBearerIdString() + ", MIME: " + bearer.getMimeType());
-							ipSrv.addBearer(bearer);
+						if (bearer.getBearerType() == BearerType.BEARER_TYPE_HTTP || bearer.getBearerType() == BearerType.BEARER_TYPE_HTTPS) {
+							RadioServiceIpStreamImpl stream = new RadioServiceIpStreamImpl();
+							stream.setBitrate(bearer.getBitrate());
+							stream.setCost(bearer.getCost());
+							stream.setOffset(bearer.getOffset());
+							stream.setStreamUrl(bearer.getBearerIdString());
+							switch (bearer.getMimeType()) {
+								case "audio/aac":
+								case "audio/aacp":
+								case "audio/x-scpls":
+									stream.setMimeType(RadioServiceMimeType.AUDIO_AAC);
+									break;
+								case "audio/mpeg":
+								case "audio/x-mpegurl":
+									stream.setMimeType(RadioServiceMimeType.AUDIO_MPEG);
+									break;
+								case "audio/edi":
+									stream.setMimeType(RadioServiceMimeType.AUDIO_EDI);
+									break;
+								default:
+									stream.setMimeType(RadioServiceMimeType.UNKNOWN);
+									break;
+							}
 
-							if (bearer.getBearerType() == BearerType.BEARER_TYPE_HTTP || bearer.getBearerType() == BearerType.BEARER_TYPE_HTTPS) {
-								RadioServiceIpStreamImpl stream = new RadioServiceIpStreamImpl();
-								stream.setBitrate(bearer.getBitrate());
-								stream.setCost(bearer.getCost());
-								stream.setOffset(bearer.getOffset());
-								stream.setStreamUrl(bearer.getBearerIdString());
-								switch (bearer.getMimeType()) {
-									case "audio/aac":
-									case "audio/aacp":
-									case "audio/x-scpls":
-										stream.setMimeType(RadioServiceMimeType.AUDIO_AAC);
-										break;
-									case "audio/mpeg":
-									case "audio/x-mpegurl":
-										stream.setMimeType(RadioServiceMimeType.AUDIO_MPEG);
-										break;
-									case "audio/edi":
-										stream.setMimeType(RadioServiceMimeType.AUDIO_EDI);
-										break;
-									default:
-										stream.setMimeType(RadioServiceMimeType.UNKNOWN);
-										break;
-								}
-
-								if (stream.getMimeType() != RadioServiceMimeType.UNKNOWN) {
-									ipSrv.addStream(stream);
-								}
+							if (stream.getMimeType() != RadioServiceMimeType.UNKNOWN) {
+								ipSrv.addStream(stream);
 							}
 						}
+					}
 
-						//TODO no IP bearers
-						boolean srvOkay = true;
-						if (ipSrv.getIpStreams().isEmpty()) {
-							if (DEBUG)
-								Log.w(TAG, "IpStreams empty, searching available DAB service");
-							srvOkay = false;
-							final List<RadioService> radioServiceList = new ArrayList<>(Radio.getInstance().getRadioServices());
-							for (RadioService searchSrv : radioServiceList) {
-								if (searchSrv != null &&
-										(searchSrv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB
-												|| searchSrv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_EDI)) {
-									RadioServiceDab dabSrv = (RadioServiceDab) searchSrv;
-									final List<RadioDnsEpgBearer> epgBearers = ipSrv.getBearers();
-									if (epgBearers != null) {
-										for (RadioDnsEpgBearer dnsBear : epgBearers) {
-											if (dnsBear.getBearerType() == RadioDnsEpgBearerType.DAB) {
-												RadioDnsEpgBearerDab dabBearer = (RadioDnsEpgBearerDab) dnsBear;
-												if (dabSrv.getEnsembleId() == dabBearer.getEnsembleId()
-														&& dabSrv.getEnsembleEcc() == dabBearer.getEnsembleEcc()
-														&& dabSrv.getServiceId() == dabBearer.getServiceId()) {
-													if (DEBUG)
-														Log.d(TAG, "Found DAB service '" + dabSrv.getServiceLabel() + "' for IPService without IpStreams");
-													srvOkay = true;
-													break;
-												}
+					//TODO no IP bearers
+					boolean srvOkay = true;
+					if (ipSrv.getIpStreams().isEmpty()) {
+						if (DEBUG)
+							Log.w(TAG, "IpStreams empty, searching available DAB service");
+						srvOkay = false;
+						final List<RadioService> radioServiceList = new ArrayList<>(Radio.getInstance().getRadioServices());
+						for (RadioService searchSrv : radioServiceList) {
+							if (searchSrv != null &&
+									(searchSrv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB
+											|| searchSrv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_EDI)) {
+								RadioServiceDab dabSrv = (RadioServiceDab) searchSrv;
+								final List<RadioDnsEpgBearer> epgBearers = ipSrv.getBearers();
+								if (epgBearers != null) {
+									for (RadioDnsEpgBearer dnsBear : epgBearers) {
+										if (dnsBear.getBearerType() == RadioDnsEpgBearerType.DAB) {
+											RadioDnsEpgBearerDab dabBearer = (RadioDnsEpgBearerDab) dnsBear;
+											if (dabSrv.getEnsembleId() == dabBearer.getEnsembleId()
+													&& dabSrv.getEnsembleEcc() == dabBearer.getEnsembleEcc()
+													&& dabSrv.getServiceId() == dabBearer.getServiceId()) {
+												if (DEBUG)
+													Log.d(TAG, "Found DAB service '" + dabSrv.getServiceLabel() + "' for IPService without IpStreams");
+												srvOkay = true;
+												break;
 											}
 										}
 									}
 								}
 							}
 						}
+					}
 
-						if (srvOkay) {
-							for (Name srvName : siSrv.getNames()) {
-								switch (srvName.getType()) {
-									case NAME_LONG:
+					if (srvOkay) {
+						for (Name srvName : siSrv.getNames()) {
+							switch (srvName.getType()) {
+								case NAME_LONG:
+									ipSrv.setServiceLabel(srvName.getName());
+									break;
+								case NAME_MEDIUM:
+								case NAME_SHORT:
+									if (ipSrv.getServiceLabel().isEmpty()) {
 										ipSrv.setServiceLabel(srvName.getName());
-										break;
-									case NAME_MEDIUM:
-										if (ipSrv.getServiceLabel().isEmpty()) {
-											ipSrv.setServiceLabel(srvName.getName());
-										}
-										break;
-									case NAME_SHORT:
-										if (ipSrv.getServiceLabel().isEmpty()) {
-											ipSrv.setServiceLabel(srvName.getName());
-										}
-										break;
-								}
-							}
-
-							for (Genre genre : siSrv.getGenres()) {
-								TermIdImpl termId = new TermIdImpl();
-								termId.setGenreHref(genre.getGenreHref());
-								termId.setTermId(genre.getTvaCs().getScheme());
-								termId.setGenreText(genre.getGenre());
-								ipSrv.addGenre(termId);
-							}
-
-							if (siSrv.getKeywords() != null) {
-								for (String keyWord : siSrv.getKeywords().getKeywords()) {
-									ipSrv.addKeyword(keyWord);
-								}
-							}
-
-							if (siSrv.getLinks() != null && !siSrv.getLinks().isEmpty()) {
-								for (Link link : siSrv.getLinks()) {
-									ipSrv.addLink(link.getUri());
-								}
-							}
-
-							if (siSrv.getRadioDns() != null) {
-								ipSrv.setRadioDns(siSrv.getRadioDns());
-							}
-
-							for (MediaDescription mediaDesc : siSrv.getMediaDescriptions()) {
-								if (!mIsScanning) {
-									if (DEBUG)
-										Log.d(TAG, "Stopping multimedia processing because scan was stopped");
-									return;
-								}
-
-								for (Description desc : mediaDesc.getDescriptions()) {
-									switch (desc.getType()) {
-										case DESCRIPTION_SHORT: {
-											ipSrv.setShortDescription(desc.getDescription());
-											break;
-										}
-										case DESCRIPTION_LONG: {
-											ipSrv.setLongDescription(desc.getDescription());
-											break;
-										}
 									}
-								}
-
-								Multimedia multiMedia = mediaDesc.getMultimedia();
-								if (multiMedia != null) {
-									if (DEBUG)
-										Log.d(TAG, "SI Multimedia Type: " + multiMedia.getType().toString() + ", Width: " + multiMedia.getWidth() + ", Height: " + multiMedia.getHeight());
-
-									//check for dimensions if type is MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED
-									if (multiMedia.getType() == MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED) {
-										if (multiMedia.getHeight() <= 0 || multiMedia.getWidth() <= 0) {
-											if (DEBUG)
-												Log.w(TAG, MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED.toString() + " has invalid dimensions of: " + multiMedia.getWidth() + "x" + multiMedia.getHeight());
-											continue;
-										}
-									}
-
-									VisualLogoImpl stationLogo = new VisualLogoImpl();
-									stationLogo.setHeight(multiMedia.getHeight());
-									stationLogo.setWidth(multiMedia.getWidth());
-
-									//check for logo size restrictions
-									if (mScanRdnsOptionsBundle != null && (
-											mScanRdnsOptionsBundle.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH)
-													|| mScanRdnsOptionsBundle.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT))) {
-										boolean downloadAllowed = true;
-										int maxWidth = mScanRdnsOptionsBundle.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH, -1);
-										int maxHeight = mScanRdnsOptionsBundle.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT, -1);
-										if (maxWidth != -1 && multiMedia.getWidth() > maxWidth) {
-											downloadAllowed = false;
-										}
-										if (maxHeight != -1 && multiMedia.getHeight() > maxHeight) {
-											downloadAllowed = false;
-										}
-										if (!downloadAllowed) {
-											if (DEBUG)
-												Log.d(TAG, "Not downloading logo " + multiMedia.getWidth() + "x" + multiMedia.getHeight()
-														+ " due to restriction " + maxWidth + "x" + maxHeight);
-											continue;
-										}
-									}
-
-									VisualMimeType logoMime = VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN;
-									for (VisualMimeType mimeType : VisualMimeType.values()) {
-										if (mimeType.getMimeTypeString().equalsIgnoreCase(multiMedia.getMime())) {
-											logoMime = mimeType;
-											break;
-										}
-									}
-
-									// relax requirement for proper MIME type
-									/*if (logoMime != VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN)*/ {
-										stationLogo.setVisualMimeType(logoMime);
-										stationLogo.setLogoUrl(multiMedia.getUrl());
-										stationLogo.addBearer(ipSrv.getBearers());
-
-										// why sorting? Collections.sort(stationLogo.getBearers());
-
-										String logoPath = downloadHttpLogoFile(multiMedia.getUrl(), multiMedia, stationLogo);
-										if (logoPath != null) {
-											stationLogo.setFilePath(logoPath);
-											VisualLogoManager.getInstance().addLogoVisual(stationLogo);
-										} else {
-											Log.w(TAG, "LogoDownload failed: " + multiMedia.getUrl());
-										}
-									} /* else {
-										Log.w(TAG, "ignore logo with mime '" + logoMime + "'");
-									} */
-								}
+									break;
 							}
-
-
-							if (ipSrv.getIpStreams().isEmpty()) {
-								if (DEBUG)
-									Log.w(TAG, "Empty IpStreams for: " + ipSrv.getServiceLabel() + " with " + ipSrv.getLogos().size() + " logos");
-							}
-
-							foundIpServices.add(ipSrv);
-						} else {
-							if (DEBUG) Log.d(TAG, "IpStreams empty and no DAB service found");
 						}
-					}
-				}
 
-				for(IpScannerListener listener : mScannerListeners) {
-					listener.foundStreamingServices(new ArrayList<>(foundIpServices));
-				}
+						for (Genre genre : siSrv.getGenres()) {
+							TermIdImpl termId = new TermIdImpl();
+							termId.setGenreHref(genre.getGenreHref());
+							termId.setTermId(genre.getTvaCs().getScheme());
+							termId.setGenreText(genre.getGenre());
+							ipSrv.addGenre(termId);
+						}
 
-				if(DEBUG) {
-					Log.d(TAG, "Found " + foundIpServices.size() + " IpServices");
-					for (RadioService foundSrv : foundIpServices) {
-						Log.d(TAG, "Found " + foundSrv.getServiceLabel());
+						if (siSrv.getKeywords() != null) {
+							for (String keyWord : siSrv.getKeywords().getKeywords()) {
+								ipSrv.addKeyword(keyWord);
+							}
+						}
+
+						if (siSrv.getLinks() != null && !siSrv.getLinks().isEmpty()) {
+							for (Link link : siSrv.getLinks()) {
+								ipSrv.addLink(link.getUri());
+							}
+						}
+
+						if (siSrv.getRadioDns() != null) {
+							ipSrv.setRadioDns(siSrv.getRadioDns());
+						}
+
+						for (MediaDescription mediaDesc : siSrv.getMediaDescriptions()) {
+							if (!mIsScanning) {
+								if (DEBUG)
+									Log.d(TAG, "Stopping multimedia processing because scan was stopped");
+								return;
+							}
+
+							for (Description desc : mediaDesc.getDescriptions()) {
+								switch (desc.getType()) {
+									case DESCRIPTION_SHORT: {
+										ipSrv.setShortDescription(desc.getDescription());
+										break;
+									}
+									case DESCRIPTION_LONG: {
+										ipSrv.setLongDescription(desc.getDescription());
+										break;
+									}
+								}
+							}
+
+							Multimedia multiMedia = mediaDesc.getMultimedia();
+							if (multiMedia != null) {
+								if (DEBUG)
+									Log.d(TAG, "SI Multimedia Type: " + multiMedia.getType().toString() + ", Width: " + multiMedia.getWidth() + ", Height: " + multiMedia.getHeight());
+
+								//check for dimensions if type is MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED
+								if (multiMedia.getType() == MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED) {
+									if (multiMedia.getHeight() <= 0 || multiMedia.getWidth() <= 0) {
+										if (DEBUG)
+											Log.w(TAG, MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED.toString() + " has invalid dimensions of: " + multiMedia.getWidth() + "x" + multiMedia.getHeight());
+										continue;
+									}
+								}
+
+								VisualLogoImpl stationLogo = new VisualLogoImpl();
+								stationLogo.setHeight(multiMedia.getHeight());
+								stationLogo.setWidth(multiMedia.getWidth());
+
+								// check for logo size restrictions
+								// create local copy of Bundle
+								Bundle scanRdnsOptions = null;
+								if (mScanRdnsOptionsBundle != null) {
+									scanRdnsOptions = new Bundle(mScanRdnsOptionsBundle);
+								}
+								if (scanRdnsOptions != null && (
+										scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH)
+												|| scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT))) {
+									boolean downloadAllowed = true;
+									int maxWidth = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH, -1);
+									int maxHeight = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT, -1);
+									if (maxWidth != -1 && multiMedia.getWidth() > maxWidth) {
+										downloadAllowed = false;
+									}
+									if (maxHeight != -1 && multiMedia.getHeight() > maxHeight) {
+										downloadAllowed = false;
+									}
+									if (!downloadAllowed) {
+										if (DEBUG)
+											Log.d(TAG, "Not downloading logo " + multiMedia.getWidth() + "x" + multiMedia.getHeight()
+													+ " due to restriction " + maxWidth + "x" + maxHeight);
+										continue;
+									}
+								}
+
+								VisualMimeType logoMime = VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN;
+								for (VisualMimeType mimeType : VisualMimeType.values()) {
+									if (mimeType.getMimeTypeString().equalsIgnoreCase(multiMedia.getMime())) {
+										logoMime = mimeType;
+										break;
+									}
+								}
+
+								// relax requirement for proper MIME type
+								/*if (logoMime != VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN)*/ {
+									stationLogo.setVisualMimeType(logoMime);
+									stationLogo.setLogoUrl(multiMedia.getUrl());
+									stationLogo.addBearer(ipSrv.getBearers());
+
+									// why sorting? Collections.sort(stationLogo.getBearers());
+
+									String logoPath = downloadHttpLogoFile(multiMedia.getUrl(), multiMedia, stationLogo);
+									if (logoPath != null) {
+										stationLogo.setFilePath(logoPath);
+										VisualLogoManager.getInstance().addLogoVisual(stationLogo);
+									} else {
+										Log.w(TAG, "LogoDownload failed: " + multiMedia.getUrl());
+									}
+								} /* else {
+									Log.w(TAG, "ignore logo with mime '" + logoMime + "'");
+								} */
+							}
+						}
+
+
+						if (ipSrv.getIpStreams().isEmpty()) {
+							if (DEBUG)
+								Log.w(TAG, "Empty IpStreams for: " + ipSrv.getServiceLabel() + " with " + ipSrv.getLogos().size() + " logos");
+						}
+
+						foundIpServices.add(ipSrv);
+					} else {
+						if (DEBUG) Log.d(TAG, "IpStreams empty and no DAB service found");
 					}
 				}
 			}
 
-			mSiCallbacksPendings.decrementAndGet();
-
-			if(mSiCallbacksPendings.get() == 0) {
-				notifyListeners(100, true);
-
-				VisualLogoManager.getInstance().serializeLogos();
-			} else {
-				double scanProgress  = (((double)mAvailableServices.size() - (double)mSiCallbacksPendings.get()) / (double)mAvailableServices.size()) * 50.d;
-				notifyListeners((int)scanProgress + 50, false);
+			for(IpScannerListener listener : mScannerListeners) {
+				listener.foundStreamingServices(new ArrayList<>(foundIpServices));
 			}
+
+			if(DEBUG) {
+				Log.d(TAG, "Found " + foundIpServices.size() + " IpServices");
+				for (RadioService foundSrv : foundIpServices) {
+					Log.d(TAG, "Found " + foundSrv.getServiceLabel());
+				}
+			}
+		}
+
+		mSiCallbacksPendings.decrementAndGet();
+
+		if(mSiCallbacksPendings.get() == 0) {
+			notifyListeners(100, true);
+
+			VisualLogoManager.getInstance().serializeLogos();
+		} else {
+			double scanProgress  = (((double)mAvailableServices.size() - (double)mSiCallbacksPendings.get()) / (double)mAvailableServices.size()) * 50.d;
+			notifyListeners((int)scanProgress + 50, false);
 		}
 	};
 
-	private void notifyListeners(int scanProgress, boolean finished) {
+	synchronized private void notifyListeners(int scanProgress, boolean finished) {
 		for (IpScannerListener listener : mScannerListeners) {
 			listener.scanProgress(scanProgress);
 			if(finished) {
 				listener.scanFinished();
 				mIsScanning = false;
-				mScanRdnsOptionsBundle = null;
 			}
 		}
 	}
@@ -894,7 +889,7 @@ public class IpServiceScanner {
 		}
 	}
 
-	private void scanRdnsServices(@Nullable Bundle searchOptions) {
+	synchronized private void scanRdnsServices(@Nullable Bundle searchOptions) {
 		if(DEBUG)Log.d(TAG, "Starting ServiceScan: " + mIsScanning);
 		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
 		if(context != null) {
@@ -906,7 +901,6 @@ public class IpServiceScanner {
 					mAvailableServices.clear();
 				}
 				mSiCallbacksPendings.set(0);
-				mScanRdnsOptionsBundle = null;
 				if (searchOptions != null) {
 					mScanRdnsOptionsBundle = new Bundle(searchOptions);
 				}
