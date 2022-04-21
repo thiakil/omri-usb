@@ -96,12 +96,13 @@ target_compile_options(irtdab PUBLIC
         -Wno-c++14-binary-literal
         -Wno-comment
         -Wno-four-char-constants
+        -Wno-gnu-statement-expression
         -Wno-sign-compare
+        -Wno-unused-but-set-variable
         -Wno-unused-function
         -Wno-unused-parameter
         -Wno-unused-private-field
         -Wno-unused-variable
-        -Wno-gnu-statement-expression
         )
 
 # Specifies libraries CMake should link to your target library. You
