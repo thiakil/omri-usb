@@ -9,7 +9,7 @@ android {
     ndkVersion "24.0.8215888"
 
     defaultConfig {
-        minSdkVersion 23
+        minSdkVersion 19
         //noinspection OldTargetApi
         targetSdkVersion 31
         versionCode 2
