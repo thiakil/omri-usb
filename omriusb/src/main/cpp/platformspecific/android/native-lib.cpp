@@ -248,6 +248,7 @@ Java_org_omri_radio_impl_UsbHelper_deviceDetached(JNIEnv *env, jobject thiz, jst
         if (bla->get() != nullptr && bla->get()->getDeviceName() == removedDev) {
             std::cout << LOG_TAG << " Removing UsbTunerInput: " << removedDev << " : "
                       << bla->get()->getDeviceName() << std::endl;
+            bla->get()->deInitialize();
             m_dabInputs.erase(bla);
             break;
         }

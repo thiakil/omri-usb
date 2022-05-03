@@ -46,6 +46,7 @@ public:
     void operator=(DemoUsbTunerInput &) = delete;
 
     void initialize() override;
+    void deInitialize() override;
     bool isInitialized() const override;
     uint32_t getCurrentTunedFrequency() const override;
     void tuneFrequency(uint32_t frequencyKHz) override;

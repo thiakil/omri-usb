@@ -38,6 +38,7 @@ public:
     virtual ~DabInput() = default;
 
     virtual void initialize() = 0;
+    virtual void deInitialize() = 0;
     virtual bool isInitialized() const = 0;
     virtual uint32_t getCurrentTunedFrequency() const = 0;
     virtual const DabEnsemble& getEnsemble() const = 0;

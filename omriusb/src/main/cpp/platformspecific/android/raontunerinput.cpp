@@ -104,10 +104,25 @@ void RaonTunerInput::initializeSync() {
             setupMemoryFIC();
 
             m_isInitialized = true;
-            m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
+            if (m_usbDevice != nullptr) {
+                m_usbDevice->callCallback(
+                        JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
+            }
         } else {
-            m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_FAILED);
+            if (m_usbDevice != nullptr) {
+                m_usbDevice->callCallback(
+                        JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_FAILED);
+            }
         }
+    }
+}
+
+void RaonTunerInput::deInitialize() {
+    if (m_isInitialized) {
+        stopScanCommandThread();
+        stopReadFicThread();
+        stopReadDataThread();
+        rawRecordClose();
     }
 }
 

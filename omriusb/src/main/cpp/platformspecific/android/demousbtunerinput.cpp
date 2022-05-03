@@ -60,6 +60,10 @@ void DemoUsbTunerInput::initialize() {
     m_isInitialized = true;
 }
 
+void DemoUsbTunerInput::deInitialize() {
+    m_isInitialized = false;
+}
+
 bool DemoUsbTunerInput::isInitialized() const {
     return m_isInitialized;
 }
