@@ -18,13 +18,14 @@
  *
  */
 
-#include "jusbdevice.h"
-
-#include "iostream"
-#include "jni-helper.h"
-
+#include <iostream>
+#include <sstream>
+#include <utility>
 #include <linux/usbdevice_fs.h>
 #include <sys/ioctl.h>
+
+#include "jusbdevice.h"
+#include "jni-helper.h"
 
 // POSIX_IOCTL_READ_WRITE_BULKTRANSFER
 // 0 : Use Android UsbDeviceConnection (with immense overhead for JNI)
@@ -56,6 +57,7 @@ JUsbDevice::JUsbDevice(JavaVM* javaVm, JNIEnv *env, jobject usbDevice) {
     m_usbDeviceConnectionBulkTransferWithOffsetMId = env->GetMethodID(m_usbDeviceConnectionClass, "bulkTransfer", "(Landroid/hardware/usb/UsbEndpoint;[BIII)I");
     m_usbDeviceConnectionBulkTransferMId = env->GetMethodID(m_usbDeviceConnectionClass, "bulkTransfer", "(Landroid/hardware/usb/UsbEndpoint;[BII)I");
     m_usbDeviceConnectionGetFileDescriptorMid = env->GetMethodID(m_usbDeviceConnectionClass, "getFileDescriptor", "()I");
+    m_usbDeviceConnectionObject = nullptr; // created in permissionGranted()
 
     //Android UsbInterface class definitions
     m_usbDeviceInterfaceClass = static_cast<jclass>(env->NewGlobalRef(env->FindClass("android/hardware/usb/UsbInterface")));
@@ -80,7 +82,7 @@ JUsbDevice::JUsbDevice(JavaVM* javaVm, JNIEnv *env, jobject usbDevice) {
         if(m_usbDeviceObject != nullptr) {
             std::cout << LOG_TAG << "Constructor" << std::endl;
 
-            jstring devName = static_cast<jstring >(env->CallObjectMethod(m_usbDeviceObject, m_usbDeviceGetNameMId));
+            auto devName = static_cast<jstring>(env->CallObjectMethod(m_usbDeviceObject, m_usbDeviceGetNameMId));
             const char* utfrep = env->GetStringUTFChars(devName, JNI_FALSE);
             m_usbDeviceName = std::string(utfrep);
             env->ReleaseStringUTFChars(devName, utfrep);
@@ -156,7 +158,7 @@ bool JUsbDevice::isPermissionGranted() const {
 }
 
 void JUsbDevice::requestPermission(JUsbDevice::PermissionCallbackFunction permissionCallback) {
-    m_permissionCallback = permissionCallback;
+    m_permissionCallback = std::move(permissionCallback);
 
     bool wasDetached;
     if (!JNI_ATTACH(m_javaVm, wasDetached)) {
@@ -186,30 +188,51 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
         m_permissionGranted = true;
 
         jobject usbhelper = env->CallStaticObjectMethod(m_usbHelperClass, m_usbHelperGetInstanceMId);
+        jobject usbInterface = nullptr;
+        jint endpointCnt = 0;
         if (usbhelper != nullptr) {
             m_usbDeviceConnectionObject = env->NewGlobalRef(
                     env->CallObjectMethod(usbhelper, m_usbHelperOpenDeviceMId, m_usbDeviceObject));
+
+            usbInterface = env->CallObjectMethod(m_usbDeviceObject, m_usbDeviceGetInterfaceMId, m_interfaceNum);
+            if (usbInterface != nullptr) {
+                std::ostringstream logStr;
+                jboolean claimed = env->CallBooleanMethod(m_usbDeviceConnectionObject,
+                                                          m_usbDeviceConnectionClaimInterfaceMId,
+                                                          usbInterface, JNI_TRUE);
+                logStr << LOG_TAG << "if claimed: " << std::boolalpha
+                          << static_cast<bool>(claimed) << std::noboolalpha << std::endl;
+
+                endpointCnt = env->CallIntMethod(usbInterface, m_usbDeviceInterfaceGetEndpointCountMId);
+                logStr << ", ep count: " << +endpointCnt;
+
+                m_fileDescriptor = env->CallIntMethod(m_usbDeviceConnectionObject,
+                                                      m_usbDeviceConnectionGetFileDescriptorMid);
+                logStr << ", fd: " << +m_fileDescriptor << std::endl;
+
+                std::cout << logStr.str() << std::endl;
+            } else {
+                std::clog << LOG_TAG << "UsbInterface.getInterface failed" << std::endl;
+            }
         } else {
             std::clog << LOG_TAG << "UsbHelper.getInstance failed" << std::endl;
         }
-        jobject usbInterface = env->CallObjectMethod(m_usbDeviceObject, m_usbDeviceGetInterfaceMId, m_interfaceNum);
 
-        jboolean claimed = env->CallBooleanMethod(m_usbDeviceConnectionObject, m_usbDeviceConnectionClaimInterfaceMId, usbInterface, JNI_TRUE);
-
-        std::cout << LOG_TAG << "Interface claimed: " << std::boolalpha << static_cast<bool>(claimed) << std::noboolalpha << std::endl;
-
-        jint endpointCnt = env->CallIntMethod(usbInterface, m_usbDeviceInterfaceGetEndpointCountMId);
-        std::cout << LOG_TAG <<  "Endpoint count: " << +endpointCnt << std::endl;
-
-        m_fileDescriptor = env->CallIntMethod(m_usbDeviceConnectionObject, m_usbDeviceConnectionGetFileDescriptorMid);
-        std::cout << LOG_TAG << "FileDescriptor: " << +m_fileDescriptor << std::endl;
-
-        for(int i = 0; i < endpointCnt; i++) {
-            jobject endPoint = env->CallObjectMethod(usbInterface, m_usbDeviceInterfaceGetEndpointMId, i);
-            jint endpointNumber = env->CallIntMethod(endPoint, m_usbDeviceEndpointGetEndpointNumberMId);
-            jint endpointAddress = env->CallIntMethod(endPoint, m_usbDeviceEndpointGetEndpointAddressMId);
-            jint endpointDirection = env->CallIntMethod(endPoint, m_usbDeviceEndpointGetDirectionMId);
-            std::cout << LOG_TAG << "Endpoint Number: " << +endpointNumber << " Address: " << +endpointAddress << " Direction: " << +endpointDirection << std::endl;
+        if (usbInterface != nullptr) {
+            for (jint i = 0; i < endpointCnt; i++) {
+                jobject endPoint = env->CallObjectMethod(usbInterface,
+                                                         m_usbDeviceInterfaceGetEndpointMId, i);
+                jint endpointNumber = env->CallIntMethod(endPoint,
+                                                         m_usbDeviceEndpointGetEndpointNumberMId);
+                jint endpointAddress = env->CallIntMethod(endPoint,
+                                                          m_usbDeviceEndpointGetEndpointAddressMId);
+                jint endpointDirection = env->CallIntMethod(endPoint,
+                                                            m_usbDeviceEndpointGetDirectionMId);
+                std::ostringstream logStr;
+                logStr << LOG_TAG << "Endpoint Number: " << +endpointNumber << " Address: "
+                          << +endpointAddress << " Direction: " << +endpointDirection;
+                std::cout << logStr.str() << std::endl;
+            }
         }
     }
 
