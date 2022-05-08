@@ -318,75 +318,78 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void callBack(int callbackType) {
-		TunerUsbCallbackTypes type = TunerUsbCallbackTypes.getTypeByValue(callbackType);
-		if(DEBUG)Log.d(TAG, "Native callback for device: " + mUsbDevice.getDeviceName() + " with CallbackType: " + type.toString());
-		switch(type) {
-			case TUNER_READY: {
-				if (!mIsScanning) {
-					mTunerInitDone = true;
-					if (mRestoreServicesDone) {
-						mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
-						synchronized (mTunerlisteners) {
-							for (TunerListener listener : mTunerlisteners) {
-								listener.tunerStatusChanged(this, mTunerStatus);
+		final TunerUsbCallbackTypes type = TunerUsbCallbackTypes.getTypeByValue(callbackType);
+		new Thread(() -> {
+			if (DEBUG)
+				Log.d(TAG, "Native callback for device: " + mUsbDevice.getDeviceName() + " with CallbackType: " + type.toString());
+			switch (type) {
+				case TUNER_READY: {
+					if (!mIsScanning) {
+						mTunerInitDone = true;
+						if (mRestoreServicesDone) {
+							mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
+							synchronized (mTunerlisteners) {
+								for (TunerListener listener : mTunerlisteners) {
+									listener.tunerStatusChanged(this, mTunerStatus);
+								}
 							}
 						}
-					}
-				} else {
-					mIsScanning = false;
-					mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
+					} else {
+						mIsScanning = false;
+						mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
 
-					new EnrichServicesData().execute();
-				}
-				break;
-			}
-			case TUNER_FAILED:
-				mTunerStatus = TunerStatus.TUNER_STATUS_ERROR;
-				synchronized (mTunerlisteners) {
-					for (TunerListener listener : mTunerlisteners) {
-						listener.tunerStatusChanged(this, mTunerStatus);
+						new EnrichServicesData().execute();
 					}
+					break;
 				}
-				break;
-
-			case TUNER_SCAN_IN_PROGRESS: {
-				mIsScanning = true;
-				mTunerStatus = TunerStatus.TUNER_STATUS_SCANNING;
-				synchronized (mTunerlisteners) {
-					for (TunerListener listener : mTunerlisteners) {
-						listener.tunerScanStarted(this);
-					}
-				}
-				break;
-			}
-			case SERVICELIST_READY: {
-				boolean reportInitialized = false;
-				if (mTunerStatus != TunerStatus.TUNER_STATUS_INITIALIZED) {
-					mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
-					reportInitialized = true;
-				}
-				synchronized (mTunerlisteners) {
-					for (TunerListener listener : mTunerlisteners) {
-						if (reportInitialized) {
-							listener.tunerStatusChanged(this, TunerStatus.TUNER_STATUS_INITIALIZED);
+				case TUNER_FAILED:
+					mTunerStatus = TunerStatus.TUNER_STATUS_ERROR;
+					synchronized (mTunerlisteners) {
+						for (TunerListener listener : mTunerlisteners) {
+							listener.tunerStatusChanged(this, mTunerStatus);
 						}
-						listener.tunerStatusChanged(this, TunerStatus.SERVICES_LIST_READY);
 					}
-				}
-				break;
-			}
-			case VISUALLIST_READY: {
-				synchronized (mTunerlisteners) {
-					for (TunerListener listener : mTunerlisteners) {
-						listener.tunerStatusChanged(this, TunerStatus.VISUALS_LIST_READY);
+					break;
+
+				case TUNER_SCAN_IN_PROGRESS: {
+					mIsScanning = true;
+					mTunerStatus = TunerStatus.TUNER_STATUS_SCANNING;
+					synchronized (mTunerlisteners) {
+						for (TunerListener listener : mTunerlisteners) {
+							listener.tunerScanStarted(this);
+						}
 					}
+					break;
 				}
-				break;
+				case SERVICELIST_READY: {
+					boolean reportInitialized = false;
+					if (mTunerStatus != TunerStatus.TUNER_STATUS_INITIALIZED) {
+						mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
+						reportInitialized = true;
+					}
+					synchronized (mTunerlisteners) {
+						for (TunerListener listener : mTunerlisteners) {
+							if (reportInitialized) {
+								listener.tunerStatusChanged(this, TunerStatus.TUNER_STATUS_INITIALIZED);
+							}
+							listener.tunerStatusChanged(this, TunerStatus.SERVICES_LIST_READY);
+						}
+					}
+					break;
+				}
+				case VISUALLIST_READY: {
+					synchronized (mTunerlisteners) {
+						for (TunerListener listener : mTunerlisteners) {
+							listener.tunerStatusChanged(this, TunerStatus.VISUALS_LIST_READY);
+						}
+					}
+					break;
+				}
+				default: {
+					break;
+				}
 			}
-			default: {
-				break;
-			}
-		}
+		}).start();
 	}
 
 	@Override
