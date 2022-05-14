@@ -201,14 +201,14 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
                                                           m_usbDeviceConnectionClaimInterfaceMId,
                                                           usbInterface, JNI_TRUE);
                 logStr << LOG_TAG << "if claimed: " << std::boolalpha
-                          << static_cast<bool>(claimed) << std::noboolalpha << std::endl;
+                          << static_cast<bool>(claimed) << std::noboolalpha;
 
                 endpointCnt = env->CallIntMethod(usbInterface, m_usbDeviceInterfaceGetEndpointCountMId);
                 logStr << ", ep count: " << +endpointCnt;
 
                 m_fileDescriptor = env->CallIntMethod(m_usbDeviceConnectionObject,
                                                       m_usbDeviceConnectionGetFileDescriptorMid);
-                logStr << ", fd: " << +m_fileDescriptor << std::endl;
+                logStr << ", fd: " << +m_fileDescriptor;
 
                 std::cout << logStr.str() << std::endl;
             } else {
