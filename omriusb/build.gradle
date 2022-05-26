@@ -5,7 +5,7 @@ def asanEnabledInDebugBuild = false
 def clangVersion = "14.0.1" // must match with ndkVersion !!
 
 android {
-    compileSdkVersion 32
+    compileSdkVersion 31
     ndkVersion "24.0.8215888"
 
     defaultConfig {
