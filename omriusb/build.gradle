@@ -68,7 +68,7 @@ dependencies {
     implementation project(path: ':dabaudiodecoderplugininterface')
     //noinspection GradleDependency  // do not want to update
     implementation 'com.google.android.exoplayer:exoplayer-core:2.7.3'
-    implementation 'androidx.annotation:annotation:1.4.0'
+    implementation 'androidx.annotation:annotation:1.5.0'
     def minidnsVersion = '1.0.4'
     implementation 'org.minidns:minidns-core:' + minidnsVersion
     implementation 'org.minidns:minidns-hla:' + minidnsVersion
