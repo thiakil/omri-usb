@@ -83,7 +83,7 @@ void DabServiceComponentMscStreamAudio::addUserApplication(const DabUserApplicat
     std::ostringstream logStr;
     logStr << m_logTag << " Adding UserApplicationType: " << +uApp.getUserApplicationType()
            << " with DataServiceComponentType: " << +uApp.getDataServiceComponentType()
-           << " for SubChanId: " << +m_subChanId << std::endl;
+           << " for SubChanId: " << +m_subChanId;
     std::cout << logStr.str() << std::endl;
     m_padDecoder.addUserApplication(std::make_shared<DabUserApplication>(uApp));
     m_padDecoder.addUserApplicationDecoder(uApp.getUserApplicationDecoder());

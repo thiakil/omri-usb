@@ -358,13 +358,15 @@ void RaonTunerInput::scanNext() {
     m_ficCollectionWaitLoops = MAX_FIC_COLLECTION_LOOPS;
 
     if (m_currentScanningEnsembleNum + 1 < NUM_DAB_ENSEMBLES) {
-        std::stringstream logStr;
+        std::ostringstream logStr;
         logStr << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Scan next Ensemble: " << +DAB_FREQ_TABLE_KHZ[m_currentScanningEnsembleNum + 1];
         std::cout << logStr.str() << std::endl;
         if(m_ensembleCollectFinished) {
             for (int i : DAB_N_FREQUENCIES_IDX) {
                 if((m_currentScanningEnsembleNum + 1) == i) {
-                    std::cout << LOG_TAG << "Skiping NFrequency: " << +i << std::endl;
+                    std::ostringstream().swap(logStr); // clear state and empty the ostringstream buffer
+                    logStr << LOG_TAG << "Skipping NFrequency: " << +i;
+                    std::cout << logStr.str() << std::endl;
                     ++m_currentScanningEnsembleNum;
                     break;
                 }
@@ -1358,11 +1360,17 @@ void RaonTunerInput::threadedScanningFicRead() {
     threadName << "FicRead-" << +tid;
     pthread_setname_np(pthread_self(), threadName.str().c_str());
 
+    std::ostringstream logMsg;
+    logMsg << LOG_TAG << "FIC thread started: " << threadName.str();
+    std::cout << logMsg.str() << std::endl;
     while (m_readFicThreadRunning) {
         if (!hasUsbIoErrors()) {
             scanningReadFic();
         }
     }
+    std::ostringstream().swap(logMsg); // clear state and empty the ostringstream buffer
+    logMsg << LOG_TAG << "FIC thread ended: " << threadName.str();
+    std::cout << logMsg.str() << std::endl;
 }
 
 void RaonTunerInput::scanningReadFic() {
