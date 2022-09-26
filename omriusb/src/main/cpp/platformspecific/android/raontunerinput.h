@@ -94,9 +94,9 @@ private:
     uint8_t m_currentSubchanId{0xFF};
 
     int m_currentScanningEnsembleNum{0};
-    //changed from 100
-    constexpr static int MAX_COLLECTION_LOOPS{200};
-    constexpr static int MAX_FIC_COLLECTION_LOOPS{300};
+    // total time when not locked: MAX_COLLECTION_LOOPS * WAITLOOP_WAIT_FOR_LOCK_MS
+    constexpr static int MAX_COLLECTION_LOOPS{300}; // => ~ 3sec
+    constexpr static int MAX_FIC_COLLECTION_LOOPS{60}; // 1 loop ~150ms, 60 loops => ~ 9sec
     int m_maxCollectionWaitLoops{MAX_COLLECTION_LOOPS};
     const uint32_t WAITLOOP_WAIT_FOR_LOCK_MS{100u};
     constexpr static int WAITLOOP_NOLOCK_DECREMENT{10};

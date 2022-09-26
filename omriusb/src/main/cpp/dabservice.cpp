@@ -241,10 +241,7 @@ bool DabService::checkSanity() const {
         logStr << "label:empty";
         isSane = false;
     }
-    else if (getServiceShortLabel().empty()) {
-        logStr << "short label:empty";
-        isSane = false;
-    }
+    // ETSI EN 300 401 V2.1.1, 5.2.2.2 FIG 1/1 does not mandate Short Label to be present
     else if (getServiceComponents().size() != getNumberServiceComponents()) {
         logStr << "components != numCmp:" << +getServiceComponents().size() << "/" << +getNumberServiceComponents();
         isSane = false;
