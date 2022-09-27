@@ -1144,10 +1144,9 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
     std::ostringstream logStr;
     logStr << m_logTag << " checkServiceSanity failed EId=0x" << std::hex << +getEnsembleId() << std::dec;
     if (getEnsembleEcc() == ECC_INVALID || getEnsembleId() == EID_INVALID
-       || getEnsembleLabelCharset() == CHARSET_INVALID || getEnsembleLabel().empty() || getEnsembleShortLabel().empty()) {
-        logStr << " ECC:0x" << std::hex << +getEnsembleEcc() << std::dec << " '"
-               << getEnsembleLabel() << "', '"
-               << getEnsembleShortLabel() << "' charset:0x" << std::hex
+       || getEnsembleLabelCharset() == CHARSET_INVALID || getEnsembleLabel().empty()) {
+        logStr << " ECC:0x" << std::hex << +getEnsembleEcc() << std::dec << " label '"
+               << getEnsembleLabel() << "', charset:0x" << std::hex
                << +getEnsembleLabelCharset() << std::dec;
         if (logAsWarning) {
             std::clog << logStr.str() << std::endl;
