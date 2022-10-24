@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -8,6 +10,7 @@ import android.content.IntentFilter;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.os.Build;
 import android.util.Log;
 import android.util.Pair;
 
@@ -22,8 +25,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Executors;
-
-import static org.omri.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -99,7 +100,14 @@ public class UsbHelper {
 
 		if(mContext != null) {
 			mUsbManager = (UsbManager)mContext.getSystemService(Context.USB_SERVICE);
-			mUsbPermissionIntent = PendingIntent.getBroadcast(mContext, 0, new Intent(ACTION_USB_PERMISSION), 0);
+			final int flags;
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+				flags = PendingIntent.FLAG_IMMUTABLE;
+			} else {
+				flags = 0;
+			}
+			mUsbPermissionIntent = PendingIntent.getBroadcast(mContext, 0,
+						new Intent(ACTION_USB_PERMISSION), flags);
 
 			IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
 			filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
