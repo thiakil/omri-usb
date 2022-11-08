@@ -89,9 +89,8 @@ void Fig_01::parseLabel(std::vector<uint8_t>::const_iterator& labelIter,
         std::clog << logMsg.str() << std::endl;
     }
 
-    // truncate and trim
-    labelFull = labelFull.substr(0, 16);
-    labelShort = labelShort.substr(0, 8);
+    // Do not truncate labels using std::string::substr(), it fails with UTF8 code units
+    // trim
     DynamiclabelDecoder::rtrim(labelFull);
     DynamiclabelDecoder::rtrim(labelShort);
 
