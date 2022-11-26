@@ -55,6 +55,13 @@ android {
             path "CMakeLists.txt"
         }
     }
+    packagingOptions {
+        jniLibs {
+            // Some older Android devices with Android 6 require legacy packaging of native .so
+            // files (found with libfec.so). Found necessary with minSdkVersion 23
+            useLegacyPackaging true
+        }
+    }
     testOptions {
         unitTests {
             returnDefaultValues = true
