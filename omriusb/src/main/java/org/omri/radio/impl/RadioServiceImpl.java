@@ -148,8 +148,12 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 	
 	@Override
+	public boolean isReadyForGetLogos() {
+		return VisualLogoManager.getInstance().isReady();
+	}
+
+	@Override
 	public List<Visual> getLogos() {
-		//return mLogoVisuals;
 		return VisualLogoManager.getInstance().getLogoVisuals(this);
 	}
 

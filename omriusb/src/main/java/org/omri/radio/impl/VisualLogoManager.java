@@ -38,7 +38,7 @@ class VisualLogoManager {
 	@Nullable private static VisualLogoManager mManagerInstance = null;
 	static final AtomicBoolean instanceGuard = new AtomicBoolean();
 
-	private CopyOnWriteArrayList<VisualLogoImpl> mLogoList = new CopyOnWriteArrayList<>();
+	private final CopyOnWriteArrayList<VisualLogoImpl> mLogoList = new CopyOnWriteArrayList<>();
 	private final AtomicBoolean mSerializingInProgress = new AtomicBoolean();
 	private final AtomicBoolean mDeserializingInProgress = new AtomicBoolean();
 
@@ -58,12 +58,9 @@ class VisualLogoManager {
 					Log.w(TAG, "Creating LogoCacheDir failed");
 				}
 			} else {
-				mDeSerThread = new Thread(new Runnable() {
-					@Override
-					public void run() {
-						Thread.currentThread().setName("DeserLogos");
-						deserializeLogos();
-					}
+				mDeSerThread = new Thread(() -> {
+					Thread.currentThread().setName("DeserLogos");
+					deserializeLogos();
 				});
 				mDeSerThread.start();
 			}
@@ -93,9 +90,8 @@ class VisualLogoManager {
 				mDeserializingInProgress.set(false);
 			}
 		}
-		if (mLogoList != null) {
-			mLogoList.clear();
-		}
+		mLogoList.clear();
+
 		synchronized (instanceGuard) {
 			mManagerInstance = null;
 		}
@@ -114,7 +110,8 @@ class VisualLogoManager {
 
 	List<Visual> getLogoVisuals(RadioService service) {
 		ArrayList<Visual> retArr = new ArrayList<>();
-		if(mLogoList == null) {
+		if (!isReady()) {
+			if(DEBUG)Log.d(TAG,"not ready");
 			return retArr;
 		}
 
@@ -248,11 +245,7 @@ class VisualLogoManager {
 			final File visCacheFile = new File(context.getCacheDir().getAbsolutePath()
 					+ File.separatorChar + VIS_CACHE_DIR + File.separatorChar + LOGOS_FILENAME);
 			if (visCacheFile.exists()) {
-				if (mLogoList != null) {
-					mLogoList.clear();
-				} else {
-					mLogoList = new CopyOnWriteArrayList<VisualLogoImpl>();
-				}
+				mLogoList.clear();
 
 				FileInputStream logoJsonInputStream = null;
 				BufferedReader logoJsonReader = null;
@@ -261,14 +254,15 @@ class VisualLogoManager {
 					logoJsonReader = new BufferedReader(new InputStreamReader(logoJsonInputStream));
 					StringBuilder logoJsonBuilder = new StringBuilder();
 
-					char[] readBuf = new char[4096];
-					int bytesRead = 0;
+					char[] readBuf = new char[16*1024];
+					int bytesRead;
 					while ((bytesRead = logoJsonReader.read(readBuf)) != -1) {
 						logoJsonBuilder.append(readBuf, 0, bytesRead);
 					}
 
 					if (DEBUG)
-						Log.d(TAG, "Read LogoJson filedata done: " + logoJsonBuilder.length());
+						Log.d(TAG, "Read " + LOGOS_FILENAME + " done: "
+								+ logoJsonBuilder.length() + " length");
 
 					JSONArray logoListArr = new JSONArray(logoJsonBuilder.toString());
 					if (DEBUG) Log.d(TAG, "Read LogoJson length: " + logoListArr.length());
@@ -337,8 +331,8 @@ class VisualLogoManager {
 						if (logoJsonReader != null) {
 							logoJsonReader.close();
 						}
-					} catch (IOException ioExc) {
-						if (DEBUG) ioExc.printStackTrace();
+					} catch (Throwable e) {
+						if (DEBUG) e.printStackTrace();
 					}
 				}
 			} else {

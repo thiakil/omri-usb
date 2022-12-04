@@ -60,6 +60,13 @@ public interface RadioService {
 	public List<Visual> getLogos();
 
 	/**
+	 * Returns if the {@link RadioService} is ready for querying logos.
+	 * This does not tell if there are any logos!
+	 * @return true if RadioService is ready for being queried using getLogos(), else false
+	 */
+	public boolean isReadyForGetLogos();
+
+	/**
 	 * Returns the available {@link TermId}s for this {@link RadioService} or an empty list
 	 * @return the available {@link TermId}s for this {@link RadioService} or an empty list
 	 */

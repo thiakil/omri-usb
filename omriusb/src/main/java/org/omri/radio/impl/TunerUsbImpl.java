@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.omri.radio.Radio;
+import org.omri.radio.RadioStatus;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceType;
@@ -572,10 +573,18 @@ public class TunerUsbImpl implements TunerUsb {
 		@Override
 		protected Void doInBackground(Void... params) {
 			if(DEBUG)Log.d(TAG, "Restoring visuals....");
-			while ((!VisualLogoManager.getInstance().isReady() ||  !mTunerInitDone) && !isCancelled()) {
+			boolean continueWaiting;
+			do {
 				SystemClock.sleep(100);
-				if(DEBUG)Log.d(TAG, "Waiting for VisualLogoManager or tuner to be ready");
-			}
+				if (DEBUG) Log.d(TAG, "Waiting for VisualLogoManager or tuner to be ready");
+
+				continueWaiting =
+						Radio.getInstance().getRadioStatus() == RadioStatus.STATUS_RADIO_RUNNING
+						&& mTunerInitDone
+						&& !isCancelled()
+						&& !VisualLogoManager.getInstance().isReady();
+			} while (continueWaiting);
+
 			if(DEBUG)Log.d(TAG, "Restore visuals finished");
 
 			mRestoreVisualsDone = true;
