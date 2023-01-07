@@ -95,14 +95,14 @@ public class UsbHelper {
 	private native void demoServiceStop();
 
 	private UsbHelper(Context context) {
-		if(DEBUG)Log.d(TAG, "Contructing UsbHelper...coutToAlog=" + mRedirectCoutToALog);
+		if(DEBUG)Log.d(TAG, "Constructing UsbHelper...coutToAlog=" + mRedirectCoutToALog);
 		mContext = context.getApplicationContext();
 
 		if(mContext != null) {
 			mUsbManager = (UsbManager)mContext.getSystemService(Context.USB_SERVICE);
 			final int flags;
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-				flags = PendingIntent.FLAG_IMMUTABLE;
+				flags = PendingIntent.FLAG_MUTABLE;
 			} else {
 				flags = 0;
 			}
@@ -289,11 +289,14 @@ public class UsbHelper {
 			// Note: This comes in on the application's main thread
 			final UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 			final String action = intent.getAction();
-			final Intent i = intent;
+			if (device == null || action == null) {
+				Log.e(TAG, "onReceive: action:" + action + ",device:" + device);
+				return;
+			}
 			synchronized (this) {
 				// change to a worker thread
 				Executors.newCachedThreadPool().execute(
-						new UsbBroadcastReceiverRunnable(action, i, device)
+						new UsbBroadcastReceiverRunnable(action, intent, device)
 				);
 			}
 		}
