@@ -1,8 +1,9 @@
 apply plugin: 'com.android.library'
 
 // change to true if you want Address Sanitizer active in debug build
+// see https://developer.android.com/ndk/guides/asan
 def asanEnabledInDebugBuild = false
-def clangVersion = "14.0.1" // must match with ndkVersion !!
+def clangVersion = "14.0.6" // must match with ndkVersion !!
 
 android {
     compileSdkVersion 33
@@ -14,7 +15,7 @@ android {
         targetSdkVersion 31
         versionCode 2
         versionName "1.0"
-		externalNativeBuild {
+        externalNativeBuild {
             cmake {
                 cppFlags "-std=c++11 -frtti -fexceptions"
                 arguments "-DANDROID_STL=c++_shared"
@@ -50,7 +51,7 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-	externalNativeBuild {
+    externalNativeBuild {
         cmake {
             path "CMakeLists.txt"
         }
@@ -87,12 +88,14 @@ dependencies {
 
     // unit testing with JUnit and Mockito
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:4.8.1'
+    testImplementation 'org.mockito:mockito-core:4.11.0'
 }
 
 // Copy libclang_rt.asan-*.so files from NDK folder to jniLibs folder
 // currently for arm64 only
 task copyNativeAsanLibs(type: Copy) {
+    outputs.file(new File(project(':omriusb').projectDir,
+            '/src/main/jniLibs/arm64-v8a/libclang_rt.asan-aarch64-android.so'))
     if (asanEnabledInDebugBuild) {
         def ndkDir = project.android.ndkDirectory.absolutePath
         if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
@@ -102,7 +105,7 @@ task copyNativeAsanLibs(type: Copy) {
         } else if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
             from(new File(ndkDir, 'toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/' + clangVersion + '/lib/linux'))
                     { include 'libclang_rt.asan-aarch64-android.so' }
-            into new File(projectDir, '/src/main/jniLibs/arm64-v8a')
+            into new File(project(':omriusb').projectDir, '/src/main/jniLibs/arm64-v8a')
         } else {
             // bad luck
         }
@@ -118,36 +121,24 @@ tasks.withType(JavaCompile) { compileTask -> compileTask.dependsOn copyNativeAsa
 // On "gradle clean" also reverse the copying of the native libraries
 clean.dependsOn cleanNativeAsanLibs
 
-// Create wrap.sh in resources
+// Create asan.sh in resources
 // See https://developer.android.com/ndk/guides/asan
-task createWrapSh() {
+task createWrapSh(type: Copy) {
+    def ndkDir = project.android.ndkDirectory.absolutePath
+    outputs.file(new File(projectDir, 'src/main/resources/lib/arm64-v8a/asan.sh'))
     if (asanEnabledInDebugBuild) {
-        List<String> fileLines = [
-            '#!/system/bin/sh',
-            'HERE="$(cd "$(dirname "$0")" && pwd)"',
-            'ASAN_OPTIONS_DEFAULT=log_to_syslog=false,allow_user_segv_handler=1',
-            'ASAN_OPTIONS_ADD=,color=never',
-            'export ASAN_OPTIONS=$ASAN_OPTIONS_DEFAULT$ASAN_OPTIONS_ADD',
-            'ASAN_LIB=$(ls $HERE/libclang_rt.asan-*-android.so)',
-            'if [ -f "$HERE/libc++_shared.so" ]; then',
-            '   # Workaround for https://github.com/android-ndk/ndk/issues/988.',
-            '   export LD_PRELOAD="$ASAN_LIB $HERE/libc++_shared.so"',
-            'else',
-            '   export LD_PRELOAD="$ASAN_LIB"',
-            'fi',
-            '"$@"'
-        ] as String[]
         File resourcesFolder = new File(projectDir, '/src/main/resources/lib/arm64-v8a')
-        if( !resourcesFolder.exists() ) {
+        if (!resourcesFolder.exists()) {
             resourcesFolder.mkdirs()
         }
-        new File(resourcesFolder, '/wrap.sh').text = fileLines.join ("\n")
+        from new File(ndkDir, '/wrap.sh/asan.sh')
+        into new File(resourcesFolder, '.')
     }
 }
 // clean wrap.sh in resources
 task cleanWrapSh() {
     doLast {
-        delete(file('/src/main/resources/lib/arm64-v8a/wrap.sh'))
+        delete(file('/src/main/resources/lib/arm64-v8a/asan.sh'))
     }
 }
 // When the code is compiled, also create wrap.sh

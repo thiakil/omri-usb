@@ -114,7 +114,7 @@ if(IRTDAB_ADDRESS_SANITIZER STREQUAL "yes")
             -fsanitize=address
             )
 else()
-    set(ADDRESS_SANITIZER_LINK_OPTIONS)
+    set(ADDRESS_SANITIZER_LINK_OPTIONS) # empty string
 endif()
 
 target_link_libraries( # Specifies the target library.
