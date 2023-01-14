@@ -60,7 +60,7 @@ private:
     uint16_t m_productId{0xFFFF};
     bool m_permissionGranted{false};
 
-    PermissionCallbackFunction m_permissionCallback;
+    PermissionCallbackFunction m_permissionCallback{nullptr};
 
     uint8_t m_interfaceNum{0};
 

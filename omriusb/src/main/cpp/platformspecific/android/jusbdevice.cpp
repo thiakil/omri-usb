@@ -207,7 +207,7 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
                 logStr << ", ep count: " << +endpointCnt;
 
                 m_fileDescriptor = env->CallIntMethod(m_usbDeviceConnectionObject,
-                                                      m_usbDeviceConnectionGetFileDescriptorMid);
+                                             m_usbDeviceConnectionGetFileDescriptorMid);
                 logStr << ", fd: " << +m_fileDescriptor;
 
                 std::cout << logStr.str() << std::endl;
@@ -236,7 +236,9 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
         }
     }
 
-    m_permissionCallback(m_permissionGranted);
+    if (m_permissionCallback != nullptr) {
+        m_permissionCallback(m_permissionGranted);
+    }
 
     if (!JNI_DETACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
