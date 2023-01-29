@@ -2,11 +2,11 @@ package org.omri.radio.impl;
 
 import static org.omri.BuildConfig.DEBUG;
 
+import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
@@ -14,11 +14,12 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
-import android.os.Build;
 import android.os.IBinder;
 import android.os.Process;
 import android.os.RemoteException;
 import android.util.Log;
+
+import androidx.annotation.Nullable;
 
 import org.omri.radio.Radio;
 
@@ -55,19 +56,19 @@ class DabAudioDecoder {
 	private final int BUFFER_TIMEOUT = 1000;
 
 	//DAB ASCTy
-	private int DAB_CODEC_MP2 = 0;
-	private int DAB_CODEC_AAC = 63;
+	private final int DAB_CODEC_MP2 = 0;
+	private final int DAB_CODEC_AAC = 63;
 
 	private final String[] DAB_MIME = {"audio/unknown", "audio/mpeg-l2" /*"audio/mpeg"*/, "audio/mp4a-latm"};
 
-	private MediaCodec mMediaCodec = null;
-	private MediaFormat mMediaFormat = null;
+	private @Nullable MediaCodec mMediaCodec = null;
+	private @Nullable MediaFormat mMediaFormat = null;
 
-	private ByteBuffer[] mInputBuffers = null;
-	private ByteBuffer[] mOutputBuffers = null;
-	private MediaCodec.BufferInfo mBufferInfo = null;
+	private @Nullable ByteBuffer[] mInputBuffers = null;
+	private @Nullable ByteBuffer[] mOutputBuffers = null;
+	private @Nullable MediaCodec.BufferInfo mBufferInfo = null;
 
-	private Thread mDecodeThread = null;
+	private @Nullable Thread mDecodeThread = null;
 	private boolean mDecode = false;
 
 	private DabDecoderCallback mCallback = null;
@@ -81,7 +82,7 @@ class DabAudioDecoder {
 	private boolean mConfSbr = false;
 	private boolean mConfPs = false;
 
-	private ConcurrentLinkedQueue<byte[]> mDataQ = new ConcurrentLinkedQueue<>();
+	private final ConcurrentLinkedQueue<byte[]> mDataQ = new ConcurrentLinkedQueue<>();
 
 	DabAudioDecoder(int dabCodec) {
 		if(DEBUG)Log.d(TAG, "Creating new decoder instance");
@@ -114,46 +115,6 @@ class DabAudioDecoder {
 		return mConfPs;
 	}
 
-	//Not used because most on-board codecs don't decode correctly
-	private boolean hasMpegL2Codec() {
-		for (int i = 0; i < MediaCodecList.getCodecCount(); i++) {
-			MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
-
-			if(codecInfo.isEncoder()) {
-				//dont need encoder
-				continue;
-			}
-
-			if(DEBUG)Log.d(TAG, "AvailableCodec Name: " + codecInfo.getName());
-			String[] supportedTypes = codecInfo.getSupportedTypes();
-			for(String supType : supportedTypes) {
-				if(DEBUG)Log.d(TAG, "AvailableCodec SupportedType: " + supType);
-				if(supType.equalsIgnoreCase(DAB_MIME[1])) {
-					if(DEBUG)Log.d(TAG, "Found MPEG L2 Codec...yippie!");
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
-	private boolean mpegDecPluginInstalled() {
-		if(DEBUG)Log.d(TAG, "Searching installed Codec Plugins!");
-		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
-		if (context != null) {
-			PackageManager packageManager = context.getPackageManager();
-			List<ApplicationInfo> apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA);
-			for (ApplicationInfo appInfo : apps) {
-				if (appInfo.packageName.equalsIgnoreCase("de.irt.dabmpg123decoderplugin")) {
-					if (DEBUG) Log.d(TAG, "Found MPEG L2 Codec Plugin...binding service!");
-					return bindDecoderService();
-				}
-			}
-		}
-		return false;
-	}
-
 	private boolean mpegDecPluginInstalled2() {
 		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
 		PackageManager packageManager = null;
@@ -161,6 +122,9 @@ class DabAudioDecoder {
 			packageManager = context.getPackageManager();
 		}
 		if(packageManager != null) {
+			// no query statement in AndroidManifest.xml because we assume
+			// de.irt.dabmpg123decoderplugin.Mpg123Decoder is part of the apk itself
+			@SuppressLint("QueryPermissionsNeeded")
 			List<PackageInfo> pkgs = packageManager.getInstalledPackages(PackageManager.GET_SERVICES);
 			for(PackageInfo pkg : pkgs) {
 				if(pkg != null && pkg.services != null) {
@@ -182,21 +146,6 @@ class DabAudioDecoder {
 	private IDabPluginInterface mDecoderService = null;
 	private DabDecoderServiceConnection mDecoderConnection = null;
 	private boolean mDecoderServiceBound = false;
-	private boolean bindDecoderService() {
-		if(DEBUG)Log.d(TAG, "Binding service!");
-
-		mDecoderConnection = new DabDecoderServiceConnection();
-		final Intent srvIntent = new Intent("de.irt.dabmpg123decoderplugin.Mpg123Decoder");
-		srvIntent.setPackage("de.irt.dabmpg123decoderplugin");
-
-		final Context radioContext = ((RadioImpl)Radio.getInstance()).getAppContext();
-		if (radioContext != null) {
-			return radioContext.bindService(srvIntent, mDecoderConnection, Context.BIND_AUTO_CREATE);
-		} else {
-			if(DEBUG) Log.w(TAG, "Radio context null");
-			return false;
-		}
-	}
 
 	private boolean bindDecoderService2(String packageName, String serviceName) {
 		if(DEBUG)Log.d(TAG, "Binding service!");
@@ -263,15 +212,13 @@ class DabAudioDecoder {
 	private final IDabPluginCallback.Stub mDecSrvCallback = new IDabPluginCallback.Stub() {
 
 		@Override
-		public void decodedAudioData(byte[] pcmData, int samplerate, int channels) throws RemoteException {
-			//if(DEBUG)Log.d(TAG, "Decoderservice audiodata: " + pcmData.length
-			//		+ ", tid: " + Process.myTid()  + ", prio: " + Process.getThreadPriority(Process.myTid()));
+		public void decodedAudioData(byte[] pcmData, int samplerate, int channels) {
 			if (mCallback != null)
 				mCallback.decodedAudioData(pcmData, samplerate, channels);
 		}
 
 		@Override
-		public void outputFormatChanged(int sampleRate, int chanCnt) throws RemoteException {
+		public void outputFormatChanged(int sampleRate, int chanCnt) {
 			if(DEBUG)Log.d(TAG, "outputFormatChanged: sample rate:" + sampleRate + ", channels:"+ chanCnt);
 			mOutputSampling = sampleRate;
 			mOutputChannels = chanCnt;
@@ -292,8 +239,6 @@ class DabAudioDecoder {
 			try {
 				if(mDecoderService != null && mDecoderServiceBound) {
 					mDecoderService.enqueueEncodedData(audioData);
-				} else {
-					audioData = null;
 				}
 			} catch(RemoteException remExc) {
 				if(DEBUG)Log.d(TAG, "DecoderService RemoteException: " + remExc.getMessage());
@@ -384,7 +329,7 @@ class DabAudioDecoder {
 		mConfPs = ps;
 
 		if(mConfCodec == DAB_CODEC_AAC || mHasBuiltInMpegDec) {
-			creatMediaFormat();
+			createMediaFormat();
 
 			if(mMediaCodec == null) {
 				return false;
@@ -397,7 +342,7 @@ class DabAudioDecoder {
 		return true;
 	}
 
-	private void creatMediaFormat() {
+	private void createMediaFormat() {
 		if(mConfCodec == DAB_CODEC_AAC) {
 			mMediaFormat = MediaFormat.createAudioFormat(DAB_MIME[2], mConfSampling, mConfChans);
 		}
@@ -406,7 +351,7 @@ class DabAudioDecoder {
 		}
 
 		if(mConfCodec == DAB_CODEC_AAC) {
-			byte[] ascBytes = null;
+			final byte[] ascBytes;
 
 			if(mConfSbr) {
 				if(!mConfPs) {
@@ -434,9 +379,10 @@ class DabAudioDecoder {
 				if(DEBUG)Log.d(TAG, "Configuring ASC for Mono!");
 				ascBytes[1] = (byte)(ascBytes[1] - 8);
 			}
-
-			ByteBuffer ascBuffer = ByteBuffer.wrap(ascBytes);
-			mMediaFormat.setByteBuffer("csd-0", ascBuffer);
+			if (mMediaFormat != null) {
+				ByteBuffer ascBuffer = ByteBuffer.wrap(ascBytes);
+				mMediaFormat.setByteBuffer("csd-0", ascBuffer);
+			}
 		}
 
 		try {
@@ -445,7 +391,7 @@ class DabAudioDecoder {
 				MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
 
 				if(codecInfo.isEncoder()) {
-					//dont need encoder
+					//don't need encoder
 					continue;
 				}
 
@@ -463,7 +409,7 @@ class DabAudioDecoder {
 				}
 			}
 
-			if(mMediaCodec == null) {
+			if(mMediaCodec == null && mMediaFormat != null) {
 				Log.w(TAG, "MediaCodec createByCodecName failed, falling back to createDecoderByType");
 				try {
 					mMediaCodec = MediaCodec.createDecoderByType(mMediaFormat.getString(MediaFormat.KEY_MIME));
@@ -476,7 +422,7 @@ class DabAudioDecoder {
 			e.printStackTrace();
 		}
 		if(mMediaCodec != null) {
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT)Log.d(TAG, "MediaCodecName: " + mMediaCodec.getName());
+			Log.d(TAG, "MediaCodecName: " + mMediaCodec.getName());
 			try {
 				mMediaCodec.configure(mMediaFormat, null, null, 0);
 				mMediaCodec.start();
@@ -507,24 +453,20 @@ class DabAudioDecoder {
 		}
 	}
 
-	Runnable DecoderRunnable = new Runnable() {
-
-		@Override
-		public void run() {
-			if(DEBUG)Log.d(TAG, "Starting DecodeThread");
-			Thread.currentThread().setName("DabAudioDecoder");
-			try {
-				Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
-			} catch (Exception e) {
-				if (DEBUG) e.printStackTrace();
-			}
-			mDecode = true;
-			decode();
+	final Runnable DecoderRunnable = () -> {
+		if(DEBUG)Log.d(TAG, "Starting DecodeThread");
+		Thread.currentThread().setName("DabAudioDecoder");
+		try {
+			Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
+		} catch (Exception e) {
+			if (DEBUG) e.printStackTrace();
 		}
+		mDecode = true;
+		decode();
 	};
 
 	private void decode() {
-		while(mDecode) {
+		while(mDecode && mMediaCodec != null && mInputBuffers != null && mOutputBuffers != null) {
 			if(!mDataQ.isEmpty()) {
 				try {
 					int inbufIdx = mMediaCodec.dequeueInputBuffer(BUFFER_TIMEOUT);
@@ -554,8 +496,8 @@ class DabAudioDecoder {
 						mOutputSampling = format.getInteger(MediaFormat.KEY_SAMPLE_RATE);
 						mOutputChannels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT);
 
-						if (DEBUG)
-							Log.d(TAG, "Outputformat Changed: Sampling: " + mOutputSampling + " Chans: " + mOutputChannels);
+						Log.d(TAG, "Output format changed: Sampling: " + mOutputSampling
+								+ " Channels: " + mOutputChannels);
 						if (mCallback != null)
 							mCallback.outputFormatChanged(mOutputSampling, mOutputChannels);
 						break;
@@ -598,7 +540,7 @@ class DabAudioDecoder {
 		void outputFormatChanged(int sampleRate, int chanCnt);
 	}
 
-	private transient ArrayList<DabAudioDecoderStateCallBack> mCodecStateCallbacks = new ArrayList<>();
+	private final ArrayList<DabAudioDecoderStateCallBack> mCodecStateCallbacks = new ArrayList<>();
 	void registerDabAudioDecoderStateCallBack(DabAudioDecoderStateCallBack stateCb) {
 		if(!mCodecStateCallbacks.contains(stateCb)) {
 			mCodecStateCallbacks.add(stateCb);
