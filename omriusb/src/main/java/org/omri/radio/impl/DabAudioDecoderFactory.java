@@ -1,10 +1,12 @@
 package org.omri.radio.impl;
 
+import static org.omri.BuildConfig.DEBUG;
+
 import android.util.Log;
 
-import java.util.Vector;
+import androidx.annotation.NonNull;
 
-import static org.omri.BuildConfig.DEBUG;
+import java.util.Vector;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -61,8 +63,9 @@ class DabAudioDecoderFactory implements DabAudioDecoder.DabAudioDecoderStateCall
 
 	/**/
 	@Override
-	public void codecStopped(DabAudioDecoder decoder) {
+	public void codecStopped(@NonNull DabAudioDecoder decoder) {
 		if(DEBUG)Log.d(TAG, "Removing stopped DabAudioDecoder");
+		decoder.unregisterDabAudioDecoderStateCallBack(this);
 		mDecoderInstances.remove(decoder);
 	}
 }
