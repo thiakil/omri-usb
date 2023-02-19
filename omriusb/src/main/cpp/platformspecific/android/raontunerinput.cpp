@@ -502,7 +502,10 @@ void RaonTunerInput::ensembleCollectFinished() {
 
     setService();
 }
-//
+
+void RaonTunerInput::nop() const {
+    std::cout << LOG_TAG << "NOP" << std::endl;
+}
 
 //TUNER METHODS START
 

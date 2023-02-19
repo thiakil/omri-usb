@@ -138,7 +138,7 @@ private:
     void initializeSync();
     void tuneFrequencySync(uint32_t frequencyHz);
     void startServiceSync(const std::shared_ptr<JDabService>& serviceLink);
-    inline void nop() const {}; // no operation
+    void nop() const;
 
 private:
     void ensembleCollectFinished();
