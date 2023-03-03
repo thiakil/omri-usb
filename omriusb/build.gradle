@@ -3,16 +3,58 @@ apply plugin: 'com.android.library'
 // change to true if you want Address Sanitizer active in debug build
 // see https://developer.android.com/ndk/guides/asan
 def asanEnabledInDebugBuild = false
-def clangVersion = "14.0.6" // must match with ndkVersion !!
+
+// allow for project-level definition of certain versions. If such does not exist, use defaults.
+// -- compileSdk
+def omriUsbCompileSdkVersion
+if (rootProject.hasProperty('ext.compileSdkVersion') && rootProject.ext.compileSdkVersion) {
+    omriUsbCompileSdkVersion = rootProject.ext.compileSdkVersion
+} else {
+    omriUsbCompileSdkVersion = 33
+}
+// -- ndk
+def omriUsbNdkVersion
+if (rootProject.hasProperty('ndkVersion') && rootProject.ext.ndkVersion) {
+    omriUsbNdkVersion = rootProject.ext.ndkVersion
+} else {
+    omriUsbNdkVersion = "25.1.8937393"
+}
+// -- NDK clangVersion (must match with what ndk provides!)
+def omriUsbClangVersion
+if (rootProject.hasProperty('clangVersion') && rootProject.ext.clangVersion) {
+    omriUsbClangVersion = rootProject.ext.clangVersion
+} else {
+    omriUsbClangVersion = "14.0.6"
+}
+// -- minSdk
+def omriUsbMinSdkVersion
+if (rootProject.hasProperty('minSdkVersion') && rootProject.ext.minSdkVersion) {
+    omriUsbMinSdkVersion = rootProject.ext.minSdkVersion
+} else {
+    omriUsbMinSdkVersion = 23
+}
+// -- targetSdk
+def omriUsbTargetSdkVersion
+if (rootProject.hasProperty('targetSdkVersion') && rootProject.ext.targetSdkVersion) {
+    omriUsbTargetSdkVersion = rootProject.ext.targetSdkVersion
+} else {
+    omriUsbTargetSdkVersion = 31
+}
+println("omri-usb:targetSdk:" + omriUsbTargetSdkVersion
+        + ", compileSdk:" + omriUsbCompileSdkVersion
+        + ", minSdkVersion:" + omriUsbMinSdkVersion
+        + ", ndkVersion:" + omriUsbNdkVersion
+        + ", clangVersion:" + omriUsbClangVersion)
 
 android {
-    compileSdkVersion 33
-    ndkVersion "25.1.8937393"
+
+    compileSdkVersion omriUsbCompileSdkVersion
+    ndkVersion omriUsbNdkVersion
 
     defaultConfig {
-        minSdkVersion 23
+        minSdkVersion omriUsbMinSdkVersion
         //noinspection OldTargetApi
-        targetSdkVersion 31
+        targetSdkVersion omriUsbTargetSdkVersion
         versionCode 2
         versionName "1.0"
         externalNativeBuild {
@@ -76,7 +118,7 @@ dependencies {
     implementation project(path: ':dabaudiodecoderplugininterface')
     //noinspection GradleDependency  // do not want to update
     implementation 'com.google.android.exoplayer:exoplayer-core:2.7.3'
-    implementation 'androidx.annotation:annotation:1.5.0'
+    implementation 'androidx.annotation:annotation:1.6.0'
     def minidnsVersion = '1.0.4'
     implementation 'org.minidns:minidns-core:' + minidnsVersion
     implementation 'org.minidns:minidns-hla:' + minidnsVersion
@@ -88,7 +130,7 @@ dependencies {
 
     // unit testing with JUnit and Mockito
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:4.11.0'
+    testImplementation 'org.mockito:mockito-core:5.1.1'
 }
 
 // Copy libclang_rt.asan-*.so files from NDK folder to jniLibs folder
@@ -99,11 +141,11 @@ task copyNativeAsanLibs(type: Copy) {
     if (asanEnabledInDebugBuild) {
         def ndkDir = project.android.ndkDirectory.absolutePath
         if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
-            from(new File(ndkDir, 'toolchains/llvm/prebuilt/windows-x86_64/lib64/clang/' + clangVersion + '/lib/linux'))
+            from(new File(ndkDir, 'toolchains/llvm/prebuilt/windows-x86_64/lib64/clang/' + omriUsbClangVersion + '/lib/linux'))
                     { include 'libclang_rt.asan-aarch64-android.so' }
             into new File(project(':omriusb').projectDir, '/src/main/jniLibs/arm64-v8a')
         } else if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
-            from(new File(ndkDir, 'toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/' + clangVersion + '/lib/linux'))
+            from(new File(ndkDir, 'toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/' + omriUsbClangVersion + '/lib/linux'))
                     { include 'libclang_rt.asan-aarch64-android.so' }
             into new File(project(':omriusb').projectDir, '/src/main/jniLibs/arm64-v8a')
         } else {
