@@ -4,10 +4,10 @@ apply plugin: 'com.android.library'
 // see https://developer.android.com/ndk/guides/asan
 def asanEnabledInDebugBuild = false
 
-// allow for project-level definition of certain versions. If such does not exist, use defaults.
+// Allow for project-level definition of certain versions. If such does not exist, use defaults.
 // -- compileSdk
 def omriUsbCompileSdkVersion
-if (rootProject.hasProperty('ext.compileSdkVersion') && rootProject.ext.compileSdkVersion) {
+if (rootProject.hasProperty('compileSdkVersion') && rootProject.ext.compileSdkVersion) {
     omriUsbCompileSdkVersion = rootProject.ext.compileSdkVersion
 } else {
     omriUsbCompileSdkVersion = 33
@@ -40,7 +40,7 @@ if (rootProject.hasProperty('targetSdkVersion') && rootProject.ext.targetSdkVers
 } else {
     omriUsbTargetSdkVersion = 31
 }
-println("omri-usb:targetSdk:" + omriUsbTargetSdkVersion
+println("omri-usb: targetSdk:" + omriUsbTargetSdkVersion
         + ", compileSdk:" + omriUsbCompileSdkVersion
         + ", minSdkVersion:" + omriUsbMinSdkVersion
         + ", ndkVersion:" + omriUsbNdkVersion
