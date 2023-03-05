@@ -779,22 +779,37 @@ public class IpServiceScanner {
 								if (mScanRdnsOptionsBundle != null) {
 									scanRdnsOptions = new Bundle(mScanRdnsOptionsBundle);
 								}
-								if (scanRdnsOptions != null && (
-										scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH)
-												|| scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT))) {
+								// check for restriction of MIN or MAX width/height
+								if (scanRdnsOptions != null &&
+										( scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH) ||
+										  scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT) ||
+										  scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MIN_WIDTH) ||
+										  scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MIN_HEIGHT)
+										) ) {
+									final int maxWidth = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH, -1);
+									final int maxHeight = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT, -1);
+									final int minWidth = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MIN_WIDTH, -1);
+									final int minHeight = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MIN_HEIGHT, -1);
 									boolean downloadAllowed = true;
-									int maxWidth = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH, -1);
-									int maxHeight = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT, -1);
 									if (maxWidth != -1 && multiMedia.getWidth() > maxWidth) {
 										downloadAllowed = false;
 									}
 									if (maxHeight != -1 && multiMedia.getHeight() > maxHeight) {
 										downloadAllowed = false;
 									}
+									if (minWidth != -1 && multiMedia.getWidth() < minWidth) {
+										downloadAllowed = false;
+									}
+									if (minHeight != -1 && multiMedia.getHeight() < minHeight) {
+										downloadAllowed = false;
+									}
 									if (!downloadAllowed) {
-										if (DEBUG)
-											Log.d(TAG, "Not downloading logo " + multiMedia.getWidth() + "x" + multiMedia.getHeight()
-													+ " due to restriction " + maxWidth + "x" + maxHeight);
+										if (DEBUG) {
+											Log.d(TAG, "Not downloading logo "
+													+ multiMedia.getWidth() + "x" + multiMedia.getHeight()
+													+ " due to restriction max " + maxWidth + "x" + maxHeight
+													+ " and/or min " + minWidth + "x" + minHeight);
+										}
 										continue;
 									}
 								}

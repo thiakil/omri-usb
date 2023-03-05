@@ -658,10 +658,32 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	public final static String SERVICE_SEARCH_OPT_USE_HRADIO = "use_hradio";
 	public final static String SERVICE_SEARCH_OPT_DELETE_SERVICES = "delete_services";
 	public final static String SERVICE_SEARCH_OPT_HYBRID_SCAN = "hybrid_scan";
+
+	/**
+	 * Option for {@link TunerIpShoutcast#startRadioServiceScan(Object scanOptions)}.
+	 * If a logo image has a greater (>) width than given argument, it is skipped during download.
+	 */
 	public final static String SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH = "logo_max_width"; // argument type: int
-	public final static String SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT = "logo_max_width"; // argument type: int
+
+	/**
+	 * Option for {@link TunerIpShoutcast#startRadioServiceScan(Object scanOptions)}.
+	 * If a logo image has a greater (>) height than given argument, it is skipped during download.
+	 */
+	public final static String SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT = "logo_max_height"; // argument type: int
+
+	/**
+	 * Option for {@link TunerIpShoutcast#startRadioServiceScan(Object scanOptions)}.
+	 * If a logo image has a smaller width (<) than given argument, it is skipped during download.
+	 */
+	public final static String SERVICE_SEARCH_OPT_LOGO_MIN_WIDTH = "logo_min_width"; // argument type: int
+
+	/**
+	 * Option for {@link TunerIpShoutcast#startRadioServiceScan(Object scanOptions)}.
+	 * If a logo image has a smaller height (<) than given argument, it is skipped during download.
+	 */
+	public final static String SERVICE_SEARCH_OPT_LOGO_MIN_HEIGHT = "logo_min_height"; // argument type: int
+
 	public final static String RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS = "verbose_native_logs";
 	public final static String RADIO_INIT_OPT_RAW_RECORDING_PATH = "raw_recording_path";
 	public final static String RADIO_INIT_OPT_DEMO_MODE = "demo_mode";
-	/* */
 }
