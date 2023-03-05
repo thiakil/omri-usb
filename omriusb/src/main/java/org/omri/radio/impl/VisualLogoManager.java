@@ -22,7 +22,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,314 +30,370 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 class VisualLogoManager {
 
-	private final static String TAG = "VisualLogoManager";
-	private final static String VIS_CACHE_DIR = "logo_cache";
+    private final static String TAG = "VisualLogoManager";
+    private final static String VIS_CACHE_DIR = "logo_cache";
     private final static String LOGOS_FILENAME = "logos.json";
+    private final static String VIS_FILES_CACHE_DIR = "logofiles_cache";
 
-	@Nullable private static VisualLogoManager mManagerInstance = null;
-	static final AtomicBoolean instanceGuard = new AtomicBoolean();
+    @Nullable private static VisualLogoManager mManagerInstance = null;
+    static final AtomicBoolean instanceGuard = new AtomicBoolean();
 
-	private final CopyOnWriteArrayList<VisualLogoImpl> mLogoList = new CopyOnWriteArrayList<>();
-	private final AtomicBoolean mSerializingInProgress = new AtomicBoolean();
-	private final AtomicBoolean mDeserializingInProgress = new AtomicBoolean();
+    private final CopyOnWriteArrayList<VisualLogoImpl> mLogoList = new CopyOnWriteArrayList<>();
+    private final AtomicBoolean mSerializingInProgress = new AtomicBoolean();
+    private final AtomicBoolean mDeserializingInProgress = new AtomicBoolean();
 
-	@Nullable private Thread mDeSerThread = null;
+    @Nullable private Thread mDeSerThread = null;
 
-	private VisualLogoManager() {
-		final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
-		if (context != null) {
-			File logoDir = new File(context.getCacheDir(), VIS_CACHE_DIR);
-			if (DEBUG) Log.d(TAG, "LogoCacheDir: " + logoDir.getAbsolutePath());
+    private VisualLogoManager() {
+        final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
+        final @Nullable File logoDir = getLogoCacheDir();
+        if (context != null && logoDir != null) {
+            if (DEBUG) Log.d(TAG, "LogoCacheDir: " + logoDir.getAbsolutePath());
 
-			if (!logoDir.exists()) {
-				boolean logoCacheCreated = logoDir.mkdir();
-				if (logoCacheCreated) {
-					if (DEBUG) Log.d(TAG, "Created successfully LogoCacheDir");
-				} else {
-					Log.w(TAG, "Creating LogoCacheDir failed");
-				}
-			} else {
-				mDeSerThread = new Thread(() -> {
-					Thread.currentThread().setName("DeserLogos");
-					deserializeLogos();
-				});
-				mDeSerThread.start();
-			}
-		}
-	}
+            if (!logoDir.exists()) {
+                boolean logoCacheCreated = logoDir.mkdirs();
+                if (logoCacheCreated) {
+                    if (DEBUG) Log.d(TAG, "Created successfully LogoCacheDir");
+                } else {
+                    Log.w(TAG, "Creating LogoCacheDir failed");
+                }
+            } else {
+                mDeSerThread = new Thread(() -> {
+                    Thread.currentThread().setName("DeserLogos");
+                    deserializeLogos();
+                });
+                mDeSerThread.start();
+            }
+        }
+    }
 
-	@NonNull
-	static VisualLogoManager getInstance() {
-		VisualLogoManager ret;
-		synchronized (instanceGuard) {
-			if (mManagerInstance == null) {
-				mManagerInstance = new VisualLogoManager();
-			}
-			ret = mManagerInstance;
-		}
-		return ret;
-	}
+    @NonNull
+    static VisualLogoManager getInstance() {
+        VisualLogoManager ret;
+        synchronized (instanceGuard) {
+            if (mManagerInstance == null) {
+                mManagerInstance = new VisualLogoManager();
+            }
+            ret = mManagerInstance;
+        }
+        return ret;
+    }
 
-	void destroyInstance() {
-		if (mDeSerThread != null && mDeSerThread.isAlive()) {
-			try {
-				mDeSerThread.join(1000);
-			} catch (Exception e) {
-				if (DEBUG) e.printStackTrace();
-			} finally {
-				mDeSerThread = null;
-				mDeserializingInProgress.set(false);
-			}
-		}
-		mLogoList.clear();
+    void destroyInstance() {
+        if (mDeSerThread != null && mDeSerThread.isAlive()) {
+            try {
+                mDeSerThread.join(1000);
+            } catch (Exception e) {
+                if (DEBUG) e.printStackTrace();
+            } finally {
+                mDeSerThread = null;
+                mDeserializingInProgress.set(false);
+            }
+        }
+        mLogoList.clear();
 
-		synchronized (instanceGuard) {
-			mManagerInstance = null;
-		}
-	}
+        synchronized (instanceGuard) {
+            mManagerInstance = null;
+        }
+    }
 
-	boolean isReady() {
-		return !mDeserializingInProgress.get();
-	}
+    boolean isReady() {
+        return !mDeserializingInProgress.get();
+    }
 
-	void addLogoVisual(VisualLogoImpl logoVisual) {
-		if(!mLogoList.contains(logoVisual)) {
-			if(DEBUG)Log.d(TAG, "Adding Logo " + logoVisual.getLogoUrl());
-			mLogoList.add(logoVisual);
-		}
-	}
+    @Nullable File getLogoCacheDir() {
+        final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
+        if (context != null) {
+            return new File(context.getCacheDir(), VIS_CACHE_DIR);
+        }
+        return null;
+    }
+    @Nullable File getLogoFilesCacheDir() {
+        final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
+        if (context != null) {
+            return new File(context.getCacheDir(), VIS_FILES_CACHE_DIR);
+        }
+        return null;
+    }
 
-	List<Visual> getLogoVisuals(RadioService service) {
-		ArrayList<Visual> retArr = new ArrayList<>();
-		if (!isReady()) {
-			if(DEBUG)Log.d(TAG,"not ready");
-			return retArr;
-		}
+    void addLogoVisual(VisualLogoImpl logoVisual) {
+        if (!mLogoList.contains(logoVisual)) {
+            if (DEBUG) Log.d(TAG, "Adding Logo " + logoVisual.getLogoUrl());
+            mLogoList.add(logoVisual);
+        }
+    }
 
-		if(service.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB || service.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_EDI) {
-			for(VisualLogoImpl vis : mLogoList) {
-				for(RadioDnsEpgBearer bearer : vis.getBearers()) {
-					if(bearer.getBearerType() == RadioDnsEpgBearerType.DAB) {
-						if(((RadioDnsEpgBearerDab)bearer).getEnsembleId() == ((RadioServiceDab)service).getEnsembleId() &&
-								((RadioDnsEpgBearerDab)bearer).getServiceId() == ((RadioServiceDab)service).getServiceId() &&
-								((RadioDnsEpgBearerDab)bearer).getEnsembleEcc() == ((RadioServiceDab)service).getEnsembleEcc() ) {
-							retArr.add(vis);
-							break;
-						}
-					}
-				}
-			}
-		} else if(service.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_IP) {
-			for(VisualLogoImpl vis : mLogoList) {
-				boolean logoFound = false;
-				for(RadioDnsEpgBearer bearer : vis.getBearers()) {
-					for(RadioDnsEpgBearer srvBearer : ((RadioServiceIpImpl)service).getBearers()) {
-						if(bearer.equals(srvBearer)) {
-							retArr.add(vis);
-							logoFound = true;
-							break;
-						}
-					}
+    List<Visual> getLogoVisuals(RadioService service) {
+        ArrayList<Visual> retArr = new ArrayList<>();
+        if (!isReady()) {
+            if (DEBUG) Log.d(TAG, "not ready");
+            return retArr;
+        }
 
-					if(logoFound) {
-						break;
-					}
-				}
-			}
-		}
+        if (service.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB || service.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_EDI) {
+            for (VisualLogoImpl vis : mLogoList) {
+                for (RadioDnsEpgBearer bearer : vis.getBearers()) {
+                    if (bearer.getBearerType() == RadioDnsEpgBearerType.DAB) {
+                        if (((RadioDnsEpgBearerDab) bearer).getEnsembleId() == ((RadioServiceDab) service).getEnsembleId() &&
+                                ((RadioDnsEpgBearerDab) bearer).getServiceId() == ((RadioServiceDab) service).getServiceId() &&
+                                ((RadioDnsEpgBearerDab) bearer).getEnsembleEcc() == ((RadioServiceDab) service).getEnsembleEcc()) {
+                            retArr.add(vis);
+                            break;
+                        }
+                    }
+                }
+            }
+        } else if (service.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_IP) {
+            for (VisualLogoImpl vis : mLogoList) {
+                boolean logoFound = false;
+                for (RadioDnsEpgBearer bearer : vis.getBearers()) {
+                    for (RadioDnsEpgBearer srvBearer : ((RadioServiceIpImpl) service).getBearers()) {
+                        if (bearer.equals(srvBearer)) {
+                            retArr.add(vis);
+                            logoFound = true;
+                            break;
+                        }
+                    }
 
-		return retArr;
-	}
+                    if (logoFound) {
+                        break;
+                    }
+                }
+            }
+        }
 
-	void serializeLogos() {
-		if(!mSerializingInProgress.get()) {
-			mSerializingInProgress.set(true);
+        return retArr;
+    }
 
-			if (DEBUG) Log.d(TAG, "LogoJson Serializing " + mLogoList.size() + " LogoVisuals");
-			final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
-			if (context != null) {
-				File visCacheDir = new File(context.getCacheDir(), VIS_CACHE_DIR);
-				if (!visCacheDir.exists()) {
-					boolean cacheDirCreated = visCacheDir.mkdir();
-					if (DEBUG) {
-						Log.d(TAG, "VisCache dir created: " + cacheDirCreated);
-					}
-				}
+    void serializeLogos() {
+        if (!mSerializingInProgress.get()) {
+            mSerializingInProgress.set(true);
 
-				if (visCacheDir.exists()) {
-					try {
-						JSONArray visArr = new JSONArray();
-						for (VisualLogoImpl logo : mLogoList) {
-							JSONObject visObj = new JSONObject();
+            if (DEBUG) Log.d(TAG, "LogoJson Serializing " + mLogoList.size() + " LogoVisuals");
+            final @Nullable Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
+            final @Nullable File visCacheDir = getLogoCacheDir();
+            if (context != null && visCacheDir != null) {
+                if (!visCacheDir.exists()) {
+                    boolean cacheDirCreated = visCacheDir.mkdirs();
+                    if (DEBUG) {
+                        Log.d(TAG, "VisCache dir created: " + cacheDirCreated);
+                    }
+                }
 
-							visObj.put("logoUrl", logo.getLogoUrl());
-							visObj.put("visType", logo.getVisualType().toString());
-							visObj.put("filePath", logo.getFilePath());
-							visObj.put("width", logo.getVisualWidth());
-							visObj.put("height", logo.getVisualHeight());
-							visObj.put("mimeType", logo.getVisualMimeType().toString());
+                if (visCacheDir.exists()) {
+                    try {
+                        JSONArray visArr = new JSONArray();
+                        for (VisualLogoImpl logo : mLogoList) {
+                            JSONObject visObj = new JSONObject();
 
-							JSONArray bearersArr = new JSONArray();
-							for (RadioDnsEpgBearer bearer : logo.getBearers()) {
-								JSONObject bearerObj = new JSONObject();
+                            visObj.put("logoUrl", logo.getLogoUrl());
+                            visObj.put("visType", logo.getVisualType().toString());
+                            visObj.put("filePath", logo.getFilePath());
+                            visObj.put("width", logo.getVisualWidth());
+                            visObj.put("height", logo.getVisualHeight());
+                            visObj.put("mimeType", logo.getVisualMimeType().toString());
 
-								bearerObj.put("mimeValue", bearer.getMimeValue());
-								bearerObj.put("bearerId", bearer.getBearerId());
-								bearerObj.put("bearerType", bearer.getBearerType().toString());
-								bearerObj.put("bitrate", bearer.getBitrate());
-								bearerObj.put("cost", bearer.getCost());
+                            JSONArray bearersArr = new JSONArray();
+                            for (RadioDnsEpgBearer bearer : logo.getBearers()) {
+                                JSONObject bearerObj = new JSONObject();
 
-								bearersArr.put(bearerObj);
-							}
-							visObj.put("bearers", bearersArr);
+                                bearerObj.put("mimeValue", bearer.getMimeValue());
+                                bearerObj.put("bearerId", bearer.getBearerId());
+                                bearerObj.put("bearerType", bearer.getBearerType().toString());
+                                bearerObj.put("bitrate", bearer.getBitrate());
+                                bearerObj.put("cost", bearer.getCost());
 
-							visArr.put(visObj);
-						}
+                                bearersArr.put(bearerObj);
+                            }
+                            visObj.put("bearers", bearersArr);
 
-						BufferedWriter logoListWriter = null;
-						try {
-							//save to file
-							if (DEBUG) Log.d(TAG, "Serializing LogoJson writing to file...");
+                            visArr.put(visObj);
+                        }
 
-							File srvListFile = new File(visCacheDir, LOGOS_FILENAME);
-							logoListWriter = new BufferedWriter(new FileWriter(srvListFile));
-							logoListWriter.write(visArr.toString(2));
-							logoListWriter.close();
-						} catch (Throwable e) {
-							if (DEBUG) e.printStackTrace();
-						} finally {
-							mSerializingInProgress.set(false);
+                        BufferedWriter logoListWriter = null;
+                        try {
+                            //save to file
+                            if (DEBUG) Log.d(TAG, "Serializing LogoJson writing to file...");
 
-							if (logoListWriter != null) {
-								try {
-									logoListWriter.close();
-								} catch (IOException ioExc) {
-									if (DEBUG) ioExc.printStackTrace();
-								}
-							}
-						}
-					} catch (Throwable e) {
-						if (DEBUG) e.printStackTrace();
-					}
-				} else {
-					mSerializingInProgress.set(false);
-				}
-			}
+                            File srvListFile = new File(visCacheDir, LOGOS_FILENAME);
+                            logoListWriter = new BufferedWriter(new FileWriter(srvListFile));
+                            logoListWriter.write(visArr.toString(2));
+                            logoListWriter.close();
 
-			if (DEBUG) Log.d(TAG, "Serializing LogoJson done!");
-		} else {
-			if(DEBUG)Log.d(TAG, "Serializing already in progress");
-		}
-	}
+                            // some previously cached logo files may no longer be referenced
+                            final @Nullable File visFilesCacheDir = getLogoFilesCacheDir();
+                            if (visFilesCacheDir != null) {
+                                trimLogoCacheFiles(mLogoList, visFilesCacheDir);
+                            }
+                        } catch (Throwable e) {
+                            if (DEBUG) e.printStackTrace();
+                        } finally {
+                            mSerializingInProgress.set(false);
 
-	private void deserializeLogos() {
-		if (!mDeserializingInProgress.get()) {
-			mDeserializingInProgress.set(true);
+                            if (logoListWriter != null) {
+                                try {
+                                    logoListWriter.close();
+                                } catch (Throwable e) {
+                                    if (DEBUG) e.printStackTrace();
+                                }
+                            }
+                        }
+                    } catch (Throwable e) {
+                        if (DEBUG) e.printStackTrace();
+                    }
+                } else {
+                    mSerializingInProgress.set(false);
+                }
+            }
 
-			if (DEBUG) Log.d(TAG, "Restoring LogoJson");
-			final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
-			if (context == null) {
-				Log.w(TAG, "deserializeLogos: Radio context null");
-				mDeserializingInProgress.set(false);
-				return;
-			}
-			final File visCacheFile = new File(context.getCacheDir().getAbsolutePath()
-					+ File.separatorChar + VIS_CACHE_DIR + File.separatorChar + LOGOS_FILENAME);
-			if (visCacheFile.exists()) {
-				mLogoList.clear();
+            if (DEBUG) Log.d(TAG, "Serializing LogoJson done!");
+        } else {
+            if (DEBUG) Log.d(TAG, "Serializing already in progress");
+        }
+    }
 
-				FileInputStream logoJsonInputStream = null;
-				BufferedReader logoJsonReader = null;
-				try {
-					logoJsonInputStream = new FileInputStream(visCacheFile);
-					logoJsonReader = new BufferedReader(new InputStreamReader(logoJsonInputStream));
-					StringBuilder logoJsonBuilder = new StringBuilder();
+    private void trimLogoCacheFiles(@NonNull CopyOnWriteArrayList<VisualLogoImpl> logoList,
+                                    @NonNull File visFilesCacheDir) {
+        if (!visFilesCacheDir.exists()) return;
 
-					char[] readBuf = new char[16*1024];
-					int bytesRead;
-					while ((bytesRead = logoJsonReader.read(readBuf)) != -1) {
-						logoJsonBuilder.append(readBuf, 0, bytesRead);
-					}
+        // list all files in visFilesCacheDir (assumption: no sub directories in visFilesCacheDir)
+        File[] files = visFilesCacheDir.listFiles();
+        if (files == null || files.length == 0) return;
 
-					if (DEBUG)
-						Log.d(TAG, "Read " + LOGOS_FILENAME + " done: "
-								+ logoJsonBuilder.length() + " length");
+        // remove files no longer referenced by logoList
+        String logStr;
+        for (File f : files) {
+            boolean isReferenced = false;
+            for (VisualLogoImpl logo : logoList) {
+                if (f.getName().equals(logo.getFilePath())) {
+                    isReferenced = true;
+                    break;
+                }
+            }
+            if (!isReferenced) {
+                logStr = "delete unreferenced " + f.getName();
+                if (!f.delete()) {
+                    Log.w(TAG, "failed " + logStr);
+                } else {
+                    if (DEBUG) Log.d(TAG, logStr);
+                }
+            }
+        }
+    }
 
-					JSONArray logoListArr = new JSONArray(logoJsonBuilder.toString());
-					if (DEBUG) Log.d(TAG, "Read LogoJson length: " + logoListArr.length());
-					ArrayList<VisualLogoImpl> deserList = new ArrayList<>();
-					for (int i = 0; i < logoListArr.length(); i++) {
-						JSONObject logoObj = logoListArr.getJSONObject(i);
+    private void deserializeLogos() {
+        if (!mDeserializingInProgress.get()) {
+            mDeserializingInProgress.set(true);
 
-						VisualLogoImpl logo = new VisualLogoImpl();
+            if (DEBUG) Log.d(TAG, "Restoring LogoJson");
+            final Context context = ((RadioImpl) Radio.getInstance()).getAppContext();
+            if (context == null) {
+                Log.w(TAG, "deserializeLogos: Radio context null");
+                mDeserializingInProgress.set(false);
+                return;
+            }
+            final @Nullable File visFilesCacheDir = getLogoFilesCacheDir();
+            final @Nullable File visCacheDir = getLogoCacheDir();
+            final @Nullable File visCacheFile = (visCacheDir != null) ? new File(visCacheDir, LOGOS_FILENAME) : null;
+            if (visCacheFile != null && visCacheFile.exists()) {
+                mLogoList.clear();
 
-						logo.setLogoUrl(logoObj.getString("logoUrl"));
-						final String mimeTypeStr = logoObj.getString("mimeType");
-						VisualMimeType mimeType = VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN;
-						try {
-							mimeType = VisualMimeType.valueOf(mimeTypeStr);
-						} catch (Exception e) {
-							if (DEBUG)
-								e.printStackTrace();
-						}
-						logo.setVisualMimeType(mimeType);
-						logo.setFilePath(logoObj.getString("filePath"));
-						logo.setWidth(logoObj.getInt("width"));
-						logo.setHeight(logoObj.getInt("height"));
+                FileInputStream logoJsonInputStream = null;
+                BufferedReader logoJsonReader = null;
+                try {
+                    logoJsonInputStream = new FileInputStream(visCacheFile);
+                    logoJsonReader = new BufferedReader(new InputStreamReader(logoJsonInputStream));
+                    StringBuilder logoJsonBuilder = new StringBuilder();
 
-						JSONArray bearersArr = logoObj.getJSONArray("bearers");
-						for (int j = 0; j < bearersArr.length(); j++) {
-							JSONObject bearerObj = bearersArr.getJSONObject(j);
+                    char[] readBuf = new char[16 * 1024];
+                    int bytesRead;
+                    while ((bytesRead = logoJsonReader.read(readBuf)) != -1) {
+                        logoJsonBuilder.append(readBuf, 0, bytesRead);
+                    }
 
-							RadioDnsEpgBearerType bearerType = RadioDnsEpgBearerType.valueOf(bearerObj.getString("bearerType"));
-							String bearerId = bearerObj.getString("bearerId");
-							String mimeValue = bearerObj.getString("mimeValue");
-							int bitrate = bearerObj.getInt("bitrate");
-							int cost = bearerObj.getInt("cost");
-							switch (bearerType) {
-								case DAB:
-									logo.addBearer(new RadioDnsEpgBearerDab(bearerId, cost, mimeValue, bitrate));
-									break;
-								case IP_HTTP:
-									logo.addBearer(new RadioDnsEpgBearerIpHttp(bearerId, cost, mimeValue, bitrate));
-									break;
-								default:
-									break;
-							}
-						}
+                    if (DEBUG)
+                        Log.d(TAG, "Read " + LOGOS_FILENAME + " done: "
+                                + logoJsonBuilder.length() + " length");
 
-						// sanity check, only in DEBUG build to not slow down the app startup
-						if (DEBUG) {
-							if (!logo.isAvailable()) {
-								Log.w(TAG, "not avail:" + logo.getFilePath());
-							}
-						}
-						deserList.add(logo);
-					}
+                    JSONArray logoListArr = new JSONArray(logoJsonBuilder.toString());
+                    if (DEBUG) Log.d(TAG, "Read LogoJson length: " + logoListArr.length());
+                    ArrayList<VisualLogoImpl> deserList = new ArrayList<>();
+                    for (int i = 0; i < logoListArr.length(); i++) {
+                        JSONObject logoObj = logoListArr.getJSONObject(i);
 
-					mLogoList.addAll(deserList);
+                        VisualLogoImpl logo = new VisualLogoImpl();
 
-					if (DEBUG) Log.d(TAG, "Restoring LogoJson done");
-				} catch (Throwable e) {
-					if (DEBUG) e.printStackTrace();
-				} finally {
-					mDeserializingInProgress.set(false);
+                        logo.setLogoUrl(logoObj.getString("logoUrl"));
+                        final String mimeTypeStr = logoObj.getString("mimeType");
+                        VisualMimeType mimeType = VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN;
+                        try {
+                            mimeType = VisualMimeType.valueOf(mimeTypeStr);
+                        } catch (Exception e) {
+                            if (DEBUG)
+                                e.printStackTrace();
+                        }
+                        logo.setVisualMimeType(mimeType);
+                        logo.setFilePath(logoObj.getString("filePath"));
+                        logo.setWidth(logoObj.getInt("width"));
+                        logo.setHeight(logoObj.getInt("height"));
 
-					try {
-						if (logoJsonInputStream != null) {
-							logoJsonInputStream.close();
-						}
-						if (logoJsonReader != null) {
-							logoJsonReader.close();
-						}
-					} catch (Throwable e) {
-						if (DEBUG) e.printStackTrace();
-					}
-				}
-			} else {
-				mDeserializingInProgress.set(false);
-				if (DEBUG) Log.d(TAG, "Restoring LogoJson does not exist");
-			}
-		}
-	}
+                        JSONArray bearersArr = logoObj.getJSONArray("bearers");
+                        for (int j = 0; j < bearersArr.length(); j++) {
+                            JSONObject bearerObj = bearersArr.getJSONObject(j);
+
+                            RadioDnsEpgBearerType bearerType = RadioDnsEpgBearerType.valueOf(bearerObj.getString("bearerType"));
+                            String bearerId = bearerObj.getString("bearerId");
+                            String mimeValue = bearerObj.getString("mimeValue");
+                            int bitrate = bearerObj.getInt("bitrate");
+                            int cost = bearerObj.getInt("cost");
+                            switch (bearerType) {
+                                case DAB:
+                                    logo.addBearer(new RadioDnsEpgBearerDab(bearerId, cost, mimeValue, bitrate));
+                                    break;
+                                case IP_HTTP:
+                                    logo.addBearer(new RadioDnsEpgBearerIpHttp(bearerId, cost, mimeValue, bitrate));
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+
+                        // sanity check, only in DEBUG build to not slow down the app startup
+                        if (DEBUG) {
+                            if (!logo.isAvailable()) {
+                                Log.w(TAG, "not avail:" + logo.getFilePath());
+                            }
+                        }
+                        deserList.add(logo);
+                    }
+
+                    mLogoList.addAll(deserList);
+
+                    if (DEBUG) Log.d(TAG, "Restoring LogoJson done");
+                } catch (Throwable e) {
+                    if (DEBUG) e.printStackTrace();
+                } finally {
+                    try {
+                        if (logoJsonInputStream != null) {
+                            logoJsonInputStream.close();
+                        }
+                        if (logoJsonReader != null) {
+                            logoJsonReader.close();
+                        }
+                    } catch (Throwable e) {
+                        if (DEBUG) e.printStackTrace();
+                    }
+                }
+            } else {
+                if (DEBUG) Log.d(TAG, "Restoring LogoJson does not exist");
+            }
+
+            if (visFilesCacheDir != null) {
+                // some previously cached logo files may no longer be referenced
+                trimLogoCacheFiles(mLogoList, visFilesCacheDir);
+            }
+
+            mDeserializingInProgress.set(false);
+        }
+    }
 }

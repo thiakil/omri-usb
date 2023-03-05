@@ -971,10 +971,9 @@ public class IpServiceScanner {
 	}
 
 	@Nullable private File createLogoFilesCacheDir() {
-		File dir = null;
+		File dir = VisualLogoManager.getInstance().getLogoFilesCacheDir();
 		final android.content.Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
-		if(context != null) {
-			dir = new File(context.getCacheDir(), "logofiles_cache");
+		if(context != null && dir != null) {
 			if(DEBUG)Log.d(TAG, "LogoFilesCacheDir: " + dir.getAbsolutePath());
 			if(!dir.exists()) {
 				boolean logoCacheCreated = dir.mkdirs();
@@ -986,7 +985,8 @@ public class IpServiceScanner {
 				}
 			}
 		} else {
-			Log.w(TAG, "Radio context null");
+			if (context == null) Log.w(TAG, "Radio context null");
+			if (dir == null) Log.w(TAG, "logo files cache dir null");
 		}
 		return dir;
 	}
