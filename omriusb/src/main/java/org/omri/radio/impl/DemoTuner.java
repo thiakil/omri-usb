@@ -381,14 +381,8 @@ public class DemoTuner implements Tuner {
         protected void onPostExecute(Void aVoid) {
             if (DEBUG) Log.d(TAG, "CollectRecordingsTask finished with " + mServices.size()
                     + " services");
-            if (mServices.isEmpty()) {
-                // no recordings, check for usual service list
-                mRestoreServicesTask = new RestoreServicesTask();
-                mRestoreServicesTask.execute();
-            } else {
-                //done with initialization
-                callBack(TunerUsbCallbackTypes.TUNER_READY.getIntValue());
-            }
+            mRestoreServicesTask = new RestoreServicesTask();
+            mRestoreServicesTask.execute();
         }
     }
 
