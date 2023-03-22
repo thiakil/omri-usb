@@ -30,6 +30,16 @@ bool JNI_DETACH(JavaVM *javaVmPtr, bool wasDetached);
 #ifndef __STDC_NO_THREADS__
 void JNI_TSS_DTOR(void*);
 #endif
-};
-
+/**
+ * Convert a C-style string to JNI string.
+ * Use as a safe replacement for NewStringUTF, which crashes the VM if array of characters is not
+ * in Modified UTF-8 encoding.
+ * In contrast to NewStringUTF, there is no need to call DeleteLocalRef on the returned JNI string.
+ * @param env JNI interface pointer
+ * @param cStr pointer to array of characters in whatever encoding
+ * @param cStrSize array size
+ * @return valid JNI string, potentially an empty string if encoding is unknown
+ */
+jstring getSafeJniStringFromCString(JNIEnv *env, const char *cStr, const size_t cStrSize);
+}
 #endif //DAB_JNI_HELPER_H

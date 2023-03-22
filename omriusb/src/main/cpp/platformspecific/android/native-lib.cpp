@@ -73,6 +73,9 @@ static jmethodID m_ArrayList_add_mId = nullptr;
 static jboolean m_CoutRedirectedToALog = JNI_FALSE;
 static std::string m_rawRecordingPath;
 
+static jclass m_SafeUtfClass = nullptr;
+static jmethodID m_SafeUtf_convertCStringToJniStringSafe_mId = nullptr;
+
 static void cacheClassDefinitions(JavaVM *vm) {
     bool wasDetached;
     if (!JNI_ATTACH(m_javaVm, wasDetached)) {
@@ -131,6 +134,12 @@ static void cacheClassDefinitions(JavaVM *vm) {
     m_javaDateClass = (jclass) env->NewGlobalRef(env->FindClass("java/util/Date"));
 
     m_demoTunerClass = (jclass) env->NewGlobalRef(env->FindClass("org/omri/radio/impl/DemoTuner"));
+
+    //SafeUtf class
+    m_SafeUtfClass = (jclass) env->NewGlobalRef(env->FindClass("org/omri/radio/impl/SafeUtf"));
+    m_SafeUtf_convertCStringToJniStringSafe_mId = env->GetStaticMethodID(m_SafeUtfClass,
+                                                                         "convertCStringToJniStringSafe",
+                                                                         "([B)Ljava/lang/String;");
     if (!JNI_DETACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
     }
@@ -164,6 +173,9 @@ static void cleanClassDefinitions(JavaVM *vm) {
     env->DeleteGlobalRef(m_dabTimeClass);
     env->DeleteGlobalRef(m_javaDateClass);
     env->DeleteGlobalRef(m_demoTunerClass);
+
+    env->DeleteGlobalRef(m_SafeUtfClass);
+
     if (!JNI_DETACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
     }
@@ -815,6 +827,20 @@ Java_org_omri_radio_impl_UsbHelper_demoServiceStop(JNIEnv *env, jobject thiz) {
     if (!JNI_DETACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
     }
+}
+
+jstring getSafeJniStringFromCString(JNIEnv *env, const char *cStr, const size_t cStrSize) {
+    if (env != nullptr && cStr != nullptr) {
+        const auto cppString = std::string(cStr);
+        jbyteArray bArray = env->NewByteArray((jsize) cStrSize);
+        env->SetByteArrayRegion(bArray, 0, (jsize) cStrSize, (jbyte*) cppString.c_str());
+        auto jStr = (jstring) env->CallStaticObjectMethod(m_SafeUtfClass,
+                                                          m_SafeUtf_convertCStringToJniStringSafe_mId,
+                                                          bArray);
+        env->DeleteLocalRef(bArray);
+        return jStr;
+    }
+    return nullptr; // null in, null out
 }
 
 } // extern "C"
