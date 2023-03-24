@@ -130,7 +130,7 @@ dependencies {
 
     // unit testing with JUnit and Mockito
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:5.1.1'
+    testImplementation 'org.mockito:mockito-core:5.2.0'
 }
 
 // Copy libclang_rt.asan-*.so files from NDK folder to jniLibs folder

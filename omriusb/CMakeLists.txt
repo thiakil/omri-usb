@@ -2,8 +2,9 @@
 # documentation: https://d.android.com/studio/projects/add-native-code.html
 
 # Sets the minimum version of CMake required to build the native library.
+cmake_minimum_required(VERSION 3.22.1)
 
-cmake_minimum_required(VERSION 3.4.1)
+project(irtdab)
 
 include_directories(src/main/cpp/thirdparty/fec)
 add_subdirectory(src/main/cpp/thirdparty/fec)
@@ -14,7 +15,7 @@ add_subdirectory(src/main/cpp/thirdparty/fec)
 # Gradle automatically packages shared libraries with your APK.
 
 add_library( # Sets the name of the library.
-             irtdab
+             ${PROJECT_NAME}
 
              # Sets the library as a shared library.
              SHARED
@@ -89,7 +90,7 @@ find_library( # Sets the name of the path variable.
               # you want CMake to locate.
               log)
 
-target_compile_options(irtdab PUBLIC
+target_compile_options(${PROJECT_NAME} PUBLIC
         # start with super pedantic compiler settings ...
         -Wall -Wextra -pedantic -Werror
         # ... and relax them as needed
@@ -109,7 +110,7 @@ target_compile_options(irtdab PUBLIC
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
 if(IRTDAB_ADDRESS_SANITIZER STREQUAL "yes")
-    target_compile_options(irtdab PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+    target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=address -fno-omit-frame-pointer)
     set(ADDRESS_SANITIZER_LINK_OPTIONS
             -fsanitize=address
             )
@@ -118,7 +119,7 @@ else()
 endif()
 
 target_link_libraries( # Specifies the target library.
-                       irtdab
+                       ${PROJECT_NAME}
 
                        # Links the target library to the log library
                        # included in the NDK.
@@ -128,7 +129,3 @@ target_link_libraries( # Specifies the target library.
                        ${ADDRESS_SANITIZER_LINK_OPTIONS}
                        ${MAPFILE_LINK_OPTION}
                        )
-
-#set(CMAKE_BUILD_TYPE Debug)
-#set(CMAKE_BUILD_TYPE Release)
-#set(CMAKE_BUILD_TYPE MinSizeRel)
