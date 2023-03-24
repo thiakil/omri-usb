@@ -601,7 +601,9 @@ Java_org_omri_radio_impl_UsbHelper_getHardwareVersion(JNIEnv *env, jobject thiz,
         }
     }
 
-    jstring retString = env->NewStringUTF(hardwareVersion.c_str());
+    jstring retString = getSafeJniStringFromCString(env,
+                                                    hardwareVersion.c_str(),
+                                                    hardwareVersion.size());
 
     if (!JNI_DETACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
@@ -632,7 +634,9 @@ Java_org_omri_radio_impl_UsbHelper_getSoftwareVersion(JNIEnv *env, jobject thiz,
         }
     }
 
-    jstring retString = env->NewStringUTF(softwareVersion.c_str());
+    jstring retString = getSafeJniStringFromCString(env,
+                                                    softwareVersion.c_str(),
+                                                    softwareVersion.size());
 
     if (!JNI_DETACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;

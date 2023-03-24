@@ -436,7 +436,9 @@ void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>&
 
     jobject slsObject = enve->NewObject(m_javaSlsClass, m_javaSlsConstructorMId);
 
-    jstring slsContentName = enve->NewStringUTF(slide->contentName.c_str());
+    jstring slsContentName = getSafeJniStringFromCString(enve,
+                                                         slide->contentName.c_str(),
+                                                         slide->contentName.size());
     jbyteArray visualData = enve->NewByteArray(static_cast<jsize>(slide->slideshowData.size()));
     if(visualData == nullptr) {
         return;
@@ -450,7 +452,9 @@ void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>&
     enve->CallVoidMethod(slsObject, m_javaSlsSetContentSubTypeMId, slide->contentSubType);
 
     if(slide->isCategorized) {
-        jstring slsCategoryName = enve->NewStringUTF(slide->categoryTitle.c_str());
+        jstring slsCategoryName = getSafeJniStringFromCString(enve,
+                                                              slide->categoryTitle.c_str(),
+                                                              slide->categoryTitle.size());
         enve->CallVoidMethod(slsObject, m_javaSlsSetCategoryTextMId, slsCategoryName);
         enve->DeleteLocalRef(slsCategoryName);
 
@@ -458,12 +462,16 @@ void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>&
         enve->CallVoidMethod(slsObject, m_javaSlsSetCategoryIdMId, slide->categoryId);
 
         if(!slide->alternativeLocationUrl.empty()) {
-            jstring slsAltLocUrl = enve->NewStringUTF(slide->alternativeLocationUrl.c_str());
+            jstring slsAltLocUrl = getSafeJniStringFromCString(enve,
+                                                               slide->alternativeLocationUrl.c_str(),
+                                                               slide->alternativeLocationUrl.size());
             enve->CallVoidMethod(slsObject, m_javaSlsSetAltLocUrlMId, slsAltLocUrl);
             enve->DeleteLocalRef(slsAltLocUrl);
         }
         if(!slide->clickThroughUrl.empty()) {
-            jstring slsCtUrl = enve->NewStringUTF(slide->clickThroughUrl.c_str());
+            jstring slsCtUrl = getSafeJniStringFromCString(enve,
+                                                           slide->clickThroughUrl.c_str(),
+                                                           slide->clickThroughUrl.size());
             enve->CallVoidMethod(slsObject, m_javaSlsSetClickThroughUrlMId, slsCtUrl);
             enve->DeleteLocalRef(slsCtUrl);
         }
@@ -495,7 +503,9 @@ void JDabService::callJavaDynamiclabelCallback(const std::shared_ptr<DabDynamicL
 
     jobject dlsObject = enve->NewObject(m_javaDlsClass, m_javaDlsConstructorMId);
 
-    jstring fullDlsString = enve->NewStringUTF(label->dynamicLabel.c_str());
+    jstring fullDlsString = getSafeJniStringFromCString(enve,
+                                                        label->dynamicLabel.c_str(),
+                                                        label->dynamicLabel.size());
     enve->CallVoidMethod(dlsObject, m_javaDlsSetFullTextMId, fullDlsString, label->charset);
     enve->DeleteLocalRef(fullDlsString);
 
@@ -506,7 +516,9 @@ void JDabService::callJavaDynamiclabelCallback(const std::shared_ptr<DabDynamicL
         jobject dlPlusItemObject = enve->NewObject(m_javaDlPlusItemClass, m_javaDlPlusItemConstructorMId);
         enve->CallVoidMethod(dlPlusItemObject, m_javaDlPlusItemSetContentTypeMId, (jint)tag.contentType);
 
-        jstring tagText = enve->NewStringUTF(tag.dlPlusTagText.c_str());
+        jstring tagText = getSafeJniStringFromCString(enve,
+                                                      tag.dlPlusTagText.c_str(),
+                                                      tag.dlPlusTagText.size());
         enve->CallVoidMethod(dlPlusItemObject, m_javaDlPlusItemSetTextMId, tagText);
         enve->DeleteLocalRef(tagText);
 

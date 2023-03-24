@@ -19,6 +19,7 @@
  */
 
 #include "ediinput.h"
+#include "jni-helper.h"
 
 EdiInput::EdiInput(JavaVM* javaVm, JNIEnv* env, jobject tunerEdiStream) {
     std::cout << LOG_TAG << "Constructing...." << std::endl;
@@ -238,8 +239,12 @@ void EdiInput::ensembleCollectFinished() {
 
     jboolean isScanning = enve->CallBooleanMethod(m_ediTunerObject, m_ediTunerIsScanningMId);
     if(isScanning) {
-        jstring ensembleLabel = enve->NewStringUTF(getEnsembleLabel().data());
-        jstring ensembleShortLabel = enve->NewStringUTF(getEnsembleShortLabel().data());
+        jstring ensembleLabel = getSafeJniStringFromCString(enve,
+                                                            getEnsembleLabel().c_str(),
+                                                            getEnsembleLabel().size());
+        jstring ensembleShortLabel = getSafeJniStringFromCString(enve,
+                                                                 getEnsembleShortLabel().c_str(),
+                                                                 getEnsembleShortLabel().size());
 
         jobject jDabService = m_startServiceLink->getJavaDabServiceObject();
         if (jDabService != nullptr) {
@@ -262,8 +267,12 @@ void EdiInput::ensembleCollectFinished() {
             enve->CallVoidMethod(jDabService,
                                  m_dabServiceSetCaIdMId, (jint) srv->getCaId());
 
-            jstring dabServiceLabel = enve->NewStringUTF(srv->getServiceLabel().data());
-            jstring dabServiceShortLabel = enve->NewStringUTF(srv->getServiceShortLabel().data());
+            jstring dabServiceLabel = getSafeJniStringFromCString(enve,
+                                                                  srv->getServiceLabel().data(),
+                                                                  srv->getServiceLabel().size());
+            jstring dabServiceShortLabel = getSafeJniStringFromCString(enve,
+                                                                       srv->getServiceShortLabel().data(),
+                                                                       srv->getServiceShortLabel().size());
 
             enve->CallVoidMethod(jDabService,
                                  m_dabServiceSetServiceLabelMId, dabServiceLabel);
@@ -280,7 +289,9 @@ void EdiInput::ensembleCollectFinished() {
                                      m_dabServiceSetServiceIsProgrammeMId, JNI_FALSE);
             }
 
-            jstring genrePty = enve->NewStringUTF(srv->getProgrammeTypeFullName().data());
+            jstring genrePty = getSafeJniStringFromCString(enve,
+                                                           srv->getProgrammeTypeFullName().data(),
+                                                           srv->getProgrammeTypeFullName().size());
             jobject termIdObject = enve->NewObject(m_termIdClass, m_termIdConstructorMId);
 
             enve->CallVoidMethod(termIdObject, m_termIdSetGenreTextMId, genrePty);
@@ -311,8 +322,9 @@ void EdiInput::ensembleCollectFinished() {
                                      m_dabServiceComponentSetSubchannelIdMId,
                                      srvComp->getSubChannelId());
 
-                jstring dabServiceComponentLabel = enve->NewStringUTF(
-                        srvComp->getServiceComponentLabel().data());
+                jstring dabServiceComponentLabel = getSafeJniStringFromCString(enve,
+                                                                               srvComp->getServiceComponentLabel().c_str(),
+                                                                               srvComp->getServiceComponentLabel().size());
                 enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetLabelMId,
                                      dabServiceComponentLabel);
 

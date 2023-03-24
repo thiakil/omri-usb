@@ -195,10 +195,12 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
         }
     }
 
-    jstring ensembleLabel;
-    jstring ensembleShortLabel;
-    ensembleLabel = enve->NewStringUTF(ensemble.getEnsembleLabel().c_str());
-    ensembleShortLabel = enve->NewStringUTF(ensemble.getEnsembleShortLabel().c_str());
+    jstring ensembleLabel = getSafeJniStringFromCString(enve,
+                                                        ensemble.getEnsembleLabel().c_str(),
+                                                        ensemble.getEnsembleLabel().size());
+    jstring ensembleShortLabel = getSafeJniStringFromCString(enve,
+                                                            ensemble.getEnsembleShortLabel().c_str(),
+                                                            ensemble.getEnsembleShortLabel().size());
 
     for(const auto& srv : ensemble.getDabServices()) {
         std::cout << m_logTag << " Scan service: " << srv->getServiceLabel() << std::endl;
@@ -220,8 +222,12 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
         jstring dabServiceLabel;
         jstring dabServiceShortLabel;
 
-        dabServiceLabel = enve->NewStringUTF(srv->getServiceLabel().c_str());
-        dabServiceShortLabel = enve->NewStringUTF(srv->getServiceShortLabel().c_str());
+        dabServiceLabel = getSafeJniStringFromCString(enve,
+                                                      srv->getServiceLabel().c_str(),
+                                                      srv->getServiceLabel().size());
+        dabServiceShortLabel = getSafeJniStringFromCString(enve,
+                                                           srv->getServiceShortLabel().c_str(),
+                                                           srv->getServiceShortLabel().size());
 
         enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceLabelMId, dabServiceLabel);
         enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceShortLabelMId, dabServiceShortLabel);
@@ -233,7 +239,9 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
             enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceIsProgrammeMId, JNI_FALSE);
         }
 
-        jstring genrePty = enve->NewStringUTF(srv->getProgrammeTypeFullName().data());
+        jstring genrePty = getSafeJniStringFromCString(enve,
+                                                       srv->getProgrammeTypeFullName().c_str(),
+                                                       srv->getProgrammeTypeFullName().size());
         jobject termIdObject = enve->NewObject(m_termIdClass, m_termIdConstructorMId);
 
         enve->CallVoidMethod(termIdObject, m_termIdSetGenreTextMId, genrePty);
@@ -258,7 +266,9 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
             enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetSubchannelIdMId, srvComp->getSubChannelId());
 
             jstring dabServiceComponentLabel;
-            dabServiceComponentLabel = enve->NewStringUTF(srvComp->getServiceComponentLabel().c_str());
+            dabServiceComponentLabel = getSafeJniStringFromCString(enve,
+                                                                   srvComp->getServiceComponentLabel().c_str(),
+                                                                   srvComp->getServiceComponentLabel().size());
             enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetLabelMId, dabServiceComponentLabel);
 
             jint packetAddress;
