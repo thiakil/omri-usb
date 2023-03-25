@@ -644,6 +644,61 @@ Java_org_omri_radio_impl_UsbHelper_getSoftwareVersion(JNIEnv *env, jobject thiz,
     return retString;
 }
 
+JNIEXPORT void JNICALL
+Java_org_omri_radio_impl_UsbHelper_setDirectBulkTransferEnabled(JNIEnv *env, jobject thiz,
+                                                                jstring usbDeviceName,
+                                                                jboolean directEnabled) {
+    bool wasDetached;
+    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
+        return;
+    }
+    jboolean isCopy;
+    const char *cDeviceName = env->GetStringUTFChars(usbDeviceName, &isCopy);
+    std::string devName(cDeviceName);
+    env->ReleaseStringUTFChars(usbDeviceName, cDeviceName);
+
+    auto devIter = m_usbDevices.cbegin();
+    while (devIter != m_usbDevices.cend()) {
+        if ((*devIter)->getDeviceName() == devName) {
+            (*devIter)->setDirectBulkTransferEnabled(directEnabled);
+            break;
+        }
+    }
+    if (!JNI_DETACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
+    }
+}
+
+JNIEXPORT jboolean JNICALL
+Java_org_omri_radio_impl_UsbHelper_getDirectBulkTransferEnabled(JNIEnv *env, jobject thiz,
+                                                                jstring usbDeviceName) {
+    bool wasDetached;
+    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
+        return false;
+    }
+    jboolean isCopy;
+    const char *cDeviceName = env->GetStringUTFChars(usbDeviceName, &isCopy);
+    std::string devName(cDeviceName);
+    env->ReleaseStringUTFChars(usbDeviceName, cDeviceName);
+
+    bool retVal = false;
+    auto devIter = m_usbDevices.cbegin();
+    while (devIter != m_usbDevices.cend()) {
+        if ((*devIter)->getDeviceName() == devName) {
+            retVal = (*devIter)->getDirectBulkTransferEnabled();
+            break;
+        }
+    }
+
+    if (!JNI_DETACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
+    }
+
+    return retVal;
+}
+
 /* EdiStream -> highly experimental */
 static std::vector<std::shared_ptr<EdiInput>> m_ediInputs;
 

@@ -25,7 +25,10 @@
 
 extern "C" {
 
-bool JNI_ATTACH(JavaVM *javaVmPtr, bool &wasDetached);
+bool JNI_ATTACH_ENV(JavaVM * javaVmPtr, bool & wasDetached, JNIEnv* * jniEnvPtr);
+inline bool JNI_ATTACH(JavaVM *javaVmPtr, bool &wasDetached) {
+    return JNI_ATTACH_ENV(javaVmPtr, wasDetached, nullptr);
+}
 bool JNI_DETACH(JavaVM *javaVmPtr, bool wasDetached);
 #ifndef __STDC_NO_THREADS__
 void JNI_TSS_DTOR(void*);

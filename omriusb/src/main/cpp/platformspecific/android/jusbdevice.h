@@ -28,6 +28,8 @@
 #include <map>
 
 class JUsbDevice {
+public:
+    static const bool DEFAULT_DIRECT_BULK_TRANSFER_ENABLED = true;
 
 public:
     explicit JUsbDevice(JavaVM* javaVm, JNIEnv* env, jobject usbDevice);
@@ -44,10 +46,18 @@ public:
     using PermissionCallbackFunction = std::function<void(const bool permissionGranted)>;
     virtual void requestPermission(PermissionCallbackFunction permissionCallback);
 
-    int writeBulkTransferData(uint8_t endPointAddress, const std::vector<uint8_t>& buffer, int timeOutMs = 50) const;
+    inline void setDirectBulkTransferEnabled(bool direct) {
+        m_useDirectBulkTransfer = direct;
+    }
+    inline bool getDirectBulkTransferEnabled() {
+        return m_useDirectBulkTransfer;
+    }
+    int writeBulkTransferData(uint8_t endPointAddress, const std::vector<uint8_t>& buffer, int timeOutMs = 50);
     int writeBulkTransferDataDirect(uint8_t endPointAddress, const std::vector<uint8_t> &buffer, int timeOutMs = 50) const;
-    int readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t>& buffer, int timeOutMs = 500) const;
+    int writeBulkTransferDataJNI(uint8_t endPointAddress, const std::vector<uint8_t> &buffer, int timeOutMs = 50) const;
+    int readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t>& buffer, int timeOutMs = 500);
     int readBulkTransferDataDirect(uint8_t endPointAddress, const std::vector<uint8_t> &buffer, int timeOutMs = 500) const;
+    int readBulkTransferDataJNI(uint8_t endPointAddress, const std::vector<uint8_t> &buffer, int timeOutMs = 500) const;
 
 private:
     JavaVM* m_javaVm;
@@ -60,9 +70,14 @@ private:
     uint16_t m_productId{0xFFFF};
     bool m_permissionGranted{false};
 
+    std::map<uint8_t, jobject> m_endpointsMap;
+
     PermissionCallbackFunction m_permissionCallback{nullptr};
 
     uint8_t m_interfaceNum{0};
+    bool m_useDirectBulkTransfer{DEFAULT_DIRECT_BULK_TRANSFER_ENABLED};
+    bool m_isFirstReadNonDirect{true};
+    bool m_isFirstWriteNonDirect{true};
 
 private:
     const std::string LOG_TAG{"[JUsbDevice] "};

@@ -302,6 +302,21 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
+	public void setDirectBulkTransferModeEnabled(boolean direct) {
+		if (mUsbDevice != null) {
+			UsbHelper.getInstance().setDirectBulkTransferModeEnabled(mUsbDevice.getDeviceName(), direct);
+		}
+	}
+
+	@Override
+	public boolean getDirectBulkTransferModeEnabled() {
+		if (mUsbDevice != null) {
+			return UsbHelper.getInstance().getDirectBulkTransferModeEnabled(mUsbDevice.getDeviceName());
+		}
+		return true; // should not come here, default is in jusbdevice.h
+	}
+
+	@Override
 	public void subscribe(TunerListener tunerListener) {
 		synchronized (mTunerlisteners) {
 			if (!mTunerlisteners.contains(tunerListener)) {

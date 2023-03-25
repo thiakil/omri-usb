@@ -32,13 +32,13 @@ thread_local tss_t tss_key;
 #endif
 #include "jni-helper.h"
 
-bool JNI_ATTACH(JavaVM * javaVmPtr, bool & wasDetached) {
+bool JNI_ATTACH_ENV(JavaVM * javaVmPtr, bool & wasDetached, JNIEnv* * jniEnvPtr) {
     if (javaVmPtr != nullptr) {
         wasDetached = false;
         JNIEnv *enve;
         int envState = javaVmPtr->GetEnv((void **) &enve, JNI_VERSION_1_6);
         if (envState == JNI_EDETACHED) {
-            if (javaVmPtr->AttachCurrentThread(&enve, nullptr) == 0) {
+            if (javaVmPtr->AttachCurrentThread(&enve, nullptr) == JNI_OK) {
                 wasDetached = true;
 #ifndef __STDC_NO_THREADS__
                 /** store JavaVM ptr in thread local storage
@@ -51,6 +51,12 @@ bool JNI_ATTACH(JavaVM * javaVmPtr, bool & wasDetached) {
 #endif // __STDC_NO_THREADS__
             } else {
                 return false;
+            }
+        }
+        if (jniEnvPtr != nullptr) {
+            envState = javaVmPtr->GetEnv((void **) &enve, JNI_VERSION_1_6);
+            if (envState == JNI_OK) {
+                *jniEnvPtr = enve;
             }
         }
         return true;

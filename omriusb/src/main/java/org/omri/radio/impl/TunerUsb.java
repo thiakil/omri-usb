@@ -38,4 +38,7 @@ interface TunerUsb extends Tuner {
 	void serviceStopped(RadioServiceDab stoppedService);
 
 	void receptionStatistics(boolean rfLocked, int rssi);
+
+	void setDirectBulkTransferModeEnabled(boolean direct);
+	boolean getDirectBulkTransferModeEnabled();
 }

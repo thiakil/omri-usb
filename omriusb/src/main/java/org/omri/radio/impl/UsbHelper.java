@@ -45,20 +45,15 @@ import java.util.concurrent.Executors;
  */
 
 public class UsbHelper {
-
 	private static final String TAG = "UsbHelper";
 	private static final String ACTION_USB_PERMISSION = "de.irt.usbhelper.USB_PERMISSION";
-
 	private final Context mContext;
-
 	private static UsbHelper mInstance = null;
 	private static UsbHelperCallback mUsbCb = null;
 	private static boolean mRedirectCoutToALog = false;
 	private static String mRawRecordingPath = "";
-
 	private UsbManager mUsbManager;
 	private PendingIntent mUsbPermissionIntent;
-
 	private HashMap<String, UsbDevice> mUsbDeviceList = null;
 
 	static {
@@ -79,7 +74,9 @@ public class UsbHelper {
 	private native ArrayList<RadioServiceDab> getLinkedServices(String deviceName, RadioServiceDab dabService);
 	private native String getHardwareVersion(String deviceName);
 	private native String getSoftwareVersion(String deviceName);
-
+	private native void setDirectBulkTransferEnabled(String deviceName, boolean direct);
+	private native boolean getDirectBulkTransferEnabled(String deviceName);
+	private static native boolean getDefaultDirectBulkTransferEnabled();
 
 	/* EdiStream */
 	private native void ediTunerAttached(TunerEdistream ediTuner);
@@ -180,6 +177,13 @@ public class UsbHelper {
 
 	public @Nullable String getSwVersion(@NonNull String deviceName) {
 		return getSoftwareVersion(deviceName);
+	}
+
+	public void setDirectBulkTransferModeEnabled(String deviceName, boolean direct) {
+		setDirectBulkTransferEnabled(deviceName, direct);
+	}
+	public boolean getDirectBulkTransferModeEnabled(String deviceName) {
+		return getDirectBulkTransferEnabled(deviceName);
 	}
 
 	/* EdiStream */

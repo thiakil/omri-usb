@@ -387,7 +387,7 @@ void RaonTunerInput::scanNext() {
         std::stringstream logStr;
         logStr << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Scan finished: " << +m_currentScanningEnsembleNum;
         std::cout << logStr.str() << std::endl;
-         if (m_usbDevice != nullptr) {
+        if (m_usbDevice != nullptr) {
             m_usbDevice->scanProgress(100, -1);
             m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
         }
@@ -422,11 +422,21 @@ bool RaonTunerInput::hasUsbIoErrors() {
             +1); // +1 because number attempts = 1 + number retries !
     if (mUsbReadFailure > maxFailures || mUsbWriteFailure > maxFailures) {
         if (!mUsbIoErrorReported) {
-            mUsbIoErrorReported = true;
-            std::clog << LOG_TAG << "too many USB IO failures" << std::endl;
+            std::clog << LOG_TAG << "too many USB I/O failures" << std::endl;
             if (m_usbDevice != nullptr) {
-                m_usbDevice->callCallback(
-                        JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_FAILED);
+                if (m_usbDevice->getDirectBulkTransferEnabled()) {
+                    // switch from direct to JNI based bulk transfer method
+                    std::clog << LOG_TAG << "trying JNI based bulk transfer method" << std::endl;
+                    m_usbDevice->setDirectBulkTransferEnabled(false);
+                    // reset attributes
+                    mUsbReadFailure = mUsbWriteFailure = 0;
+                    // had I/O error, try again
+                    return false;
+                } else {
+                    mUsbIoErrorReported = true;
+                    m_usbDevice->callCallback(
+                            JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_FAILED);
+                }
             }
         }
         // slow down calling thread by 5 ms because this is called on a high frequency

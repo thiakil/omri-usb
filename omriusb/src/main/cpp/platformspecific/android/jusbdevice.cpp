@@ -27,11 +27,6 @@
 #include "jusbdevice.h"
 #include "jni-helper.h"
 
-// POSIX_IOCTL_READ_WRITE_BULKTRANSFER
-// 0 : Use Android UsbDeviceConnection (with immense overhead for JNI)
-// 1 : Use POSIX ioctl() to read/write (no overhead, direct kernel communication)
-#define POSIX_IOCTL_READ_WRITE_BULKTRANSFER 1
-
 JUsbDevice::JUsbDevice(JavaVM* javaVm, JNIEnv *env, jobject usbDevice) {
     m_javaVm = javaVm;
 
@@ -122,7 +117,7 @@ JUsbDevice::~JUsbDevice() {
     auto usbDeviceConnection = m_usbDeviceConnectionObject;
     auto usbHelperClass = m_usbHelperClass;
     if (usbDeviceConnection != nullptr && usbHelperClass != nullptr) {
-        jobject usbHelper = env->CallStaticObjectMethod(usbHelperClass, m_usbHelperGetInstanceMId);
+        auto usbHelper = env->CallStaticObjectMethod(usbHelperClass, m_usbHelperGetInstanceMId);
         auto usbHelperCloseDeviceConnectionMId = m_usbHelperCloseDeviceConnectionMId;
         if (usbHelper != nullptr && usbHelperCloseDeviceConnectionMId != nullptr) {
             env->CallVoidMethod(usbHelper, usbHelperCloseDeviceConnectionMId, usbDeviceConnection);
@@ -135,6 +130,11 @@ JUsbDevice::~JUsbDevice() {
     env->DeleteGlobalRef(m_usbDeviceConnectionClass);
     env->DeleteGlobalRef(m_usbDeviceInterfaceClass);
     env->DeleteGlobalRef(m_usbDeviceEndpointClass);
+    for (auto it = m_endpointsMap.cbegin(); it != m_endpointsMap.cbegin(); it++) {
+        if (it->second != nullptr) {
+            env->DeleteGlobalRef(it->second);
+        }
+    }
 
     if (!JNI_DETACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
@@ -187,7 +187,7 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
     if(granted) {
         m_permissionGranted = true;
 
-        jobject usbhelper = env->CallStaticObjectMethod(m_usbHelperClass, m_usbHelperGetInstanceMId);
+        auto usbhelper = env->CallStaticObjectMethod(m_usbHelperClass, m_usbHelperGetInstanceMId);
         jobject usbInterface = nullptr;
         jint endpointCnt = 0;
         if (usbhelper != nullptr) {
@@ -197,7 +197,7 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
             usbInterface = env->CallObjectMethod(m_usbDeviceObject, m_usbDeviceGetInterfaceMId, m_interfaceNum);
             if (usbInterface != nullptr) {
                 std::ostringstream logStr;
-                jboolean claimed = env->CallBooleanMethod(m_usbDeviceConnectionObject,
+                auto claimed = env->CallBooleanMethod(m_usbDeviceConnectionObject,
                                                           m_usbDeviceConnectionClaimInterfaceMId,
                                                           usbInterface, JNI_TRUE);
                 logStr << LOG_TAG << "if claimed: " << std::boolalpha
@@ -207,32 +207,30 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
                 logStr << ", ep count: " << +endpointCnt;
 
                 m_fileDescriptor = env->CallIntMethod(m_usbDeviceConnectionObject,
-                                             m_usbDeviceConnectionGetFileDescriptorMid);
+                                                      m_usbDeviceConnectionGetFileDescriptorMid);
                 logStr << ", fd: " << +m_fileDescriptor;
 
                 std::cout << logStr.str() << std::endl;
+
+                for(int i = 0; i < endpointCnt; i++) {
+                    logStr = std::ostringstream();
+                    auto endPoint = env->CallObjectMethod(usbInterface, m_usbDeviceInterfaceGetEndpointMId, i);
+                    auto endpointNumber = env->CallIntMethod(endPoint, m_usbDeviceEndpointGetEndpointNumberMId);
+                    auto endpointAddress = env->CallIntMethod(endPoint, m_usbDeviceEndpointGetEndpointAddressMId);
+                    auto endpointDirection = env->CallIntMethod(endPoint, m_usbDeviceEndpointGetDirectionMId);
+                    logStr << " #" << +i << ":ep 0x" << std::hex << +endpointNumber << " addr: 0x" << +endpointAddress
+                           << " dir:0x" << +endpointDirection << std::dec;
+
+                    auto endPointRef = env->NewGlobalRef(endPoint);
+                    auto endPointPair = std::pair<uint8_t,jobject>(static_cast<uint8_t>(endpointAddress), endPointRef);
+                    m_endpointsMap.insert(endPointPair);
+                    std::cout << logStr.str() << std::endl;
+                }
             } else {
                 std::clog << LOG_TAG << "UsbInterface.getInterface failed" << std::endl;
             }
         } else {
             std::clog << LOG_TAG << "UsbHelper.getInstance failed" << std::endl;
-        }
-
-        if (usbInterface != nullptr) {
-            for (jint i = 0; i < endpointCnt; i++) {
-                jobject endPoint = env->CallObjectMethod(usbInterface,
-                                                         m_usbDeviceInterfaceGetEndpointMId, i);
-                jint endpointNumber = env->CallIntMethod(endPoint,
-                                                         m_usbDeviceEndpointGetEndpointNumberMId);
-                jint endpointAddress = env->CallIntMethod(endPoint,
-                                                          m_usbDeviceEndpointGetEndpointAddressMId);
-                jint endpointDirection = env->CallIntMethod(endPoint,
-                                                            m_usbDeviceEndpointGetDirectionMId);
-                std::ostringstream logStr;
-                logStr << LOG_TAG << "Endpoint Number: " << +endpointNumber << " Address: "
-                          << +endpointAddress << " Direction: " << +endpointDirection;
-                std::cout << logStr.str() << std::endl;
-            }
         }
     }
 
@@ -258,49 +256,52 @@ int JUsbDevice::writeBulkTransferDataDirect(uint8_t endPointAddress, const std::
     int rtn = ioctl(m_fileDescriptor, USBDEVFS_BULK, &bt);
     return rtn;
 }
-
-int JUsbDevice::writeBulkTransferData(uint8_t endPointAddress, const std::vector<uint8_t>& buffer, int timeOutMs) const {
-
-#if POSIX_IOCTL_READ_WRITE_BULKTRANSFER
-    return writeBulkTransferDataDirect(endPointAddress, buffer, timeOutMs);
-#else
+int JUsbDevice::writeBulkTransferDataJNI(uint8_t endPointAddress, const std::vector<uint8_t> &buffer, int timeOutMs) const {
     auto endpointIter = m_endpointsMap.find(endPointAddress);
     if(endpointIter != m_endpointsMap.cend()) {
-        //std::cout << "Found endpoint...sending-retrieving data on Endpoint: " << +endPointAddress << " with buffer size: " << +buffer.size() << std::endl;
-
-        bool wasDeattached = false;
         JNIEnv* enve;
+        bool wasDetached = false;
 
-        int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
-        if(envState == JNI_EDETACHED) {
-            if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
-                wasDeattached = true;
-            } else {
-                std::cout << "jniEnv thread failed to attach!" << std::endl;
-                return -1;
-            }
-        }
-
-        jbyteArray data = enve->NewByteArray(buffer.size());
-        if(data == NULL) {
+        if (!JNI_ATTACH(m_javaVm, wasDetached)) {
+            std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
             return -1;
         }
-        enve->SetByteArrayRegion(data, 0, buffer.size(), (jbyte*)buffer.data());
+        int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
 
-        jint ret = enve->CallIntMethod(m_usbDeviceConnectionObject, m_usbDeviceConnectionBulkTransferWithOffsetMId, endpointIter->second, data, 0, buffer.size(), timeOutMs);
+
+        jbyteArray data = enve->NewByteArray((jsize) buffer.size());
+        if(data == nullptr) {
+            return -1;
+        }
+        enve->SetByteArrayRegion(data, 0, (jsize) buffer.size(), (jbyte*)buffer.data());
+
+        jint ret = enve->CallIntMethod(m_usbDeviceConnectionObject,
+                                       m_usbDeviceConnectionBulkTransferWithOffsetMId,
+                                       endpointIter->second, data, 0, (int) buffer.size(), timeOutMs);
         //std::cout << "Sent: " << +ret << " bytes" << std::endl;
 
         enve->DeleteLocalRef(data);
 
-        if(wasDeattached) {
-            m_javaVm->DetachCurrentThread();
+        if (!JNI_DETACH(m_javaVm, wasDetached)) {
+            std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
         }
 
         return ret;
     }
 
     return -1;
-#endif // POSIX_IOCTL_READ_WRITE_BULKTRANSFER
+}
+int JUsbDevice::writeBulkTransferData(uint8_t endPointAddress, const std::vector<uint8_t>& buffer, int timeOutMs) {
+    if (m_useDirectBulkTransfer) {
+        m_isFirstWriteNonDirect = true;
+        return writeBulkTransferDataDirect(endPointAddress, buffer, timeOutMs);
+    } else {
+        if (m_isFirstWriteNonDirect) {
+            m_isFirstWriteNonDirect = false;
+            std::clog << LOG_TAG << "write bulk transfer via JNI" << std::endl;
+        }
+        return writeBulkTransferDataJNI(endPointAddress, buffer, timeOutMs);
+    }
 }
 
 int JUsbDevice::readBulkTransferDataDirect(uint8_t endPointAddress, const std::vector<uint8_t> &buffer, int timeOutMs) const {
@@ -317,31 +318,21 @@ int JUsbDevice::readBulkTransferDataDirect(uint8_t endPointAddress, const std::v
 
     return rtn;
 }
-
-int JUsbDevice::readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t> &buffer, int timeOutMs) const {
-
-#if POSIX_IOCTL_READ_WRITE_BULKTRANSFER
-    return readBulkTransferDataDirect(endPointAddress, buffer, timeOutMs);
-#else
+int JUsbDevice::readBulkTransferDataJNI(uint8_t endPointAddress, const std::vector<uint8_t> &buffer, int timeOutMs) const {
     auto endpointIter = m_endpointsMap.find(endPointAddress);
     if(endpointIter != m_endpointsMap.cend()) {
         //std::cout << "Found endpoint...sending-retrieving data on Endpoint: " << +endPointAddress << " with buffer size: " << +buffer.size() << std::endl;
 
-        bool wasDeattached = false;
         JNIEnv* enve;
+        bool wasDetached = false;
 
-        int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
-        if(envState == JNI_EDETACHED) {
-            if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
-                wasDeattached = true;
-            } else {
-                std::cout << "jniEnv thread failed to attach!" << std::endl;
-                return -1;
-            }
+        if (!JNI_ATTACH_ENV(m_javaVm, wasDetached, &enve)) {
+            std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
+            return -1;
         }
 
-        jbyteArray data = enve->NewByteArray(buffer.size());
-        jint ret = enve->CallIntMethod(m_usbDeviceConnectionObject, m_usbDeviceConnectionBulkTransferWithOffsetMId, endpointIter->second, data, 0, buffer.size(), timeOutMs);
+        jbyteArray data = enve->NewByteArray((jsize) buffer.size());
+        jint ret = enve->CallIntMethod(m_usbDeviceConnectionObject, m_usbDeviceConnectionBulkTransferWithOffsetMId, endpointIter->second, data, 0, (int) buffer.size(), timeOutMs);
         //std::cout << "Retrieved: " << +ret << " bytes" << std::endl;
 
         if(ret > 0) {
@@ -349,13 +340,24 @@ int JUsbDevice::readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_
         }
         enve->DeleteLocalRef(data);
 
-        if(wasDeattached) {
-            m_javaVm->DetachCurrentThread();
+        if (!JNI_DETACH(m_javaVm, wasDetached)) {
+            std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
         }
 
         return ret;
     }
 
     return -1;
-#endif // POSIX_IOCTL_READ_WRITE_BULKTRANSFER
+}
+int JUsbDevice::readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t> &buffer, int timeOutMs) {
+    if (m_useDirectBulkTransfer) {
+        m_isFirstReadNonDirect = true;
+        return readBulkTransferDataDirect(endPointAddress, buffer, timeOutMs);
+    } else {
+        if (m_isFirstReadNonDirect) {
+            m_isFirstReadNonDirect = false;
+            std::clog << LOG_TAG << "read bulk transfer via JNI" << std::endl;
+        }
+        return readBulkTransferDataJNI(endPointAddress, buffer, timeOutMs);
+    }
 }
