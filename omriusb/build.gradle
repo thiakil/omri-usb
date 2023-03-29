@@ -50,7 +50,7 @@ android {
 
     compileSdkVersion omriUsbCompileSdkVersion
     ndkVersion omriUsbNdkVersion
-
+    namespace 'org.omri'
     defaultConfig {
         minSdkVersion omriUsbMinSdkVersion
         //noinspection OldTargetApi
@@ -166,15 +166,15 @@ clean.dependsOn cleanNativeAsanLibs
 // Create asan.sh in resources
 // See https://developer.android.com/ndk/guides/asan
 task createWrapSh(type: Copy) {
-    def ndkDir = project.android.ndkDirectory.absolutePath
-    outputs.file(new File(projectDir, 'src/main/resources/lib/arm64-v8a/asan.sh'))
-    if (asanEnabledInDebugBuild) {
-        File resourcesFolder = new File(projectDir, '/src/main/resources/lib/arm64-v8a')
-        if (!resourcesFolder.exists()) {
-            resourcesFolder.mkdirs()
-        }
-        from new File(ndkDir, '/wrap.sh/asan.sh')
-        into new File(resourcesFolder, '.')
+        def ndkDir = project.android.ndkDirectory.absolutePath
+        outputs.file(new File(projectDir, 'src/main/resources/lib/arm64-v8a/asan.sh'))
+        if (asanEnabledInDebugBuild) {
+            File resourcesFolder = new File(projectDir, '/src/main/resources/lib/arm64-v8a')
+            if (!resourcesFolder.exists()) {
+                resourcesFolder.mkdirs()
+            }
+            from new File(ndkDir, '/wrap.sh/asan.sh')
+            into new File(resourcesFolder, '.')
     }
 }
 // clean wrap.sh in resources
