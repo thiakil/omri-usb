@@ -106,18 +106,38 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -Wno-unused-variable
         )
 
-# Specifies libraries CMake should link to your target library. You
-# can link multiple libraries, such as libraries you define in this
-# build script, prebuilt third-party libraries, or system libraries.
+# Function to set ARCH from ABI
+function(set_arch_from_abi ABI ARCH)
+    if (ABI STREQUAL armeabi-v7a)
+        set(${ARCH} arm PARENT_SCOPE)
+    elseif(ABI STREQUAL arm64-v8a)
+        set(${ARCH} aarch64 PARENT_SCOPE)
+    elseif(ABI STREQUAL x86)
+        set(${ARCH} i686 PARENT_SCOPE)
+    elseif(ABI STREQUAL x86_64)
+        set(${ARCH} x86_64 PARENT_SCOPE)
+    else()
+        message(FATAL_ERROR "Unsupported ABI: ${ABI}")
+    endif()
+endfunction()
+
 if(IRTDAB_ADDRESS_SANITIZER STREQUAL "yes")
     target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=address -fno-omit-frame-pointer)
-    set(ADDRESS_SANITIZER_LINK_OPTIONS
-            -fsanitize=address
-            )
+    set(ADDRESS_SANITIZER_LINK_OPTIONS            -fsanitize=address)
+    set_arch_from_abi(${ANDROID_ABI} ARCH)
+    file(GLOB_RECURSE ASAN_SRC ${ANDROID_TOOLCHAIN_ROOT}/*.asan*${ARCH}*-android.so)
+    set(ASAN_DEST ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    add_custom_command(
+            TARGET ${PROJECT_NAME} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${ASAN_SRC} ${ASAN_DEST}
+    )
 else()
     set(ADDRESS_SANITIZER_LINK_OPTIONS) # empty string
 endif()
 
+# Specifies libraries CMake should link to your target library. You
+# can link multiple libraries, such as libraries you define in this
+# build script, prebuilt third-party libraries, or system libraries.
 target_link_libraries( # Specifies the target library.
                        ${PROJECT_NAME}
 

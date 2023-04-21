@@ -1,7 +1,8 @@
 apply plugin: 'com.android.library'
 
-// change to true if you want Address Sanitizer active in debug build
 // see https://developer.android.com/ndk/guides/asan
+// Change to true if you want Address Sanitizer active in debug build
+// Ensure a clean build after change !
 def asanEnabledInDebugBuild = false
 
 // Allow for project-level definition of certain versions. If such does not exist, use defaults.
@@ -48,7 +49,7 @@ println("omri-usb: targetSdk:" + omriUsbTargetSdkVersion
 
 android {
 
-    compileSdkVersion omriUsbCompileSdkVersion
+    compileSdk omriUsbCompileSdkVersion
     ndkVersion omriUsbNdkVersion
     namespace 'org.omri'
     defaultConfig {
@@ -83,6 +84,13 @@ android {
                         arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
                         arguments += "-DIRTDAB_ADDRESS_SANITIZER=yes"
                     }
+                }
+            }
+            sourceSets.debug.resources {
+                if (asanEnabledInDebugBuild) {
+                    // pick asan.sh from NDK into folder 'resources'
+                    // See https://developer.android.com/ndk/guides/asan
+                    srcDir project.android.ndkDirectory.absolutePath + "/wrap.sh/"
                 }
             }
         }
@@ -130,60 +138,21 @@ dependencies {
 
     // unit testing with JUnit and Mockito
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:5.2.0'
+    testImplementation 'org.mockito:mockito-core:5.3.0'
 }
 
-// Copy libclang_rt.asan-*.so files from NDK folder to jniLibs folder
-// currently for arm64 only
-task copyNativeAsanLibs(type: Copy) {
-    outputs.file(new File(project(':omriusb').projectDir,
-            '/src/main/jniLibs/arm64-v8a/libclang_rt.asan-aarch64-android.so'))
-    if (asanEnabledInDebugBuild) {
-        def ndkDir = project.android.ndkDirectory.absolutePath
-        if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
-            from(new File(ndkDir, 'toolchains/llvm/prebuilt/windows-x86_64/lib64/clang/' + omriUsbClangVersion + '/lib/linux'))
-                    { include 'libclang_rt.asan-aarch64-android.so' }
-            into new File(project(':omriusb').projectDir, '/src/main/jniLibs/arm64-v8a')
-        } else if (org.gradle.internal.os.OperatingSystem.current().isLinux()) {
-            from(new File(ndkDir, 'toolchains/llvm/prebuilt/linux-x86_64/lib64/clang/' + omriUsbClangVersion + '/lib/linux'))
-                    { include 'libclang_rt.asan-aarch64-android.so' }
-            into new File(project(':omriusb').projectDir, '/src/main/jniLibs/arm64-v8a')
-        } else {
-            // bad luck
-        }
-    }
-}
-task cleanNativeAsanLibs() {
+tasks.register('cleanNativeAsanLibs') {
+    dependsOn clean
     doLast {
         delete(file('/src/main/jniLibs/arm64-v8a/libclang_rt.asan-aarch64-android.so'))
     }
 }
-// Whenever the code is compiled, also copy the native libs to the build folder
-tasks.withType(JavaCompile) { compileTask -> compileTask.dependsOn copyNativeAsanLibs }
-// On "gradle clean" also reverse the copying of the native libraries
-clean.dependsOn cleanNativeAsanLibs
 
-// Create asan.sh in resources
-// See https://developer.android.com/ndk/guides/asan
-task createWrapSh(type: Copy) {
-        def ndkDir = project.android.ndkDirectory.absolutePath
-        outputs.file(new File(projectDir, 'src/main/resources/lib/arm64-v8a/asan.sh'))
-        if (asanEnabledInDebugBuild) {
-            File resourcesFolder = new File(projectDir, '/src/main/resources/lib/arm64-v8a')
-            if (!resourcesFolder.exists()) {
-                resourcesFolder.mkdirs()
-            }
-            from new File(ndkDir, '/wrap.sh/asan.sh')
-            into new File(resourcesFolder, '.')
-    }
-}
-// clean wrap.sh in resources
-task cleanWrapSh() {
+// delete asan.sh in folder resources
+tasks.register('cleanWrapSh') {
+    dependsOn clean
     doLast {
         delete(file('/src/main/resources/lib/arm64-v8a/asan.sh'))
     }
 }
-// When the code is compiled, also create wrap.sh
-tasks.withType(JavaCompile) { compileTask -> compileTask.dependsOn createWrapSh }
-// On "gradle clean" also delete wrap.sh
-clean.dependsOn cleanWrapSh
+
