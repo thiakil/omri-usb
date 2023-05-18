@@ -104,6 +104,8 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -Wno-unused-parameter
         -Wno-unused-private-field
         -Wno-unused-variable
+        # always keep frame-pointer
+        -fno-omit-frame-pointer
         )
 
 # Function to set ARCH from ABI
@@ -122,7 +124,7 @@ function(set_arch_from_abi ABI ARCH)
 endfunction()
 
 if(IRTDAB_ADDRESS_SANITIZER STREQUAL "yes")
-    target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+    target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=address)
     set(ADDRESS_SANITIZER_LINK_OPTIONS            -fsanitize=address)
     set_arch_from_abi(${ANDROID_ABI} ARCH)
     file(GLOB_RECURSE ASAN_SRC ${ANDROID_TOOLCHAIN_ROOT}/*.asan*${ARCH}*-android.so)
