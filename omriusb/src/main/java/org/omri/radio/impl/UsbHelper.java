@@ -16,6 +16,7 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
@@ -109,8 +110,9 @@ public class UsbHelper {
 			IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
 			filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
 			filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
-
-			mContext.registerReceiver(mUsbBroadcastReceiver, filter);
+			//noinspection WrongConstant // ContextCompat.RECEIVER_EXPORTED is correct!
+			ContextCompat.registerReceiver(mContext, mUsbBroadcastReceiver, filter,
+					ContextCompat.RECEIVER_EXPORTED);
 			created(mRedirectCoutToALog, mRawRecordingPath);
 		}
 	}
