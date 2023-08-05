@@ -39,9 +39,9 @@ class VisualLogoManager {
     static final AtomicBoolean instanceGuard = new AtomicBoolean();
 
     private final CopyOnWriteArrayList<VisualLogoImpl> mLogoList = new CopyOnWriteArrayList<>();
-    private final AtomicBoolean mSerializingInProgress = new AtomicBoolean();
-    private final AtomicBoolean mDeserializingInProgress = new AtomicBoolean();
-
+    private final AtomicBoolean mSerializingInProgress = new AtomicBoolean(false);
+    private final AtomicBoolean mDeserializingInProgress = new AtomicBoolean(false);
+    private final AtomicBoolean mIsInitialized = new AtomicBoolean(false);
     @Nullable private Thread mDeSerThread = null;
 
     private VisualLogoManager() {
@@ -57,10 +57,12 @@ class VisualLogoManager {
                 } else {
                     Log.w(TAG, "Creating LogoCacheDir failed");
                 }
+                mIsInitialized.set(true);
             } else {
                 mDeSerThread = new Thread(() -> {
                     Thread.currentThread().setName("DeserLogos");
                     deserializeLogos();
+                    mIsInitialized.set(true);
                 });
                 mDeSerThread.start();
             }
@@ -98,7 +100,7 @@ class VisualLogoManager {
     }
 
     boolean isReady() {
-        return !mDeserializingInProgress.get();
+        return mIsInitialized.get() && !mDeserializingInProgress.get();
     }
 
     @Nullable File getLogoCacheDir() {
