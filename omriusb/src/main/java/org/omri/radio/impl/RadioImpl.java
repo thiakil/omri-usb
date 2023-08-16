@@ -517,7 +517,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	@Override
-	public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality) {
+	public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality, int rawValue) {
 		//Do something useful with this later
 	}
 

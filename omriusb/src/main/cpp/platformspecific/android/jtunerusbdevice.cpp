@@ -52,7 +52,7 @@ void JTunerUsbDevice::setJavaClassUsbTuner(JNIEnv* env, jclass usbTunerClass) {
     m_usbTunerServiceFoundMId = env->GetMethodID(m_usbTunerClass, "serviceFound", "(Lorg/omri/radioservice/RadioServiceDab;)V");
     m_usbTunerServiceStartedMId = env->GetMethodID(m_usbTunerClass, "serviceStarted", "(Lorg/omri/radioservice/RadioServiceDab;)V");
     m_usbTunerServiceStoppedMId = env->GetMethodID(m_usbTunerClass, "serviceStopped", "(Lorg/omri/radioservice/RadioServiceDab;)V");
-    m_usbTunerReceptionStatisticsMId = env->GetMethodID(m_usbTunerClass, "receptionStatistics", "(ZI)V");
+    m_usbTunerReceptionStatisticsMId = env->GetMethodID(m_usbTunerClass, "receptionStatistics", "(ZII)V");
     m_dabTimeUpdateMId = env->GetMethodID(m_usbTunerClass, "dabTimeUpdate", "(Ljava/util/Date;)V");
 }
 
@@ -445,7 +445,7 @@ void JTunerUsbDevice::serviceStopped(jobject dabService) {
     }
 }
 
-void JTunerUsbDevice::receptionStatistics(bool rfLock, int qual) {
+void JTunerUsbDevice::receptionStatistics(bool rfLock, int level, int rawValue) {
     bool wasDetached = false;
     JNIEnv* enve;
 
@@ -459,7 +459,8 @@ void JTunerUsbDevice::receptionStatistics(bool rfLock, int qual) {
         }
     }
 
-    enve->CallVoidMethod(m_usbTunerObject, m_usbTunerReceptionStatisticsMId, (jboolean)rfLock, (jint)qual);
+    enve->CallVoidMethod(m_usbTunerObject, m_usbTunerReceptionStatisticsMId,
+                         rfLock, level, rawValue);
 
     if(wasDetached) {
         m_javaVm->DetachCurrentThread();

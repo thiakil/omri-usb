@@ -91,7 +91,7 @@ JUsbDevice::JUsbDevice(JavaVM* javaVm, JNIEnv *env, jobject usbDevice) {
 
             if(m_vendorId == 0x0416 && m_productId == 0xB003) {
                 m_interfaceNum = 1;
-            };
+            }
 
             std::cout << LOG_TAG << "ProductID: " << std::hex << +m_productId << " VendorID: " << +m_vendorId << std::dec << std::endl;
         }

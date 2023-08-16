@@ -117,7 +117,8 @@ private:
     std::thread m_commandThread;
 
     int m_antLvlCnt{1};
-    uint8_t m_prevAntennaLvl{0};
+    int m_prevAntennaLvl{0};
+    int m_prevAntennaRaw{-1};
     uint8_t m_lastRfLockState{0};
 
     // recording raw data to file

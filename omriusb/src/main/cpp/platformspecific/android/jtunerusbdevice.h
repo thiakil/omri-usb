@@ -45,7 +45,7 @@ public:
     virtual void dabTimeUpdate(const Fig_00_Ext_10::DabTime &dabTime);
     virtual void serviceStarted(jobject dabService);
     virtual void serviceStopped(jobject dabService);
-    virtual void receptionStatistics(bool rfLock, int qual);
+    virtual void receptionStatistics(bool rfLock, int level, int rawValue);
 
     virtual void setJavaClassUsbTuner(JNIEnv* env, jclass usbTunerClass);
     virtual void setJavaClassDabService(JNIEnv* env, jclass dabServiceClass);

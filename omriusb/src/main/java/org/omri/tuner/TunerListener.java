@@ -70,8 +70,9 @@ public interface TunerListener extends RadioListener {
 	 * Updates on RF reception statistics
 	 * @param rfLock RF tuner frontend gained lock
 	 * @param quality the {@link ReceptionQuality} indicating the current quality
+	 * @param rawValue raw, implementation-specific quality indicator. Valid if >= 0
 	 */
-	public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality);
+	public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality, int rawValue);
 
 	/**
 	 * Implementation and {@link TunerType} dependent raw data (e.g. in case of a DAB Tuner raw Fast Information Blocks)

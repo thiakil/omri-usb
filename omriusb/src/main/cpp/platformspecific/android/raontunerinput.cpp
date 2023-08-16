@@ -1831,7 +1831,7 @@ uint8_t RaonTunerInput::getLockStatus() {
 void RaonTunerInput::getAntennaLevel() {
     bool lock_stat{false};
     uint8_t rcnt3{0}, rcnt2{0}, rcnt1{0}, rcnt0{0};
-    uint32_t cer_cnt, cer_period_cnt, ret_val;
+    uint32_t cer_cnt, cer_period_cnt, rawVal;
     uint8_t fec_sync;
 
     switchPage(REGISTER_PAGE_DD);
@@ -1852,7 +1852,7 @@ void RaonTunerInput::getAntennaLevel() {
     } else {
         cer_period_cnt = 0;
         if (m_usbDevice != nullptr) {
-            m_usbDevice->receptionStatistics(false, 0);
+            m_usbDevice->receptionStatistics(false, 0, -1);
         }
         return;
     }
@@ -1862,18 +1862,18 @@ void RaonTunerInput::getAntennaLevel() {
     if(cer_period_cnt != 0) {
         cer_cnt = (rcnt3 << 24) | (rcnt2 << 16) | (rcnt1 << 8) | rcnt0;
         if(cer_cnt <= 4000) {
-            ret_val = 0;
+            rawVal = 0;
         } else {
-            ret_val = ((cer_cnt * 1000)/cer_period_cnt) * 10;
-            if(ret_val > 1200) {
-                ret_val = 2000;
+            rawVal = ((cer_cnt * 1000) / cer_period_cnt) * 10;
+            if(rawVal > 1200) {
+                rawVal = 2000;
             }
         }
     } else {
-        ret_val = 2000;
+        rawVal = 2000;
     }
 
-    if ((fec_sync == 0) || (ret_val == 2000)) {
+    if ((fec_sync == 0) || (rawVal == 2000)) {
         setRegister(0x03, 0x09);
         setRegister(0x46, 0x1E);
         setRegister(0x35, 0x01);
@@ -1881,26 +1881,28 @@ void RaonTunerInput::getAntennaLevel() {
     }
 
     //AntennaLvl
-    uint_t curLevel = 0;
-    uint_t prevLevel = m_prevAntennaLvl;
+    int curLevel = 0;
+    int prevLevel = m_prevAntennaLvl;
+    int prevRaw = m_prevAntennaRaw;
 
     do {
-        if(ret_val >= AntLvlTbl[curLevel]) { /* Use equal for CER 0 */
+        if(rawVal >= AntLvlTbl[curLevel]) { /* Use equal for CER 0 */
             break;
         }
     } while(++curLevel != DAB_MAX_NUM_ANTENNA_LEVEL);
 
-    if (curLevel != prevLevel) {
+    if (curLevel != prevLevel || rawVal != prevRaw) {
         if (curLevel < prevLevel) {
             prevLevel--;
-        } else {
+        } else if ( curLevel > prevLevel) {
             prevLevel++;
         }
 
-        m_prevAntennaLvl = static_cast<uint8_t>(prevLevel);
+        m_prevAntennaLvl = prevLevel;
+        m_prevAntennaRaw = (int)rawVal;
     }
     if (m_usbDevice != nullptr) {
-        m_usbDevice->receptionStatistics(true, (int) prevLevel);
+        m_usbDevice->receptionStatistics(true, (int) prevLevel, (int) rawVal);
     }
 }
 

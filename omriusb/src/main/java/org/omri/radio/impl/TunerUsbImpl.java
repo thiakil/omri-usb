@@ -478,15 +478,14 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
-	public void receptionStatistics(boolean rfLocked, int qualLevel) {
-		//if(DEBUG)Log.d(TAG, "Reception Statistics RFLock: " + rfLocked + " Qual: " + qualLevel);
-
+	public void receptionStatistics(boolean rfLocked, int qualLevel, int rawValue) {
 		if(qualLevel > 5) {
 			qualLevel = 5;
 		}
 		synchronized (mTunerlisteners) {
 			for (TunerListener cb : mTunerlisteners) {
-				cb.tunerReceptionStatistics(this, rfLocked, ReceptionQuality.values()[qualLevel]);
+				cb.tunerReceptionStatistics(this, rfLocked,
+						ReceptionQuality.values()[qualLevel], rawValue);
 			}
 		}
 	}
