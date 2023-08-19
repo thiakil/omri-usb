@@ -13,6 +13,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+/* Removed Exoplayer dependency
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.ExoPlayer;
@@ -35,7 +36,7 @@ import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.trackselection.TrackSelector;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.util.Util;
-
+*/
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceIp;
@@ -79,10 +80,15 @@ import javax.net.ssl.SSLSocketFactory;
  * @author Fabian Sattler, IRT GmbH
  */
 
-public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataListener, Player.EventListener, AudioSink, IpServiceScanner.IpScannerListener {
+public class TunerIpShoutcast implements Tuner,
+		/* Removed Exoplayer dependency
+		IcyStreamDataSource.IcyMetadataListener, Player.EventListener, AudioSink,
+		 */
+		IpServiceScanner.IpScannerListener {
 
 	private final String TAG = "TunerIpShoutcast";
 
+	private final static boolean HASPLAYER = false; // has support for a (Exo)Player backend
 	private static final int BUFFER_SIZE = 1024*10*10;
 
 	private final TunerType mTunertype = TunerType.TUNER_TYPE_IP_SHOUTCAST;
@@ -97,17 +103,21 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 	/* Exo HandlerThread */
 	Handler mHandler;
 
+	/* Removed Exoplayer dependency
 	private final ExoPlayer mExoPlayer;
+	 */
 
 	TunerIpShoutcast() {
 		if(DEBUG)Log.d(TAG, "Creating Tuner");
 
+		/* Removed Exoplayer dependency
 		TrackSelector trackSelector = new DefaultTrackSelector();
 		Renderer[] renderers = new Renderer[1];
 		renderers[0] = new MediaCodecAudioRenderer(MediaCodecSelector.DEFAULT, null, true, null, null, this);
 		mExoPlayer = ExoPlayerFactory.newInstance(renderers, trackSelector);
 
 		mExoPlayer.addListener(this);
+		 */
 		mHandler = new Handler();
 
 		IpServiceScanner.getInstance().addScanListener(this);
@@ -163,12 +173,15 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 					listener.tunerStatusChanged(this, mTunerStatus);
 				}
 			}
+			/* Removed Exoplayer dependency
 			if(mCurrentRadioService != null) {
 				stopStream();
 			}
+
 			if(mExoPlayer != null) {
 				mExoPlayer.release();
 			}
+			 */
 		}
 	}
 
@@ -329,6 +342,7 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 
 	@Override
 	public void startRadioService(RadioService radioService) {
+		/* Removed Exoplayer dependency
 		if(radioService != null && radioService.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_IP) {
 			RadioServiceIp srv = (RadioServiceIp)radioService;
 			if(DEBUG) {
@@ -352,13 +366,18 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 				parseThread.start();
 			}
 		}
+		 */
+		Log.e(TAG, "startRadioService not implemented");
 	}
 
 	@Override
 	public void stopRadioService() {
+		/* Removed Exoplayer dependency
 		if(mCurrentRadioService != null) {
 			stopStream();
 		}
+		 */
+		Log.e(TAG, "stopRadioService not implemented");
 	}
 
 	@Override
@@ -382,6 +401,7 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 		}
 	}
 
+	/* Removed Exoplayer dependency
 	private void parseStreamUrls(List<RadioServiceIpStream> streams) {
 		ArrayList<String> parsedUrls = new ArrayList<>();
 
@@ -544,9 +564,11 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 		if(DEBUG)Log.d(TAG, "onNewIcyStreamUr: " + icyUrl);
 	}
 
-
 	private int mPlayerState = 0;
+	*/
+
 	/* Player callbacks */
+	/* Removed Exoplayer dependency
 	@Override
 	public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
 		if(DEBUG)Log.d(TAG, "onPlayerStateChanged: playWhenready: " + playWhenReady + ", PlayState: " + playbackState);
@@ -640,8 +662,10 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 	public void onSeekProcessed() {
 
 	}
+    */
 
 	/* Exoplayer Audiosink impl */
+	/* Removed Exoplayer dependency
 	@Override
 	public void setListener(Listener listener) {
 		if(DEBUG)Log.d(TAG, "AudioSink setListener");
@@ -794,6 +818,7 @@ public class TunerIpShoutcast implements Tuner, IcyStreamDataSource.IcyMetadataL
 	public void release() {
 		if(DEBUG)Log.d(TAG, "AudioSink release");
 	}
+	 */
 
 	/**/
 	private class SerializeServicesTask extends AsyncTask<Void, Void, Void> {
