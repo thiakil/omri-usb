@@ -94,7 +94,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		mStartSystemNano = System.nanoTime();
 	}
 	
-	private RadioImpl(Context context) {
+	private RadioImpl(@Nullable Context context) {
 		synchronized (mContextGuard) {
 			this.mContext = context;
 		}
@@ -138,101 +138,95 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	@Override
-	public RadioErrorCode initialize(Context appContext) {
+	public RadioErrorCode initialize(@NonNull Context appContext) {
 		if(DEBUG)Log.d(TAG, "Initializing with Context!");
 		return initialize(appContext, null);
 	}
 
 	@Override
-	public RadioErrorCode initialize(Context appContext, Bundle bundle) {
-		final Context context;
+	public RadioErrorCode initialize(@NonNull Context appContext, Bundle bundle) {
 		synchronized (mContextGuard) {
-			mContext = appContext.getApplicationContext();
-			context = mContext;
+			mContext = appContext;
 		}
-		if(context != null) {
 
-			int ntpRetries = 5;
-			while(!mNtpSync && ntpRetries > 0) {
-				//Waiting for NTP time sync, will block up to 50 ms
-				--ntpRetries;
+		int ntpRetries = 5;
+		while(!mNtpSync && ntpRetries > 0) {
+			//Waiting for NTP time sync, will block up to 50 ms
+			--ntpRetries;
 
-				if(DEBUG)Log.d(TAG, "Waiting for NTP sync...");
-				SystemClock.sleep(10);
+			if(DEBUG)Log.d(TAG, "Waiting for NTP sync...");
+			SystemClock.sleep(10);
+		}
+
+		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(appContext);
+		boolean useLookupOnMobile = prefs.getBoolean("omri_use_iplookup_onmobile", false);
+		boolean useIpStreamOnMobile = prefs.getBoolean("omri_use_ipstream_onmobile", false);
+		boolean useIpStreamHqOnMobile = prefs.getBoolean("omri_use_ipstream_hq_onmobile", false);
+
+		if (DEBUG) Log.d(TAG, "Prefs LookupOnMobile: " + useLookupOnMobile);
+		if (DEBUG) Log.d(TAG, "Prefs StreamMobile: " + useIpStreamOnMobile);
+		if (DEBUG) Log.d(TAG, "Prefs StreamHqMobile: " + useIpStreamHqOnMobile);
+
+		boolean redirectCoutToALog = false;
+		String rawRecordingPath = "";
+		boolean demoMode = false;
+		if (bundle != null) {
+			redirectCoutToALog = bundle.getBoolean(RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS, false);
+			rawRecordingPath = bundle.getString(RADIO_INIT_OPT_RAW_RECORDING_PATH, "");
+			demoMode = bundle.getBoolean(RADIO_INIT_OPT_DEMO_MODE, false);
+			if (DEBUG) {
+				Log.d(TAG, RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS + ":" + redirectCoutToALog);
+				Log.d(TAG, RADIO_INIT_OPT_RAW_RECORDING_PATH + ":'" + rawRecordingPath + "'");
+				Log.d(TAG, RADIO_INIT_OPT_DEMO_MODE + ":" + demoMode);
 			}
+		}
 
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getAppContext());
-			boolean useLookupOnMobile = prefs.getBoolean("omri_use_iplookup_onmobile", false);
-			boolean useIpStreamOnMobile = prefs.getBoolean("omri_use_ipstream_onmobile", false);
-			boolean useIpStreamHqOnMobile = prefs.getBoolean("omri_use_ipstream_hq_onmobile", false);
+		UsbHelper.create(appContext, this, redirectCoutToALog, rawRecordingPath);
 
-			if (DEBUG) Log.d(TAG, "Prefs LookupOnMobile: " + useLookupOnMobile);
-			if (DEBUG) Log.d(TAG, "Prefs StreamMobile: " + useIpStreamOnMobile);
-			if (DEBUG) Log.d(TAG, "Prefs StreamHqMobile: " + useIpStreamHqOnMobile);
+		//List of Pairs consisiting of first.VendorId and second.ProductId
+		ArrayList<Pair<Integer, Integer>> wantedDevices = new ArrayList<>();
 
-			boolean redirectCoutToALog = false;
-			String rawRecordingPath = "";
-			boolean demoMode = false;
-			if (bundle != null) {
-				redirectCoutToALog = bundle.getBoolean(RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS, false);
-				rawRecordingPath = bundle.getString(RADIO_INIT_OPT_RAW_RECORDING_PATH, "");
-				demoMode = bundle.getBoolean(RADIO_INIT_OPT_DEMO_MODE, false);
-				if (DEBUG) {
-					Log.d(TAG, RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS + ":" + redirectCoutToALog);
-					Log.d(TAG, RADIO_INIT_OPT_RAW_RECORDING_PATH + ":'" + rawRecordingPath + "'");
-					Log.d(TAG, RADIO_INIT_OPT_DEMO_MODE + ":" + demoMode);
-				}
-			}
+		if (!demoMode) {
+			//Raon DAB USB sticks
+			wantedDevices.add(Pair.create(0x16C0, 0x05DC));
 
-			UsbHelper.create(getAppContext(), this, redirectCoutToALog, rawRecordingPath);
-
-			//List of Pairs consisiting of first.VendorId and second.ProductId
-			ArrayList<Pair<Integer, Integer>> wantedDevices = new ArrayList<>();
-
-			if (!demoMode) {
-				//Raon DAB USB sticks
-				wantedDevices.add(Pair.create(0x16C0, 0x05DC));
-
-				for (UsbDevice dev : UsbHelper.getInstance().scanForSpecificDevices(wantedDevices)) {
-					if (DEBUG) Log.d(TAG, "Found Siano device!");
-					Tuner usbTuner = new TunerUsbImpl(dev);
-					usbTuner.subscribe(this);
-					synchronized (mTunerList) {
-						mTunerList.add(usbTuner);
-					}
-				}
-			} else {
-				// Demo tuner
-				if(DEBUG)Log.d(TAG, "Adding DemoTuner");
-				DemoTuner demoTuner = new DemoTuner(rawRecordingPath);
-				demoTuner.subscribe(this);
+			for (UsbDevice dev : UsbHelper.getInstance().scanForSpecificDevices(wantedDevices)) {
+				if (DEBUG) Log.d(TAG, "Found Siano device!");
+				Tuner usbTuner = new TunerUsbImpl(dev);
+				usbTuner.subscribe(this);
 				synchronized (mTunerList) {
-					mTunerList.add(demoTuner);
+					mTunerList.add(usbTuner);
 				}
 			}
-
-			TunerIpShoutcast ipTuner = new TunerIpShoutcast();
-			ipTuner.subscribe(this);
-			synchronized (mTunerList) {
-				mTunerList.add(ipTuner);
-			}
-
-			final UsbHelper usbHelper = UsbHelper.getInstance();
-			if (usbHelper != null) {
-				if (DEBUG) Log.d(TAG, "Adding EdiStreamTuner");
-				TunerEdistream ediTuner = new TunerEdistream();
-				usbHelper.ediStreamTunerAttached(ediTuner);
-				ediTuner.subscribe(this);
-				synchronized (mTunerList) {
-					mTunerList.add(ediTuner);
-				}
-			}
-
-			if(DEBUG)Log.d(TAG, "Initialized with " + mTunerList.size() + " tuners");
 		} else {
-			if(DEBUG)Log.d(TAG, "Context is null!");
+			// Demo tuner
+			if(DEBUG)Log.d(TAG, "Adding DemoTuner");
+			DemoTuner demoTuner = new DemoTuner(rawRecordingPath);
+			demoTuner.subscribe(this);
+			synchronized (mTunerList) {
+				mTunerList.add(demoTuner);
+			}
 		}
-		
+
+		TunerIpShoutcast ipTuner = new TunerIpShoutcast();
+		ipTuner.subscribe(this);
+		synchronized (mTunerList) {
+			mTunerList.add(ipTuner);
+		}
+
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if (usbHelper != null) {
+			if (DEBUG) Log.d(TAG, "Adding EdiStreamTuner");
+			TunerEdistream ediTuner = new TunerEdistream();
+			usbHelper.ediStreamTunerAttached(ediTuner);
+			ediTuner.subscribe(this);
+			synchronized (mTunerList) {
+				mTunerList.add(ediTuner);
+			}
+		}
+
+		if(DEBUG)Log.d(TAG, "Initialized with " + mTunerList.size() + " tuners");
+
 		mRadioStatus = RadioStatus.STATUS_RADIO_RUNNING;
 		
 		return RadioErrorCode.ERROR_INIT_OK;
