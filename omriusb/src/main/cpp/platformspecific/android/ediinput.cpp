@@ -48,7 +48,6 @@ void EdiInput::setJavaClassDabTime(JNIEnv *env, jclass ediDabTimeClass) {
     m_radioImplClass = env->FindClass("org/omri/radio/impl/RadioImpl");
     m_radioClassGetInstanceMID = env->GetStaticMethodID(m_radioClass, "getInstance", "()Lorg/omri/radio/Radio;");
     m_radioInstanceObj = env->CallStaticObjectMethod(m_radioClass, m_radioClassGetInstanceMID);
-    m_radioInstanceDabTimeMID = env->GetMethodID(m_radioImplClass, "dabTime", "(Lorg/omri/radio/impl/DabTime;)V");
 }
 
 void EdiInput::setJavaClassEdiTuner(JNIEnv *env, jclass ediTunerClass) {
@@ -180,8 +179,6 @@ void EdiInput::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
 
     jobject dabtimeObject = enve->NewObject(m_dabTimeClass, m_dabTimeConstructorMID, dabTime.year, dabTime.month, dabTime.day, dabTime.hour, dabTime.minute, dabTime.second, dabTime.milliseconds);
     enve->CallVoidMethod(m_ediTunerObject, m_ediTunerDabTimeUpdate, dabtimeObject);
-
-    //enve->CallVoidMethod(m_radioInstanceObj, m_radioInstanceDabTimeMID, dabtimeObject);
 
     enve->DeleteLocalRef(dabtimeObject);
 

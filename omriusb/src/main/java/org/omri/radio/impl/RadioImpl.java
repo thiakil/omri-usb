@@ -7,12 +7,12 @@ import android.content.SharedPreferences;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
 import android.os.SystemClock;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.preference.PreferenceManager;
 
 import org.omri.radio.Radio;
 import org.omri.radio.RadioErrorCode;
@@ -27,7 +27,6 @@ import org.omri.tuner.TunerListener;
 import org.omri.tuner.TunerStatus;
 import org.omri.tuner.TunerType;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -70,21 +69,15 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	private static boolean mNtpSync = false;
 
 	private final AtomicBoolean mContextGuard = new AtomicBoolean();
-	@Nullable private Context mContext = null;
-
-	File getStorageDir() {
-		final Context context = getAppContext();
-		if (context != null) {
-			return context.getExternalCacheDir();
-		}
-
-		return null;
-	}
+	private Context mContext;
 
 	Context getAppContext() {
 		final Context ret;
 		synchronized (mContextGuard) {
 			ret = mContext;
+		}
+		if (ret == null) {
+			throw new NullPointerException("Radio Context null");
 		}
 		return ret;
 	}
@@ -115,7 +108,9 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 				mNtpPosixMs = posixMs;
 				mNtpSync = true;
 
-				if(DEBUG)Log.d(TAG, "SBT NTP time received: " + ntpDate.toString() + " : " + curDate.toString() + " - " + posixMs + " - " + curDatePosix + ", DIff: " + nowNtpDiff);
+				if(DEBUG)Log.d(TAG, "SBT NTP time received: " + ntpDate + " : "
+						+ curDate + " - " + posixMs + " - " + curDatePosix
+						+ ", Diff: " + nowNtpDiff);
 			}
 
 			@Override
@@ -281,8 +276,8 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		}
 
 		if (UsbHelper.getInstance() != null) UsbHelper.getInstance().destroyInstance();
-		if (VisualLogoManager.getInstance() != null) VisualLogoManager.getInstance().destroyInstance();
-		if (RadioServiceManager.getInstance() != null) RadioServiceManager.getInstance().destroyInstance();
+		VisualLogoManager.getInstance().destroyInstance();
+		RadioServiceManager.getInstance().destroyInstance();
 	}
 
 	@Override
@@ -292,7 +287,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public List<Tuner> getAvailableTuners(TunerType tunerType) {
-		ArrayList<Tuner> retList = new ArrayList<Tuner>();
+		ArrayList<Tuner> retList = new ArrayList<>();
 		synchronized (mTunerList) {
 			for (Tuner tuner : mTunerList) {
 				if (tuner.getTunerType() == tunerType) {
@@ -309,7 +304,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		if(DEBUG)Log.d(TAG, "Returning Services...");
 
 		synchronized (this) {
-			List<RadioService> aggServiceList = new ArrayList<RadioService>();
+			List<RadioService> aggServiceList = new ArrayList<>();
 			synchronized (mTunerList) {
 				for (Tuner atuner : mTunerList) {
 					for (RadioService srv : atuner.getRadioServices()) {
@@ -322,8 +317,8 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 					}
 				}
 			}
-			/* don't sort to improve performance */
-			/* Collections.sort(aggServiceList, new Comparator<RadioService>() {
+			/* don't sort to improve performance
+			Collections.sort(aggServiceList, new Comparator<RadioService>() {
 				@Override
 				public int compare(RadioService radioService2, RadioService radioService1) {
 					return radioService2.getServiceLabel().toLowerCase().compareTo(radioService1.getServiceLabel().toLowerCase());
@@ -342,7 +337,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public void startRadioService(RadioService radioService) {
-		TunerType wantedType = null;
+		final TunerType wantedType;
 
 		switch (radioService.getRadioServiceType()) {
 			case RADIOSERVICE_TYPE_DAB: {
@@ -445,39 +440,6 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	@Override
 	public void tunerStatusChanged(Tuner tuner, TunerStatus newState) {
 		//We can listen here on all tuners for state changes
-	}
-
-	private boolean mCollectingRadioServices = false;
-	private synchronized void collectRadioServices() {
-		if(DEBUG)Log.d(TAG, "Collecting all radioservices...");
-
-		if(!mCollectingRadioServices) {
-			mCollectingRadioServices = true;
-
-			synchronized (mRadioserviceList) {
-				mRadioserviceList.clear();
-
-				synchronized (mTunerList) {
-					for (Tuner atuner : mTunerList) {
-						for (RadioService srv : atuner.getRadioServices()) {
-							if (!mRadioserviceList.contains(srv)) {
-								mRadioserviceList.add(srv);
-							}
-						}
-					}
-				}
-			}
-			/* don't sort to improve performance */
-			/* Collections.sort(mRadioserviceList, new Comparator<RadioService>() {
-				@Override
-				public int compare(RadioService radioService2, RadioService radioService1) {
-					return radioService2.getServiceLabel().compareTo(radioService1.getServiceLabel());
-				}
-			});
-			 */
-
-			mCollectingRadioServices = false;
-		}
 	}
 
 	@Override
@@ -598,7 +560,6 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		return false;
 	}
 
-	/* Experimental and dangerous */
 	public boolean deleteRadioService(RadioService delService) {
 		synchronized (mTunerList) {
 			for (Tuner chkTun : mTunerList) {
@@ -628,25 +589,9 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		return followingServices;
 	}
 
-	private void dabTime(DabTime dabTime) {
-	}
-
 	@Override
 	public void dabDateTime(Tuner tuner, Date dabTime) {
-	}
 
-	public void startDirectSbtStream(String streamUrl) {
-		if(streamUrl != null) {
-			if (DEBUG) Log.d(TAG, "Starting direct SBT stream: " + streamUrl);
-			synchronized (mTunerList) {
-				for (Tuner tuner : mTunerList) {
-					if (tuner.getTunerType() == TunerType.TUNER_TYPE_IP_EDI) {
-						tuner.startRadioService(new RadioServiceDabEdiImpl(streamUrl));
-						break;
-					}
-				}
-			}
-		}
 	}
 
 	public final static String SERVICE_SEARCH_OPT_USE_HRADIO = "use_hradio";
