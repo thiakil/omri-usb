@@ -76,7 +76,9 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		synchronized (mContextGuard) {
 			ret = mContext;
 		}
-		if (ret == null) {
+		if (DEBUG && ret == null) {
+			// Radio instance without a Context is nearly useless.
+			// Force a DEBUG version of App to crash.
 			throw new NullPointerException("Radio Context null");
 		}
 		return ret;
