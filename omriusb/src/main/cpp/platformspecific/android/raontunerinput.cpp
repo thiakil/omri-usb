@@ -521,16 +521,21 @@ void RaonTunerInput::nop() const {
 
 bool RaonTunerInput::tunerPowerUp() {
     //trying some time to power the chip up
-    for(int i = 0; i < 100 && m_commandThreadRunning; i++) {
+    for(int i = 0; i < 5 && m_commandThreadRunning; i++) {
         switchPage(REGISTER_PAGE_HOST);
         setRegister(0x7D, 0x06);
         if(readRegister(0x7D) == 0x06) {
-            std::cout << LOG_TAG << " PowerUp okay!" << std::endl;
+            std::cout << LOG_TAG << "PowerUp okay!" << std::endl;
             return true;
+        } else {
+            bool ioErrors = hasUsbIoErrors();
+            std::ostringstream logStr;
+            logStr << LOG_TAG << "PowerUp attempt #" << +i << " ioErrors=" << +ioErrors;
+            std::clog << logStr.str() << std::endl;
         }
     }
 
-    std::clog << LOG_TAG << " PowerUp failed!" << std::endl;
+    std::clog << LOG_TAG << "PowerUp failed!" << std::endl;
     return false;
 }
 
