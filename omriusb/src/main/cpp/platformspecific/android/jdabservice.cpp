@@ -590,6 +590,9 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
             // but typically updates are faster, thus use 1 min
             isSteady = (timeDiff >= std::chrono::minutes(1));
         }
+        std::stringstream logStr;
+        logStr << m_logTag << "SF svcs changed: isEqual:" << +isEqual << " isSteady:" << +isSteady << " wasSteady:" << +m_sfServicesSteady;
+        std::cout << logStr.str() << std::endl;
         if (!isSteady) {
             return;
         } else {

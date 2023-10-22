@@ -803,7 +803,7 @@ Java_org_omri_radio_impl_UsbHelper_ediFlushBuffer(JNIEnv *env, jobject thiz) {
 }
 
 /* Demo Tuner */
-static std::shared_ptr<DemoUsbTunerInput> m_demoInput = nullptr;
+static std::unique_ptr<DemoUsbTunerInput> m_demoInput = nullptr;
 
 JNIEXPORT void JNICALL
 Java_org_omri_radio_impl_UsbHelper_demoTunerAttached(JNIEnv *env, jobject thiz, jobject demoTuner) {
@@ -815,10 +815,13 @@ Java_org_omri_radio_impl_UsbHelper_demoTunerAttached(JNIEnv *env, jobject thiz, 
 
     if (m_demoInput == nullptr) {
         std::cout << LOG_TAG << "DemoTuner attached" << std::endl;
-        m_demoInput = std::shared_ptr<DemoUsbTunerInput>(new DemoUsbTunerInput(m_javaVm, env));
+        DemoUsbTunerInput* demoUsbTunerInput = new DemoUsbTunerInput(m_javaVm, env);
+        m_demoInput = std::unique_ptr<DemoUsbTunerInput>(demoUsbTunerInput);
         m_demoInput->setJavaClassDemoTuner(env, m_demoTunerClass);
         m_demoInput->setJavaObjectDemoTuner(env, demoTuner);
         m_demoInput->setJavaClassRadioService(env, m_radioServiceImplClass);
+
+        m_dabInputs.push_back(std::unique_ptr<DemoUsbTunerInput>(demoUsbTunerInput));
     } else {
         std::cerr << LOG_TAG << "DemoTuner already attached" << std::endl;
     }
@@ -837,8 +840,19 @@ Java_org_omri_radio_impl_UsbHelper_demoTunerDetached(JNIEnv *env, jobject thiz, 
     }
 
     std::cout << LOG_TAG << "DemoTuner detached" << std::endl;
+
+    auto bla = m_dabInputs.begin();
+    while (bla != m_dabInputs.end()) {
+        if (bla->get() != nullptr && bla->get()->getDeviceName() == DemoUsbTunerInput::DEMO_DEVICE_NAME) {
+            bla->get()->deInitialize();
+            m_dabInputs.erase(bla);
+            break;
+        }
+        bla++;
+    }
+
     if (m_demoInput != nullptr) {
-        m_demoInput.reset();
+        m_demoInput.release();
         m_demoInput = nullptr;
     }
 

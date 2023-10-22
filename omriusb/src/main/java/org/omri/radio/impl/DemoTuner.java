@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.omri.radioservice.RadioService;
+import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceType;
 import org.omri.tuner.Tuner;
 import org.omri.tuner.TunerListener;
@@ -44,7 +45,8 @@ import java.util.List;
 
 public class DemoTuner implements Tuner {
 
-    private final String TAG = "DemoTuner";
+    private final static String TAG = "DemoTuner";
+    private final static String DEMO_DEVICE_NAME = "DemoDevice"; // must be equal to DemoUsbTunerInput::DEMO_DEVICE_NAME
     private final TunerType mTunertype = TunerType.TUNER_TYPE_DAB;
     private final List<RadioService> mServices = new ArrayList<>();
     private final List<TunerListener> mTunerlisteners = Collections.synchronizedList(new ArrayList<>());
@@ -146,8 +148,21 @@ public class DemoTuner implements Tuner {
     @NonNull
     @Override
     public ArrayList<RadioService> getLinkedRadioServices(@NonNull RadioService service) {
-        // dummy implementation, not required to be implemented
-        return new ArrayList<>();
+        ArrayList<RadioService> retLinkedRadioServices = new ArrayList<>();
+        if (service instanceof RadioServiceDab) {
+
+            // retrieve DAB services that are linked to the given service
+            final ArrayList<RadioServiceDab> linkedDabServices =
+                    UsbHelper.getInstance().getLinkedDabServices(DEMO_DEVICE_NAME,
+                            (RadioServiceDab) service);
+
+            if (linkedDabServices != null) {
+                ArrayList<RadioService> linkedServices = new ArrayList<>(linkedDabServices.size());
+                linkedServices.addAll(linkedDabServices);
+                retLinkedRadioServices = ((RadioServiceImpl)service).replaceLinkedRadioServicesWithKnown(linkedServices);
+            }
+        }
+        return retLinkedRadioServices;
     }
 
     @Override

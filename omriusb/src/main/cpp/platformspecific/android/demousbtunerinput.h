@@ -26,9 +26,11 @@
 #include <thread>
 #include <memory>
 #include <stdint.h>
+#include <string.h>
 #include "dabusbtunerinput.h"
 #include "jtunerusbdevice.h"
 #include "jdabservice.h"
+#include "../../linkedservicedab.h"
 
 
 class DemoUsbTunerInput final : public DabUsbTunerInput, DabEnsemble {
@@ -36,6 +38,7 @@ class DemoUsbTunerInput final : public DabUsbTunerInput, DabEnsemble {
 public:
     constexpr static uint32_t FILEMARKER_MSC = 0xDEADBEEF;
     constexpr static uint32_t FILEMARKER_FIC = 0xDEADAFFE;
+    const static std::string DEMO_DEVICE_NAME;
 
 public:
     explicit DemoUsbTunerInput(JavaVM* javaVm, __unused JNIEnv* env);
@@ -61,6 +64,7 @@ public:
     void startServiceScan() override;
     void stopServiceScan() override;
     std::string getDeviceName() override;
+    std::vector<std::shared_ptr<LinkedServiceDab>> getLinkedServices(const LinkedServiceDab &service) override;
 
 public:
     void setJavaClassDemoTuner(JNIEnv* env, jclass demoTunerClass);

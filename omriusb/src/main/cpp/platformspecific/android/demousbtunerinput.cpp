@@ -24,6 +24,8 @@
 #include <sys/endian.h>
 #include "demousbtunerinput.h"
 
+const std::string DemoUsbTunerInput::DEMO_DEVICE_NAME = "DemoDevice";
+
 DemoUsbTunerInput::DemoUsbTunerInput(JavaVM* javaVm, __unused JNIEnv* env) {
     std::cout << LOG_TAG << "Constructing...." << std::endl;
     m_javaVm = javaVm;
@@ -199,7 +201,12 @@ void DemoUsbTunerInput::stopServiceScan() {
 }
 
 std::string DemoUsbTunerInput::getDeviceName() {
-    return "";
+    return DEMO_DEVICE_NAME;
+}
+
+std::vector<std::shared_ptr<LinkedServiceDab>>
+DemoUsbTunerInput::getLinkedServices(const LinkedServiceDab &service) {
+    return getLinkedDabServices(service);
 }
 
 void DemoUsbTunerInput::setJavaClassDemoTuner(JNIEnv *env, jclass demoTunerClass) {
