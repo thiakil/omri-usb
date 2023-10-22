@@ -23,6 +23,7 @@
 
 #include <android/log.h>
 #include <cstring>
+#include <mutex>
 #include <streambuf>
 
 //Hackish thing to redirect std::cout/std::clog/std::cerr to Android logcat
@@ -34,15 +35,17 @@ public:
     static constexpr int bufsize{512};
     static constexpr int alogtagsize{9};
 
-    androidlogbuf(const char* tag = "std", android_LogPriority prio = ANDROID_LOG_INFO) :
+    inline androidlogbuf(const char* tag = "std", android_LogPriority prio = ANDROID_LOG_INFO) :
             alogprio(prio) {
+        std::lock_guard<std::recursive_mutex> lockGuard(mLock);
         strncpy(alogtag, tag, alogtagsize-1);
         alogtag[alogtagsize-1] = '\0';
         this->setp(buffer, buffer + bufsize - 1);
     }
 
 private:
-    int overflow(int c) {
+    inline int overflow(int c) {
+        std::lock_guard<std::recursive_mutex> lockGuard(mLock);
         if (c == traits_type::eof()) {
             *this->pptr() = traits_type::to_char_type(c);
             this->sbumpc();
@@ -50,7 +53,8 @@ private:
         return this->sync()? traits_type::eof(): traits_type::not_eof(c);
     }
 
-    int sync() {
+    inline int sync() {
+        std::lock_guard<std::recursive_mutex> lockGuard(mLock);
         int rc = 0;
         if (this->pbase() != this->pptr()) {
 
@@ -66,6 +70,7 @@ private:
     char buffer[bufsize];
     char alogtag[alogtagsize];
     android_LogPriority alogprio{ANDROID_LOG_INFO};
+    std::recursive_mutex mLock;
 };
 
 
