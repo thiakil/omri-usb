@@ -77,7 +77,6 @@ public class UsbHelper {
 	private native String getSoftwareVersion(String deviceName);
 	private native void setDirectBulkTransferEnabled(String deviceName, boolean direct);
 	private native boolean getDirectBulkTransferEnabled(String deviceName);
-	private static native boolean getDefaultDirectBulkTransferEnabled();
 
 	/* EdiStream */
 	private native void ediTunerAttached(TunerEdistream ediTuner);
@@ -104,13 +103,14 @@ public class UsbHelper {
 			} else {
 				flags = 0;
 			}
+			Intent intent = new Intent(ACTION_USB_PERMISSION);
+			intent.setPackage(mContext.getPackageName()); // make Intent explicit
 			mUsbPermissionIntent = PendingIntent.getBroadcast(mContext, 0,
-						new Intent(ACTION_USB_PERMISSION), flags);
+						intent, flags);
 
 			IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
 			filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
 			filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
-			//noinspection WrongConstant // ContextCompat.RECEIVER_EXPORTED is correct!
 			ContextCompat.registerReceiver(mContext, mUsbBroadcastReceiver, filter,
 					ContextCompat.RECEIVER_EXPORTED);
 			created(mRedirectCoutToALog, mRawRecordingPath);
@@ -153,6 +153,7 @@ public class UsbHelper {
 		stopSrv(deviceName);
 	}
 
+	/** @noinspection unused (used by native code) */
 	public void tuneFrequencyKHz(String deviceName, long frequency) {
 		tuneFreq(deviceName, frequency);
 	}
@@ -237,6 +238,7 @@ public class UsbHelper {
 		}
 	}
 
+	/** @noinspection unused (used by native code) */
 	private UsbDeviceConnection openDevice(UsbDevice device) {
 		if(DEBUG)Log.d(TAG, "Opening device: " + device.getDeviceName());
 		try {
@@ -248,6 +250,7 @@ public class UsbHelper {
 
 	}
 
+	/** @noinspection unused (used by native code) */
 	private void closeDeviceConnection(UsbDeviceConnection deviceConnection) {
 		if(DEBUG)Log.d(TAG, "Closing USB device connection");
 		try {
@@ -326,41 +329,43 @@ public class UsbHelper {
 
 		@Override
 		public void run() {
-			if (action.equals(ACTION_USB_PERMISSION)) {
-				if (DEBUG) Log.d(TAG, "Received Permission request: " + action);
+			switch (action) {
+				case ACTION_USB_PERMISSION:
+					if (DEBUG) Log.d(TAG, "Received Permission request: " + action);
 
-				mPermissionPending = false;
+					mPermissionPending = false;
 
-				if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-					if (DEBUG)
-						Log.d(TAG, "permission granted for device " + device.getDeviceName());
-					devicePermission(device.getDeviceName(), true);
-				} else {
-					if (DEBUG)
-						Log.d(TAG, "permission denied for device " + device.getDeviceName());
-					devicePermission(device.getDeviceName(), false);
-				}
+					if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+						if (DEBUG)
+							Log.d(TAG, "permission granted for device " + device.getDeviceName());
+						devicePermission(device.getDeviceName(), true);
+					} else {
+						if (DEBUG)
+							Log.d(TAG, "permission denied for device " + device.getDeviceName());
+						devicePermission(device.getDeviceName(), false);
+					}
 
-				if (device.equals(mPendingPermissionDevice)) {
-					mPendingPermissionDevice = null;
-				}
+					if (device.equals(mPendingPermissionDevice)) {
+						mPendingPermissionDevice = null;
+					}
 
-				if (mPendingPermissionDevice != null) {
-					requestPermission(mPendingPermissionDevice);
-				}
-			} else
-			if (action.equals(UsbManager.ACTION_USB_DEVICE_DETACHED)) {
-				if (DEBUG) Log.d(TAG, "USB Device detached: " + device.getDeviceName());
-				deviceDetached(device.getDeviceName());
-				if (mUsbCb != null) {
-					mUsbCb.UsbTunerDeviceDetached(device);
-				}
-			} else
-			if (action.equals(UsbManager.ACTION_USB_DEVICE_ATTACHED)) {
-				if (DEBUG) Log.d(TAG, "USB Device attached: " + device.getDeviceName());
-				if (mUsbCb != null) {
-					mUsbCb.UsbTunerDeviceAttached(device);
-				}
+					if (mPendingPermissionDevice != null) {
+						requestPermission(mPendingPermissionDevice);
+					}
+					break;
+				case UsbManager.ACTION_USB_DEVICE_DETACHED:
+					if (DEBUG) Log.d(TAG, "USB Device detached: " + device.getDeviceName());
+					deviceDetached(device.getDeviceName());
+					if (mUsbCb != null) {
+						mUsbCb.UsbTunerDeviceDetached(device);
+					}
+					break;
+				case UsbManager.ACTION_USB_DEVICE_ATTACHED:
+					if (DEBUG) Log.d(TAG, "USB Device attached: " + device.getDeviceName());
+					if (mUsbCb != null) {
+						mUsbCb.UsbTunerDeviceAttached(device);
+					}
+					break;
 			}
 		}
 	}
