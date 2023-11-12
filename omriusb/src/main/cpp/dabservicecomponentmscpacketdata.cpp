@@ -274,7 +274,7 @@ bool DabServiceComponentMscPacketData::checkSanity() const {
         }
     }
     if (!isSane) {
-        std::cout << logStr.str() << std::endl;
+        std::cout << logStr.rdbuf() << std::endl;
     }
     return isSane && isSuperSane;
 }

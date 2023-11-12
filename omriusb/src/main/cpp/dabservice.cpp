@@ -141,7 +141,7 @@ void DabService::setServiceShortLabel(const std::string& shortLabel) {
 
 void DabService::addServiceComponent(const std::shared_ptr<DabServiceComponent>& component) {
     m_components.push_back(component);
-    std::ostringstream logStr;
+    std::stringstream logStr;
     const DabServiceComponent::SERVICECOMPONENTTYPE type = component->getServiceComponentType();
     logStr << m_logTag << "Adding ServiceComponent for SId: 0x" << std::hex << +m_serviceId
            << std::dec << " as Servicecomponent #" << +m_components.size()
@@ -181,7 +181,7 @@ void DabService::addServiceComponent(const std::shared_ptr<DabServiceComponent>&
             logStr << "?";
             break;
     }
-    std::cout << logStr.str() << std::endl;
+    std::cout << logStr.rdbuf() << std::endl;
 }
 
 void DabService::setProgrammeTypeCode(uint8_t intPtyCode) {
@@ -190,13 +190,13 @@ void DabService::setProgrammeTypeCode(uint8_t intPtyCode) {
         m_ptyNameFull = registeredtables::PROGRAMME_TYPE_NAME[m_ptyCode][0];
         m_ptyName16 = registeredtables::PROGRAMME_TYPE_NAME[m_ptyCode][1];
         m_ptyName8 = registeredtables::PROGRAMME_TYPE_NAME[m_ptyCode][2];
-        std::ostringstream logStr;
+        std::stringstream logStr;
         logStr << m_logTag << "Setting " << (isProgrammeTypeDynamic() ? "dynamic" : "static")
                << " PTY for SId: 0x" << std::hex << +m_serviceId << std::dec
                << " to: " << +getProgrammeTypeCode()
                << " : " << getProgrammeTypeFullName() << " : " << getProgrammeType16charName()
                << " : " << getProgrammeType8CharName();
-        std::cout << logStr.str() << std::endl;
+        std::cout << logStr.rdbuf() << std::endl;
     }
 }
 
@@ -256,8 +256,9 @@ bool DabService::checkSanity() const {
             }
         }
     }
-    if (!isSane && logStr.str().length() > 0) {
-        std::cout << logStr.str() << std::endl;
+    auto logBufCStr = reinterpret_cast<const char *>(logStr.rdbuf());
+    if (!isSane && strlen(logBufCStr) > 0) {
+        std::cout << logBufCStr << std::endl;
     }
 
     return isSane;

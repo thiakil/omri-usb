@@ -187,11 +187,18 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     std::cerr.rdbuf(new androidlogbuf("stderr", ANDROID_LOG_ERROR));
 
     JNIEnv *env;
-    vm->GetEnv((void **) &env, JNI_VERSION_1_6);
-    env->GetJavaVM(&m_javaVm);
-
-    cacheClassDefinitions(m_javaVm);
-
+    if (vm != nullptr) {
+        if (vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
+            return JNI_ERR;
+        }
+        if (env->GetJavaVM(&m_javaVm) == 0) {
+            cacheClassDefinitions(m_javaVm);
+        } else {
+            std::cerr << LOG_TAG << "JNI_OnLoad: GetJavaVM failed" << std::endl;
+        }
+    } else {
+        std::cerr << LOG_TAG << "JNI_OnLoad: vm null" << std::endl;
+    }
     return JNI_VERSION_1_6;
 }
 

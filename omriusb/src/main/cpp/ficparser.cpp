@@ -19,10 +19,12 @@
  */
 
 #include <iostream>
+#include <pthread.h>
 #include <syscall.h>
 #include <unistd.h>
 
 #include "ficparser.h"
+#include "global_definitions.h"
 
 constexpr uint16_t FicParser::CRC_CCITT_TABLE[];
 
@@ -133,10 +135,11 @@ void FicParser::call(const std::vector<uint8_t> &data, bool rfLock) {
 
 void FicParser::processFib() {
     long tid = syscall(SYS_gettid);
-    std::stringstream threadName;
-    threadName << "FIB-" << +tid;
-    pthread_setname_np(pthread_self(), threadName.str().c_str());
-    m_ficProcessorThreadName = threadName.str();
+    char threadName[TASK_COMM_LEN];
+    snprintf(threadName, TASK_COMM_LEN-1, "FIB-%lx", tid);
+    threadName[TASK_COMM_LEN-1] = '\0';
+    pthread_setname_np(pthread_self(), threadName);
+    m_ficProcessorThreadName = std::string(threadName);
 
     std::cout << M_LOG_TAG << "FIB thread started: " << getParserThreadName() << std::endl;
 
@@ -196,9 +199,9 @@ void FicParser::processFib() {
             }
         }
     }
-    std::ostringstream logMsg;
-    logMsg << M_LOG_TAG << "FIB Processor thread stopped: " << threadName.str();
-    std::cout << logMsg.str() << std::endl;
+    std::stringstream logMsg;
+    logMsg << M_LOG_TAG << "FIB Processor thread stopped: " << threadName;
+    std::cout << logMsg.rdbuf() << std::endl;
 }
 
 void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
@@ -425,13 +428,13 @@ void FicParser::parseFig_01(const std::vector<uint8_t>& ficData) {
             Fig_01_Ext_01 extOne(ficData);
             m_fig01_01dispatcher.invoke(extOne);
 #if defined(LOG_DETAILLED_FIG_ANALYSIS)
-            std::ostringstream logStr;
+            std::stringstream logStr;
             std::string hexStr = Fig::toHexString(ficData);
             logStr << M_LOG_TAG << "FIG 1/1 : " << hexStr << " SId:" << std::hex <<
                    +extOne.getProgrammeServiceId() << std::dec << " charset:"
                    << +extOne.getCharset() << " '" << extOne.getProgrammeServiceLabel()
                    << "' short:'" << extOne.getProgrammeServiceShortLabel() << "'";
-            std::cout << logStr.str() << std::endl;
+            std::cout << logStr.rdbuf() << std::endl;
 #endif
             bool done{false};
             if(!contains<Fig_01_Ext_01>(m_parsedFig0101, extOne)) {

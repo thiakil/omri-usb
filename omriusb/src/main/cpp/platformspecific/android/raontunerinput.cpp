@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 
 #include "../../ficparser.h"
+#include "../../global_definitions.h"
 #include "demousbtunerinput.h"
 #include "raontunerinput.h"
 
@@ -358,15 +359,15 @@ void RaonTunerInput::scanNext() {
     m_ficCollectionWaitLoops = MAX_FIC_COLLECTION_LOOPS;
 
     if (m_currentScanningEnsembleNum + 1 < NUM_DAB_ENSEMBLES) {
-        std::ostringstream logStr;
+        std::stringstream logStr;
         logStr << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Scan next Ensemble: " << +DAB_FREQ_TABLE_KHZ[m_currentScanningEnsembleNum + 1];
-        std::cout << logStr.str() << std::endl;
+        std::cout << logStr.rdbuf() << std::endl;
         if(m_ensembleCollectFinished) {
             for (int i : DAB_N_FREQUENCIES_IDX) {
                 if((m_currentScanningEnsembleNum + 1) == i) {
-                    std::ostringstream().swap(logStr); // clear state and empty the ostringstream buffer
+                    std::stringstream().swap(logStr); // clear state and empty the ostringstream buffer
                     logStr << LOG_TAG << "Skipping NFrequency: " << +i;
-                    std::cout << logStr.str() << std::endl;
+                    std::cout << logStr.rdbuf() << std::endl;
                     ++m_currentScanningEnsembleNum;
                     break;
                 }
@@ -386,7 +387,7 @@ void RaonTunerInput::scanNext() {
     } else {
         std::stringstream logStr;
         logStr << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Scan finished: " << +m_currentScanningEnsembleNum;
-        std::cout << logStr.str() << std::endl;
+        std::cout << logStr.rdbuf() << std::endl;
         if (m_usbDevice != nullptr) {
             m_usbDevice->scanProgress(100, -1);
             m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
@@ -529,9 +530,9 @@ bool RaonTunerInput::tunerPowerUp() {
             return true;
         } else {
             bool ioErrors = hasUsbIoErrors();
-            std::ostringstream logStr;
+            std::stringstream logStr;
             logStr << LOG_TAG << "PowerUp attempt #" << +i << " ioErrors=" << +ioErrors;
-            std::clog << logStr.str() << std::endl;
+            std::clog << logStr.rdbuf() << std::endl;
         }
     }
 
@@ -549,7 +550,7 @@ void RaonTunerInput::switchPage(const RaonTunerInput::REGISTER_PAGE regPage, con
             std::stringstream logStr;
             logStr << LOG_TAG << "switchPage 0x" << std::hex << +regPage << std::dec
                    << ": write exp:" << +switchData.size() << ", rcv:" << +bytesTransfered;
-            std::clog << logStr.str() << std::endl;
+            std::clog << logStr.rdbuf() << std::endl;
             mUsbWriteFailure++;
             anyFailure = true;
         } else {
@@ -560,7 +561,7 @@ void RaonTunerInput::switchPage(const RaonTunerInput::REGISTER_PAGE regPage, con
                 std::stringstream logStr;
                 logStr << LOG_TAG << "switchPage 0x" << std::hex << +regPage << std::dec
                           << ": read exp:" << +response.size() << ", rcv:" << +bytesTransfered;
-                std::clog << logStr.str() << std::endl;
+                std::clog << logStr.rdbuf() << std::endl;
                 mUsbReadFailure++;
                 anyFailure = true;
             } else {
@@ -568,7 +569,7 @@ void RaonTunerInput::switchPage(const RaonTunerInput::REGISTER_PAGE regPage, con
                     std::stringstream logStr;
                     logStr << LOG_TAG << "switchPage 0x" << std::hex << +regPage << " : 0x"
                               << +response[0] << std::dec;
-                    std::clog << logStr.str() << std::endl;
+                    std::clog << logStr.rdbuf() << std::endl;
                     mUsbReadFailure++;
                     anyFailure = true;
                 } else {
@@ -598,7 +599,7 @@ void RaonTunerInput::setRegister(const uint8_t reg, const uint8_t val, const uin
             logStr << LOG_TAG << "setRegister 0x" << std::hex << +reg << "=0x" << +val
                    << std::dec << ": write exp:" << +setRegData.size() << ", rcv:"
                    << +bytesTransfered;
-            std::clog << logStr.str() << std::endl;
+            std::clog << logStr.rdbuf() << std::endl;
             mUsbWriteFailure++;
             anyFailure = true;
         } else {
@@ -609,7 +610,7 @@ void RaonTunerInput::setRegister(const uint8_t reg, const uint8_t val, const uin
                 std::stringstream logStr;
                 logStr << LOG_TAG << "setRegister 0x" << std::hex << +reg << std::dec
                        << ": read exp:" << +response.size() << ", rcv:" << +bytesTransfered;
-                std::clog << logStr.str() << std::endl;
+                std::clog << logStr.rdbuf() << std::endl;
                 mUsbReadFailure++;
                 anyFailure = true;
             } else {
@@ -617,7 +618,7 @@ void RaonTunerInput::setRegister(const uint8_t reg, const uint8_t val, const uin
                     std::stringstream logStr;
                     logStr << LOG_TAG << "setRegister 0x" << std::hex << +reg << " : 0x"
                            << +response[0] << std::dec;
-                    std::clog << logStr.str() << std::endl;
+                    std::clog << logStr.rdbuf() << std::endl;
                     mUsbReadFailure++;
                     anyFailure = true;
                 } else {
@@ -646,7 +647,7 @@ uint8_t RaonTunerInput::readRegister(const uint8_t reg, const uint8_t retryNum) 
             std::stringstream logStr;
             logStr << LOG_TAG << "readRegister 0x" << std::hex << +reg << std::dec
                    << ": write exp:" << +xferbuff.size() << ", rcv:" << +bytesTransfered;
-            std::clog << logStr.str() << std::endl;
+            std::clog << logStr.rdbuf() << std::endl;
             mUsbWriteFailure++;
             anyFailure = true;
         } else {
@@ -658,7 +659,7 @@ uint8_t RaonTunerInput::readRegister(const uint8_t reg, const uint8_t retryNum) 
             std::stringstream logStr;
             logStr << LOG_TAG << "readRegister 0x" << std::hex << +reg << std::dec
                    << ": read exp:" << +xferbuff.size() << ", rcv:" << +bytesTransfered;
-            std::clog << logStr.str() << std::endl;
+            std::clog << logStr.rdbuf() << std::endl;
             mUsbReadFailure++;
             anyFailure = true;
         } else {
@@ -1209,7 +1210,7 @@ void RaonTunerInput::rtvVersion() {
 
         logstr << LOG_TAG << "HW version '" << m_HwVersion
                << "', SW version '" << m_SwVersion << "'";
-        std::cout << logstr.str() << std::endl;
+        std::cout << logstr.rdbuf() << std::endl;
     }
 }
 
@@ -1223,8 +1224,8 @@ void RaonTunerInput::rtvEcho() {
         // answer is 0x80 'D' 'A' 'B'
         if (bytes == 4 && cmdRespBuf[0] == 0x80) {
             std::stringstream logStr;
-            logStr << LOG_TAG << "echo: '" << cmdRespBuf[1] << cmdRespBuf[2] << cmdRespBuf [3] << "'";
-            std::cout << logStr.str() << std::endl;
+            logStr << LOG_TAG << "echo: '" << (char)(cmdRespBuf[1]) << (char)(cmdRespBuf[2]) << (char)(cmdRespBuf[3]) << "'";
+            std::cout << logStr.rdbuf() << std::endl;
         }
     }
 }
@@ -1374,21 +1375,22 @@ void RaonTunerInput::closeSubchannel(uint8_t subchanId) {
 
 void RaonTunerInput::threadedScanningFicRead() {
     long tid = syscall(SYS_gettid);
-    std::stringstream threadName;
-    threadName << "FicRead-" << +tid;
-    pthread_setname_np(pthread_self(), threadName.str().c_str());
+    char threadName[TASK_COMM_LEN];
+    snprintf(threadName, TASK_COMM_LEN-1, "FicR-%lx", tid);
+    threadName[TASK_COMM_LEN-1] = '\0';
+    pthread_setname_np(pthread_self(), threadName);
 
-    std::ostringstream logMsg;
-    logMsg << LOG_TAG << "FIC thread started: " << threadName.str();
-    std::cout << logMsg.str() << std::endl;
+    std::stringstream logMsg;
+    logMsg << LOG_TAG << "FIC thread started: " << threadName;
+    std::cout << logMsg.rdbuf() << std::endl;
     while (m_readFicThreadRunning) {
         if (!hasUsbIoErrors()) {
             scanningReadFic();
         }
     }
-    std::ostringstream().swap(logMsg); // clear state and empty the ostringstream buffer
-    logMsg << LOG_TAG << "FIC thread ended: " << threadName.str();
-    std::cout << logMsg.str() << std::endl;
+    std::stringstream().swap(logMsg); // clear state and empty the ostringstream buffer
+    logMsg << LOG_TAG << "FIC thread ended: " << threadName;
+    std::cout << logMsg.rdbuf() << std::endl;
 }
 
 void RaonTunerInput::scanningReadFic() {
@@ -1405,11 +1407,11 @@ void RaonTunerInput::scanningReadFic() {
             m_scanCommandQueue.push(std::bind(&RaonTunerInput::scanNext, this));
         }
 
-        std::ostringstream logMsg;
+        std::stringstream logMsg;
         logMsg << LOG_TAG << "ScanRetries: " << +m_maxCollectionWaitLoops
             << " Freq: " << +(m_currentFrequency/1000) << " kHz"
             << " LockStat: " << +lockStatus;
-        std::cout << logMsg.str() << std::endl;
+        std::cout << logMsg.rdbuf() << std::endl;
         return;
     }
 
@@ -1424,9 +1426,9 @@ void RaonTunerInput::scanningReadFic() {
         readFicData(RTV_DAB_CHANNEL_LOCK_OK == lockStatus);
 
         --m_ficCollectionWaitLoops;
-        std::ostringstream logMsg;
+        std::stringstream logMsg;
         logMsg << LOG_TAG << "FicRetries: " << +m_ficCollectionWaitLoops;
-        std::cout << logMsg.str() << std::endl;
+        std::cout << logMsg.rdbuf() << std::endl;
         if(m_ficCollectionWaitLoops <= 0) {
             m_scanCommandQueue.push(std::bind(&RaonTunerInput::scanNext, this));
         }
@@ -1796,9 +1798,9 @@ void RaonTunerInput::readData() {
             rawRecordMscWrite(mscData);
             dataInput(mscData, m_currentSubchanId, false);
         } else {
-            std::ostringstream logMsg;
+            std::stringstream logMsg;
             logMsg << LOG_TAG << "m_startServiceLink is null or bytesTransfered<4: " << +bytesTransfered;
-            std::clog << logMsg.str() << std::endl;
+            std::clog << logMsg.rdbuf() << std::endl;
         }
 
         //clear buffer

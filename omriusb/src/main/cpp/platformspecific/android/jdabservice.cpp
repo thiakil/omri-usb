@@ -592,7 +592,7 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
         }
         std::stringstream logStr;
         logStr << m_logTag << "SF svcs changed: isEqual:" << +isEqual << " isSteady:" << +isSteady << " wasSteady:" << +m_sfServicesSteady;
-        std::cout << logStr.str() << std::endl;
+        std::cout << logStr.rdbuf() << std::endl;
         if (!isSteady) {
             return;
         } else {

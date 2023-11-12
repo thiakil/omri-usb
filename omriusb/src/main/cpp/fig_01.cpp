@@ -67,7 +67,7 @@ void Fig_01::parseLabel(std::vector<uint8_t>::const_iterator& labelIter,
             static_cast<const registeredtables::CHARACTER_SET>(m_charSet), isOk);
     }
     if (!isOk) {
-        std::ostringstream logMsg;
+        std::stringstream logMsg;
         logMsg << "parseLabel " << (isOk?"Ok":"NOK") << " charSet:" << std::dec << +m_charSet << " '";
         for (auto i=0; i<16; i++) {
             if (isprint(label16[i])) {
@@ -86,7 +86,7 @@ void Fig_01::parseLabel(std::vector<uint8_t>::const_iterator& labelIter,
             }
         }
         logMsg << "'";
-        std::clog << logMsg.str() << std::endl;
+        std::clog << logMsg.rdbuf() << std::endl;
     }
 
     // Do not truncate labels using std::string::substr(), it fails with UTF8 code units

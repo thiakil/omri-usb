@@ -400,13 +400,13 @@ void DabEnsemble::fig00_03_input(const Fig_00_Ext_03& fig03) {
     for(const auto& packetDesc : fig03.getPacketModeServiceDescriptions()) {
         auto compIter = m_packetComponentsMap.find(packetDesc.serviceComponentId);
         if(compIter != m_packetComponentsMap.cend()) {
-            std::ostringstream logStr;
+            std::stringstream logStr;
             logStr << m_logTag << " PacketComponent SCId " << packetDesc.serviceComponentId
                    << " : setting SubChanId:" << +packetDesc.subchannelId
                    << " DGused:" << packetDesc.dataGroupTransportUsed
                    << " DSCTy:" << +packetDesc.dataServiceComponentType
                    << " PacketAddress:" << +packetDesc.packetAddress;
-            std::cout << logStr.str() << std::endl;
+            std::cout << logStr.rdbuf() << std::endl;
 
             compIter->second->setSubchannelId(packetDesc.subchannelId);
             compIter->second->setDataServiceComponentType(packetDesc.dataServiceComponentType);
@@ -510,7 +510,7 @@ void DabEnsemble::dumpServiceLinkDb() const {
             for (auto j : i.idList) {
                 logString << " 0x" << std::hex << +j << std::dec;
             }
-            std::cout << logString.str() << std::endl;
+            std::cout << logString.rdbuf() << std::endl;
         }
     }
 }
@@ -621,7 +621,7 @@ void DabEnsemble::dumpFrequencyDb() const {
                 }
                 logString << " " << +freqInfo.frequencyKHz << adjacent;
             }
-            std::cout << logString.str() << std::endl;
+            std::cout << logString.rdbuf() << std::endl;
         }
     }
 }
@@ -686,7 +686,7 @@ void DabEnsemble::dumpOeSrvInfoDb() const {
                 logString << " 0x" << std::hex << +eid << std::dec;
             }
         }
-        std::cout << logString.str() << std::endl;
+        std::cout << logString.rdbuf() << std::endl;
     }
 }
 
@@ -1005,7 +1005,7 @@ void DabEnsemble::fig_00_done_cb(Fig::FIG_00_TYPE type) {
     logmsg << "1/0:" << m_fig100done << ", ";
     logmsg << "1/1:" << m_fig101done;
     if (hasSthChanged) {
-        std::cout << logmsg.str() << std::endl;
+        std::cout << logmsg.rdbuf() << std::endl;
     }
 
     if(m_fig000done && m_fig001done && m_fig002done && m_fig008done && m_fig013done) {
@@ -1071,9 +1071,9 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
                 std::stringstream logStr;
                 logStr << m_logTag << "checkServiceSanity failed for SId 0x" << std::hex << +serviceId << std::dec;
                 if (logAsWarning) {
-                    std::clog << logStr.str() << std::endl;
+                    std::clog << logStr.rdbuf() << std::endl;
                 } else {
-                    std::cout << logStr.str() << std::endl;
+                    std::cout << logStr.rdbuf() << std::endl;
                 }
                 return;
             }
@@ -1082,9 +1082,9 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
             std::stringstream logStr;
             logStr << m_logTag << "checkServiceSanity failed find SId 0x" << std::hex << +serviceId << std::dec;
             if (logAsWarning) {
-                std::clog << logStr.str() << std::endl;
+                std::clog << logStr.rdbuf() << std::endl;
             } else {
-                std::cout << logStr.str() << std::endl;
+                std::cout << logStr.rdbuf() << std::endl;
             }
             return;
         }
@@ -1102,37 +1102,37 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
                     }
                 }
                 if (primAudioSubChannelIds.size() > 1) {
-                    std::ostringstream logStr;
+                    std::stringstream logStr;
                     logStr << m_logTag << "checkServiceSanity SId 0x" << std::hex
                               << +srvMapEntry.second.getServiceId() << std::dec << ": "
                               << +primAudioSubChannelIds.size() << " prim audio SubChanIds:";
                     for (const auto & subChanId : primAudioSubChannelIds) {
                         logStr << " " << +subChanId;
                     }
-                    std::clog << logStr.str() << std::endl;
+                    std::clog << logStr.rdbuf() << std::endl;
                 }
             }
             if (!wasSane) {
-                std::ostringstream logStr;
+                std::stringstream logStr;
                 logStr << m_logTag << "checkServiceSanity failed for SId 0x" << std::hex
                        << +srvMapEntry.second.getServiceId() << std::dec;
                 if (logAsWarning) {
-                    std::clog << logStr.str() << std::endl;
+                    std::clog << logStr.rdbuf() << std::endl;
                 } else {
-                    std::cout << logStr.str() << std::endl;
+                    std::cout << logStr.rdbuf() << std::endl;
                 }
                 incompleteDabServices.push_back(std::make_shared<DabService>(srvMapEntry.second));
             }
         }
         if (!incompleteDabServices.empty()) {
             if (ensembleCollectHasTimedout) {
-                std::ostringstream logStr;
+                std::stringstream logStr;
                 logStr << m_logTag << " ensemble collect TIMEOUT, prune SId";
                 for (const auto &failedDabService : incompleteDabServices) {
                     logStr << " 0x" << std::hex << +failedDabService->getServiceId() << std::dec;
                     m_servicesMap.erase(failedDabService->getServiceId());
                 }
-                std::cerr << logStr.str() << std::endl;
+                std::cerr << logStr.rdbuf() << std::endl;
                 // no "return" because after pruning the DabServices in the ensemble should be fine,
                 // continue with checking the ensemble itself
             } else {
@@ -1141,7 +1141,7 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
         }
     }
     // service(s) checked, now ensemble itself
-    std::ostringstream logStr;
+    std::stringstream logStr;
     logStr << m_logTag << " checkServiceSanity failed EId=0x" << std::hex << +getEnsembleId() << std::dec;
     if (getEnsembleEcc() == ECC_INVALID || getEnsembleId() == EID_INVALID
        || getEnsembleLabelCharset() == CHARSET_INVALID || getEnsembleLabel().empty()) {
@@ -1149,9 +1149,9 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
                << getEnsembleLabel() << "', charset:0x" << std::hex
                << +getEnsembleLabelCharset() << std::dec;
         if (logAsWarning) {
-            std::clog << logStr.str() << std::endl;
+            std::clog << logStr.rdbuf() << std::endl;
         } else {
-            std::cout << logStr.str() << std::endl;
+            std::cout << logStr.rdbuf() << std::endl;
         }
         return;
     }
@@ -1161,7 +1161,7 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
     if (serviceId != DabService::SID_INVALID) {
         logStr << " for SId 0x" << std::hex << +serviceId << std::dec;
     }
-    std::cout << logStr.str() << std::endl;
+    std::cout << logStr.rdbuf() << std::endl;
 
     if (!m_ensembleCollectFinished) {
         m_ensembleCollectFinished = true;
@@ -1212,7 +1212,7 @@ void DabEnsemble::lookupEIdOnOtherFrequency(
     std::cout << m_logTag << " Lookup EId 0x" << std::hex << +targetEId << std::dec
               << " on another frequency, frequencyInformationDb (size "
               << +m_frequencyInformationDb.size() << ")" << std::endl;
-    std::stringstream logNoMatchStr;
+    std::string logNoMatchStr;
     for (const auto &freqInfoDbEntry : m_frequencyInformationDb) {
         for (const auto &freqInfo : freqInfoDbEntry.second) {
             if (freqInfo.frequencyInformationType == Fig_00_Ext_21::DAB_ENSEMBLE &&
@@ -1257,13 +1257,15 @@ void DabEnsemble::lookupEIdOnOtherFrequency(
                     }
                 }
             } else {
-                logNoMatchStr << "0x" << std::hex << +freqInfo.id << std::dec
-                              << " type " << +freqInfo.frequencyInformationType << "; ";
+                char noMatchCStr[41];
+                snprintf(noMatchCStr, 40, "FreqInfo 0x%x type %d;", freqInfo.id, freqInfo.frequencyInformationType);
+                noMatchCStr[40] = '\0';
+                logNoMatchStr.append(noMatchCStr);
             }
         }
     }
-    if (!logNoMatchStr.str().empty()) {
-        std::cout << m_logTag << "   no match: " << logNoMatchStr.str() << std::endl;
+    if (!logNoMatchStr.empty()) {
+        std::cout << m_logTag << "   no match: " << logNoMatchStr << std::endl;
     }
 }
 
@@ -1283,7 +1285,7 @@ void DabEnsemble::lookupOtherEnsembleSameService(
      */
     std::cout << m_logTag << "Lookup other ensembles carrying sid 0x" << std::hex << +targetSId << std::dec
               << " oeSrvInfoDb (size " << +m_oeSrvInfoDb.size() << ")" << std::endl;
-    std::stringstream logNoMatchStr;
+    std::string logNoMatchStr;
     for (const auto & oeSrvInfo : m_oeSrvInfoDb) {
         for (const auto & oe : oeSrvInfo.second) {
             if (oe.serviceId == targetSId) {
@@ -1316,12 +1318,15 @@ void DabEnsemble::lookupOtherEnsembleSameService(
                     }
                 }
             } else {
-                logNoMatchStr << "SId 0x" << std::hex << +oe.serviceId << std::dec << "; ";
+                char noMatchCStr[21];
+                snprintf(noMatchCStr, 20, "SId 0x%x;", oe.serviceId);
+                noMatchCStr[20] = '\0';
+                logNoMatchStr.append(noMatchCStr);
             }
         }
     }
-    if (!logNoMatchStr.str().empty()) {
-        std::cout << m_logTag << "   no match: " << logNoMatchStr.str() << std::endl;
+    if (!logNoMatchStr.empty()) {
+        std::cout << m_logTag << "   no match: " << logNoMatchStr << std::endl;
     }
 }
 
@@ -1494,7 +1499,7 @@ std::vector<std::shared_ptr<LinkedServiceDab>> DabEnsemble::getLinkedDabServices
     logStr << m_logTag << +collectedServices.size() << " SF svcs for SId 0x"
         << std::hex << +targetSId << std::dec << ",EId 0x" << std::hex << +targetEId << std::dec
         << ",ECC 0x" << std::hex << +targetECC << std::dec << ",freq " << +targetFreqKHz << " kHz";
-    std::cout << logStr.str() << std::endl;
+    std::cout << logStr.rdbuf() << std::endl;
     return collectedServices;
 }
 

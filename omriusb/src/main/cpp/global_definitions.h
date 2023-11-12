@@ -221,4 +221,8 @@ static constexpr char const * EBU_SET[16][16] {
         /* F- */ {"\u00E3", "\u00E5", "\u00E6", "\u0153", "\u0175", "\u00FD", "\u00F5", "\u00F8", "\u00FE", "\u014B", "\u0155", "\u0107", "\u015B", "\u017A", "\u0165", "\u0127"},
 };
 
+#ifndef TASK_COMM_LEN
+#define TASK_COMM_LEN 16
+#endif
+
 #endif // GLOBAL_DEFINITIONS

@@ -177,7 +177,7 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
     std::stringstream logStr;
     logStr << m_logTag << " Ensemble ready: " << +ensemble.getDabServices().size()
         << " services, EId: " << std::hex << +ensemble.getEnsembleId() << std::dec << std::endl;
-    std::cout << logStr.str() << std::endl;
+    std::cout << logStr.rdbuf() << std::endl;
 
     m_dabTimeCallback = ensemble.registerDateTimeCallback(
                 std::bind(&JTunerUsbDevice::dabTimeUpdate, this, std::placeholders::_1));

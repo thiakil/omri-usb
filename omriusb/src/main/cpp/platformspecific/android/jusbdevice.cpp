@@ -196,7 +196,7 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
 
             usbInterface = env->CallObjectMethod(m_usbDeviceObject, m_usbDeviceGetInterfaceMId, m_interfaceNum);
             if (usbInterface != nullptr) {
-                std::ostringstream logStr;
+                std::stringstream logStr;
                 auto claimed = env->CallBooleanMethod(m_usbDeviceConnectionObject,
                                                           m_usbDeviceConnectionClaimInterfaceMId,
                                                           usbInterface, JNI_TRUE);
@@ -210,21 +210,21 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
                                                       m_usbDeviceConnectionGetFileDescriptorMid);
                 logStr << ", fd: " << +m_fileDescriptor;
 
-                std::cout << logStr.str() << std::endl;
+                std::cout << logStr.rdbuf() << std::endl;
 
                 for(int i = 0; i < endpointCnt; i++) {
-                    logStr = std::ostringstream();
+                    std::stringstream endPointLogStr;
                     auto endPoint = env->CallObjectMethod(usbInterface, m_usbDeviceInterfaceGetEndpointMId, i);
                     auto endpointNumber = env->CallIntMethod(endPoint, m_usbDeviceEndpointGetEndpointNumberMId);
                     auto endpointAddress = env->CallIntMethod(endPoint, m_usbDeviceEndpointGetEndpointAddressMId);
                     auto endpointDirection = env->CallIntMethod(endPoint, m_usbDeviceEndpointGetDirectionMId);
-                    logStr << " #" << +i << ":ep 0x" << std::hex << +endpointNumber << " addr: 0x" << +endpointAddress
+                    endPointLogStr << " #" << +i << ":ep 0x" << std::hex << +endpointNumber << " addr: 0x" << +endpointAddress
                            << " dir:0x" << +endpointDirection << std::dec;
 
                     auto endPointRef = env->NewGlobalRef(endPoint);
                     auto endPointPair = std::pair<uint8_t,jobject>(static_cast<uint8_t>(endpointAddress), endPointRef);
                     m_endpointsMap.insert(endPointPair);
-                    std::cout << logStr.str() << std::endl;
+                    std::cout << endPointLogStr.rdbuf() << std::endl;
                 }
             } else {
                 std::clog << LOG_TAG << "UsbInterface.getInterface failed" << std::endl;

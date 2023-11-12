@@ -134,10 +134,10 @@ void DabServiceComponent::setServiceComponentIdWithinService(uint8_t scIdS) {
      * The combination of the SId and the SCIdS provides a service component identifier which is valid globally.
      */
 #if defined(LOG_DETAILLED_FIG_ANALYSIS)
-    std::ostringstream logStr;
+    std::stringstream logStr;
     logStr << m_logTag << " Setting SCIdS: " << +scIdS << " for SubChanId: " << +m_subChanId
            << "label: '" << m_serviceComponentLabel << "'";
-    std::cout << logStr.str() << std::endl;
+    std::cout << logStr.rdbuf() << std::endl;
 #endif
 }
 
@@ -184,20 +184,20 @@ void DabServiceComponent::setLabelCharset(uint8_t charset) {
 void DabServiceComponent::setServiceComponentLabel(const std::string& label) {
     if(m_serviceComponentLabel.empty()) {
         m_serviceComponentLabel = label;
-        std::ostringstream logStr;
+        std::stringstream logStr;
         logStr << m_logTag << " Setting ServiceComponentLabel: " << m_serviceComponentLabel
                << " to SCIdS: " << +getServiceComponentIdWithinService();
-        std::cout << logStr.str() << std::endl;
+        std::cout << logStr.rdbuf() << std::endl;
     }
 }
 
 void DabServiceComponent::setServiceComponentShortLabel(const std::string& shortLabel) {
     if(m_serviceComponentShortLabel.empty()) {
         m_serviceComponentShortLabel = shortLabel;
-        std::ostringstream logStr;
+        std::stringstream logStr;
         logStr << m_logTag << " Setting ServiceComponentShortLabel: "
                << m_serviceComponentShortLabel << " to SCIdS: " << +getServiceComponentIdWithinService();
-        std::cout << logStr.str() << std::endl;
+        std::cout << logStr.rdbuf() << std::endl;
     }
 }
 
@@ -208,11 +208,11 @@ void DabServiceComponent::addUserApplication(const DabUserApplication& uApp) {
             return;
         }
     }
-    std::ostringstream logStr;
+    std::stringstream logStr;
     logStr << m_logTag << " Adding UserApplicationType: " << +uApp.getUserApplicationType()
            << " with DataServiceComponentType: " << +uApp.getDataServiceComponentType()
            << " for SubChanId: " << +m_subChanId;
-    std::cout << logStr.str() << std::endl;
+    std::cout << logStr.rdbuf() << std::endl;
     m_userApplications.push_back(uApp);
 }
 
@@ -222,7 +222,7 @@ void DabServiceComponent::flushBufferedData() {
 
 bool DabServiceComponent::checkSanity() const {
     bool isSane = true;
-    std::ostringstream logStr;
+    std::stringstream logStr;
     logStr << m_logTag << "  check sanity SubChanId=" << +getSubChannelId() << ":"
            << " SCIdS:" << +getServiceComponentIdWithinService();
 
@@ -247,7 +247,7 @@ bool DabServiceComponent::checkSanity() const {
         isSane = false;
     }
     if (!isSane) {
-        std::cout << logStr.str() << std::endl;
+        std::cout << logStr.rdbuf() << std::endl;
     }
     return isSane;
 }

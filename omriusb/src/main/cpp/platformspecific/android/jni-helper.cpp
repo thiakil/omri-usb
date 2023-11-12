@@ -89,7 +89,7 @@ void JNI_TSS_DTOR(void* key) {
         JNIEnv *enve;
         int state = javaVmPtr->GetEnv((void **) &enve, JNI_VERSION_1_6);
         if (state != JNI_EDETACHED) {
-            std::ostringstream log;
+            std::stringstream log;
             auto tid = gettid();
             const size_t NAME_LEN = 32; // min. 16 char according to prctl(2)
             char thread_name[NAME_LEN];
@@ -98,7 +98,7 @@ void JNI_TSS_DTOR(void* key) {
                 thread_name[0] = '\0';
             }
             log << "tid '" << thread_name << "' (" << std::dec << +tid << ") was not detached";
-            std::clog << log.str() << std::endl;
+            std::clog << log.rdbuf() << std::endl;
         }
         javaVmPtr->DetachCurrentThread(); // last chance to detach, otherwise VM may crash
         tss_delete(tss_key); // likely superfluous because thread is about to be terminated

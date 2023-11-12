@@ -67,7 +67,7 @@ void Fig_00_Ext_10::parseFigData(const std::vector<uint8_t>& figData) {
                << +m_dabTime.minute << ", s: " << +m_dabTime.second << ", ms: "
                << +m_dabTime.milliseconds << ", UnixEpoch: " << +m_dabTime.unixEpoch << ": "
                << std::put_time(std::gmtime(&m_dabTime.unixEpoch), "%c %Z");
-        std::cout << logStr.str() << std::endl;*/
+        std::cout << logStr.rdbuf() << std::endl;*/
     }
 }
 
