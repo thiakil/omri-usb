@@ -3,9 +3,12 @@ apply plugin: 'kotlin-android'
 apply plugin: 'org.jetbrains.kotlin.android'
 
 // see https://developer.android.com/ndk/guides/asan
+//     https://developer.android.com/ndk/guides/hwasan
 // Change to true if you want Address Sanitizer active in debug build
+// Either asan OR hwAsan !
 // Ensure a clean build after change !
-def asanEnabledInDebugBuild = false
+def asanEnabledInDebugBuild = false // Deprecated in favor of HWAsan starting with Android 14
+def hwAsanEnabledInDebugBuild = false
 
 // Allow for project-level definition of certain versions. If such does not exist, use defaults.
 // -- compileSdk
@@ -85,6 +88,13 @@ android {
                     if (asanEnabledInDebugBuild) {
                         arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
                         arguments += "-DIRTDAB_ADDRESS_SANITIZER=yes"
+                        arguments += "-DCLANG_VERSION=${omriUsbClangVersion}"
+                    }
+                    else if (hwAsanEnabledInDebugBuild) {
+                        // Can also use system or none as ANDROID_STL, but not c++_static.
+                        arguments "-DANDROID_ARM_MODE=arm", "-DANDROID_STL=c++_shared"
+                        arguments += "-DIRTDAB_ADDRESS_SANITIZER=hw"
+                        arguments += "-DCLANG_VERSION=${omriUsbClangVersion}"
                     }
                 }
             }
@@ -92,7 +102,12 @@ android {
                 if (asanEnabledInDebugBuild) {
                     // pick asan.sh from NDK into folder 'resources'
                     // See https://developer.android.com/ndk/guides/asan
-                    srcDir project.android.ndkDirectory.absolutePath + "/wrap.sh/"
+                    srcDir project.android.ndkDirectory.absolutePath + "/wrap.sh/asan.sh"
+                }
+                else if (hwAsanEnabledInDebugBuild) {
+                    // pick hwasan.sh from NDK into folder 'resources'
+                    // See https://developer.android.com/ndk/guides/hwasan
+                    srcDir project.android.ndkDirectory.absolutePath + "/wrap.sh/hwasan.sh"
                 }
             }
         }
@@ -150,14 +165,15 @@ tasks.register('cleanNativeAsanLibs') {
     dependsOn clean
     doLast {
         delete(file('/src/main/jniLibs/arm64-v8a/libclang_rt.asan-aarch64-android.so'))
+        delete(file('/src/main/jniLibs/arm64-v8a/libclang_rt.hwasan-aarch64-android.so'))
     }
 }
 
-// delete asan.sh in folder resources
+// delete (hw)asan.sh in folder resources
 tasks.register('cleanWrapSh') {
     dependsOn clean
     doLast {
         delete(file('/src/main/resources/lib/arm64-v8a/asan.sh'))
+        delete(file('/src/main/resources/lib/arm64-v8a/hwasan.sh'))
     }
 }
-

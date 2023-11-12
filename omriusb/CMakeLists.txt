@@ -123,18 +123,26 @@ function(set_arch_from_abi ABI ARCH)
     endif()
 endfunction()
 
+set_arch_from_abi(${ANDROID_ABI} ARCH)
+
 if(IRTDAB_ADDRESS_SANITIZER STREQUAL "yes")
     target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=address)
-    set(ADDRESS_SANITIZER_LINK_OPTIONS            -fsanitize=address)
-    set_arch_from_abi(${ANDROID_ABI} ARCH)
-    file(GLOB_RECURSE ASAN_SRC ${ANDROID_TOOLCHAIN_ROOT}/*.asan*${ARCH}*-android.so)
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS -fsanitize=address)
+    file(GLOB_RECURSE ASAN_SRC ${ANDROID_TOOLCHAIN_ROOT}/lib*/clang/${CLANG_VERSION}/lib/linux/libclang_rt.asan-${ARCH}-android.so)
     set(ASAN_DEST ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
     add_custom_command(
             TARGET ${PROJECT_NAME} PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy ${ASAN_SRC} ${ASAN_DEST}
     )
-else()
-    set(ADDRESS_SANITIZER_LINK_OPTIONS) # empty string
+elseif(IRTDAB_ADDRESS_SANITIZER STREQUAL "hw" AND ARCH STREQUAL "aarch64")
+    target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=hwaddress)
+    target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=hwaddress)
+    file(GLOB_RECURSE ASAN_SRC ${ANDROID_TOOLCHAIN_ROOT}/lib*/clang/${CLANG_VERSION}/lib/linux/libclang_rt.hwasan-${ARCH}-android.so)
+    set(ASAN_DEST ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    add_custom_command(
+            TARGET ${PROJECT_NAME} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${ASAN_SRC} ${ASAN_DEST}
+    )
 endif()
 
 # Specifies libraries CMake should link to your target library. You
@@ -148,6 +156,5 @@ target_link_libraries( # Specifies the target library.
                        ${log-lib}
                        fec
 
-                       ${ADDRESS_SANITIZER_LINK_OPTIONS}
                        ${MAPFILE_LINK_OPTION}
                        )
