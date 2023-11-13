@@ -112,6 +112,7 @@ void FicParser::call(const std::vector<uint8_t> &data, bool rfLock) {
         long remainingBytes = std::distance(ficIter, data.cend());
         if (remainingBytes < FIB_SIZE) {
             std::clog << M_LOG_TAG << "FIB " << +loop << " too short: exp:" << FIB_SIZE << ", rcv:" << +remainingBytes << std::endl;
+            return; // must not continue
         }
         std::vector<uint8_t> fib(ficIter, ficIter+FIB_SIZE);
         if(FIB_CRC_CHECK(fib.data())) {

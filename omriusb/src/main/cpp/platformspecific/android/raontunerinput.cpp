@@ -1692,6 +1692,7 @@ void RaonTunerInput::readFicData(bool rfLock) {
             if (payloadLen % FicParser::FIB_SIZE != 0) {
                 std::clog << LOG_TAG << "readFicData payloadLen " << +payloadLen
                     << " not a multiple of " << +FicParser::FIB_SIZE << std::endl;
+                return;
             }
             const std::vector<uint8_t> ficData(it, it + payloadLen);
             rawRecordFicWrite(ficData);
