@@ -20,10 +20,10 @@
 
 #include <functional>
 #include <iostream>
+#include <memory>
 
 #include "dabensemble.h"
 #include "dabservice.h"
-#include "timer.h"
 
 DabEnsemble::DabEnsemble() {
     std::cout << m_logTag << " Constructing" << std::endl;
@@ -49,10 +49,12 @@ void DabEnsemble::reset() {
     if (m_ficPtr != nullptr) {
         m_ficPtr->stop();
         m_ficPtr->reset();
-        registerCbs();
-        if (!m_ficPtr->isStarted()) {
-            m_ficPtr->start();
-        }
+        m_ficPtr.release();
+    }
+    m_ficPtr = std::unique_ptr<FicParser>(new FicParser);
+    registerCbs();
+    if (!m_ficPtr->isStarted()) {
+        m_ficPtr->start();
     }
 
     // reset start time

@@ -27,6 +27,7 @@
 #include <set>
 
 #include <pthread.h>
+#include <time.h>
 #include <unistd.h>
 #include <syscall.h>
 #include <sys/endian.h>
@@ -318,17 +319,20 @@ void RaonTunerInput::stopScanCommand() {
 void RaonTunerInput::stopScanCommandThread() {
     std::lock_guard<std::recursive_mutex> lockGuard(m_classmutex);
     if (m_scanCommandThreadRunning) {
-        std::cout << LOG_TAG << "Stopping ScanCommand thread..." << std::endl;
         m_scanCommandThreadRunning = false;
-        if (m_scanCommandThread.joinable()) {
-            if (std::this_thread::get_id() != m_scanCommandThread.get_id()) {
+        if (m_scanCommandThread.get() == nullptr) {
+            return; // no thread, nothing to do
+        }
+        std::cout << LOG_TAG << "Stopping ScanCommand thread..." << std::endl;
+        if (m_scanCommandThread->joinable()) {
+            if (std::this_thread::get_id() != m_scanCommandThread->get_id()) {
                 std::cout << LOG_TAG << "Joining ScanCommand thread..." << std::endl;
-                m_scanCommandThread.join();
+                m_scanCommandThread->join();
                 std::cout << LOG_TAG << "Joining ScanCommand thread done" << std::endl;
             } else {
                 // cannot join myself
                 std::clog << LOG_TAG << "Can't join ScanCommand thread: it's me" << std::endl;
-                m_scanCommandThread.detach(); // forget about this thread
+                m_scanCommandThread->detach(); // forget about this thread
             }
         } else {
             std::clog << LOG_TAG << "ScanCommand thread not joinable" << std::endl;
@@ -343,7 +347,8 @@ void RaonTunerInput::startServiceScan() {
         stopScanCommandThread(); // in case it is still running
 
         m_scanCommandThreadRunning = true;
-        m_scanCommandThread = std::thread(&RaonTunerInput::processScanCommands, this);
+        m_scanCommandThread = std::unique_ptr<DabThread>(
+                new DabThread([this]() { processScanCommands(); }));
         m_scanCommandQueue.push(std::bind(&RaonTunerInput::startScanCommand, this));
     }
 }
@@ -1436,35 +1441,35 @@ void RaonTunerInput::scanningReadFic() {
 }
 
 void RaonTunerInput::rawRecordOpen(const std::shared_ptr<JDabService>& serviceLink) {
-    std::string labelstring;
-    std::stringstream serviceidstring, ensembleidstring;
-
     if (serviceLink != nullptr) {
         std::shared_ptr<DabService> dabService = serviceLink->getLinkDabService();
+
+        std::string labelString;
         if (dabService != nullptr) {
-            labelstring = dabService->getServiceLabel();
+            labelString = dabService->getServiceLabel();
         } else {
-            labelstring = "labelunknown";
+            labelString = "labelunknown";
         }
         // "_" is used to find the infos from the filename, get rid of it in the label, but replace with " "
-        labelstring = std::regex_replace(labelstring, std::regex("_"), " ");
-        serviceidstring << std::hex << serviceLink->getServiceId();
-        ensembleidstring << std::hex << serviceLink->getEnsembleId();
-        const std::string filenameAfterDateWithoutSuffix =
-                labelstring
-                + "_" + ensembleidstring.str()
-                + "_" + serviceidstring.str();
+        labelString = std::regex_replace(labelString, std::regex("_"), " ");
+
+        char serviceIdCString[11];
+        char ensembleIdCString[11];
+        snprintf(serviceIdCString, sizeof(serviceIdCString)-1, "%x", serviceLink->getServiceId());
+        serviceIdCString[sizeof(serviceIdCString)-1] = '\0';
+        snprintf(ensembleIdCString, sizeof(ensembleIdCString)-1, "%x", serviceLink->getEnsembleId());
+        ensembleIdCString[sizeof(ensembleIdCString)-1] = '\0';
+        std::string filenameAfterDateWithoutSuffix = labelString;
+        filenameAfterDateWithoutSuffix.append("_").append(serviceIdCString);
+        filenameAfterDateWithoutSuffix.append("_").append(ensembleIdCString);
 
         __rawRecordOpen(filenameAfterDateWithoutSuffix);
     }
 }
 
 void RaonTunerInput::rawRecordOpen(const int freqMhz) {
-    std::stringstream freqMhzStrStream;
-    freqMhzStrStream << std::dec << freqMhz;
-
-    const std::string filenameAfterDateWithoutSuffix =
-            "scan_" + freqMhzStrStream.str();
+    std::string filenameAfterDateWithoutSuffix = "scan_";
+    filenameAfterDateWithoutSuffix.append(std::to_string(freqMhz));
 
     __rawRecordOpen(filenameAfterDateWithoutSuffix);
 }
@@ -1483,13 +1488,27 @@ void RaonTunerInput::__rawRecordOpen(const std::string& filenameAfterDateWithout
     // open new one
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
-    std::stringstream timestring;
-    timestring << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d_%H-%M-%S");
 
-    const std::string filename =
-            m_recordPath + "/" + "dab_" + timestring.str() + "_" +
-            filenameAfterDateWithoutSuffix + ".raw";
+    char timeCstring[4+1+2+1+2+1+2+1+2+1+2 + 2]; // +2 because strftime will put also '\0' at end
+    const tm* pTm = std::localtime(&in_time_t);
+    if (0 == std::strftime(timeCstring, sizeof(timeCstring)-1, "%Y-%m-%d_%H-%M-%S", pTm)) {
+        std::clog << LOG_TAG << "rawRecordOpen strftime failed" << std::endl;
+        return;
+    }
+    timeCstring[sizeof(timeCstring)-1] = '\0';
 
+    std::cout << LOG_TAG << "rawRecordOpen construct filename from " << m_recordPath << " and "
+              << timeCstring
+              << " and " << filenameAfterDateWithoutSuffix << std::endl;
+
+    std::string filename = m_recordPath;
+    filename.append("/dab_")
+        .append(timeCstring)
+        .append("_")
+        .append(filenameAfterDateWithoutSuffix)
+        .append(".raw");
+
+    std::cout << LOG_TAG << "rawRecordOpen... " << filename << std::endl;
     m_outFileStream.open(filename, std::ios::out | std::ios::binary);
 
     if (m_outFileStream.is_open()) {
@@ -1597,7 +1616,8 @@ void RaonTunerInput::startReadFicThread() {
     if(!m_readFicThreadRunning) {
         std::cout << LOG_TAG << "Starting FIC thread..." << std::endl;
         m_readFicThreadRunning = true;
-        m_readFicThread = std::thread(&RaonTunerInput::threadedScanningFicRead, this);
+        m_readFicThread = std::unique_ptr<DabThread>(
+                new DabThread([this]() { threadedScanningFicRead(); } ));
     } else {
         std::clog << LOG_TAG << "FIC thread already running" << std::endl;
     }
@@ -1606,17 +1626,20 @@ void RaonTunerInput::startReadFicThread() {
 void RaonTunerInput::stopReadFicThread() {
     std::lock_guard<std::recursive_mutex> lockGuard(m_classmutex);
     if(m_readFicThreadRunning) {
-        std::cout << LOG_TAG << "Stopping FIC thread..." << std::endl;
         m_readFicThreadRunning = false;
-        if(m_readFicThread.joinable()) {
-            if (std::this_thread::get_id() != m_readFicThread.get_id()) {
+        if (m_readFicThread.get() == nullptr) {
+            return; // no thread, nothing to do
+        }
+        std::cout << LOG_TAG << "Stopping FIC thread..." << std::endl;
+        if(m_readFicThread->joinable()) {
+            if (std::this_thread::get_id() != m_readFicThread->get_id()) {
                 std::cout << LOG_TAG << "Joining FIC thread..." << std::endl;
-                m_readFicThread.join();
+                m_readFicThread->join();
                 std::cout << LOG_TAG << "Joining FIC thread done" << std::endl;
             } else {
                 // cannot join myself
                 std::clog << LOG_TAG << "Can't join FIC thread: it's me" << std::endl;
-                m_readFicThread.detach(); // forget about this thread
+                m_readFicThread->detach(); // forget about this thread
             }
         } else {
             std::clog << LOG_TAG << "FIC thread not joinable" << std::endl;
@@ -1628,13 +1651,19 @@ void RaonTunerInput::startReadDataThread() {
     if(!m_commandThreadRunning) {
         std::cout << LOG_TAG << "Starting Data thread..." << std::endl;
         m_commandThreadRunning = true;
-        if (std::this_thread::get_id() != m_commandThread.get_id()) {
-            m_commandThread = std::thread(&RaonTunerInput::commandProcessing, this);
-        } else {
-            // running on the thread that I should start ?!?
-            std::cout << LOG_TAG << "Continue Data thread with NOP" << std::endl;
+        if (m_commandThread.get() == nullptr) {
+            m_commandThread = std::unique_ptr<DabThread>(
+                    new DabThread([this]() { commandProcessing(); }));
+        } else if (m_commandThread->joinable()) { // thread seems to be running
+            std::clog << LOG_TAG << "Continue Data thread with NOP" << std::endl;
             // trigger myself with a NOP
             m_commandQueue.push(std::bind(&RaonTunerInput::nop, this));
+        } else {
+            std::clog << LOG_TAG << "Re-Create Data thread" << std::endl;
+            // create a new thread, other seems already dead
+            m_commandThread.release();
+            m_commandThread = std::unique_ptr<DabThread>(
+                    new DabThread([this]() { commandProcessing(); }));
         }
     } else {
         std::clog << LOG_TAG << "Starting Data thread: already running" << std::endl;
@@ -1645,12 +1674,15 @@ void RaonTunerInput::stopReadDataThread() {
     std::lock_guard<std::recursive_mutex> lockGuard(m_classmutex);
 
     if(m_commandThreadRunning) {
-        std::cout << LOG_TAG << "Stopping Data thread..." << std::endl;
         m_commandThreadRunning = false;
-        if(m_commandThread.joinable()) {
-            if (std::this_thread::get_id() != m_commandThread.get_id()) {
+        if (m_commandThread.get() == nullptr) {
+            return; // no thread, nothing to do
+        }
+        std::cout << LOG_TAG << "Stopping Data thread..." << std::endl;
+        if(m_commandThread->joinable()) {
+            if (std::this_thread::get_id() != m_commandThread->get_id()) {
                 std::cout << LOG_TAG << "Join Data thread..." << std::endl;
-                m_commandThread.join();
+                m_commandThread->join();
                 std::cout << LOG_TAG << "Join Data thread done" << std::endl;
             } else {
                 // cannot join myself, trigger myself with a NOP

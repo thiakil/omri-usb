@@ -29,15 +29,16 @@ extern "C" {
 
 DabPlusServiceComponentDecoder::DabPlusServiceComponentDecoder() {
     m_processThreadRunning = true;
-    m_processThread = std::thread(&DabPlusServiceComponentDecoder::processData, this);
+    m_processThread = std::unique_ptr<DabThread>(
+            new DabThread([this]() { processData(); } ));
 }
 
 DabPlusServiceComponentDecoder::~DabPlusServiceComponentDecoder() {
     //std::cout << m_logTag << " Deconstructing" << std::endl;
 
     m_processThreadRunning = false;
-    if(m_processThread.joinable()) {
-        m_processThread.join();
+    if(m_processThread->joinable()) {
+        m_processThread->join();
     }
     //m_conQueue.clear();
 }

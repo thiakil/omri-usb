@@ -21,16 +21,18 @@
 #ifndef RAONTUNERINPUT_H
 #define RAONTUNERINPUT_H
 
-#include "dabusbtunerinput.h"
-#include "jtunerusbdevice.h"
-#include "jdabservice.h"
-#include "../../concurrent_queue.h"
-#include "../../linkedservicedab.h"
-
-#include <memory>
-#include <mutex>
 #include <array>
 #include <fstream>
+#include <memory>
+#include <mutex>
+
+#include "dabusbtunerinput.h"
+#include "jdabservice.h"
+#include "jtunerusbdevice.h"
+
+#include "../../concurrent_queue.h"
+#include "../../dabthread.h"
+#include "../../linkedservicedab.h"
 
 class RaonTunerInput final : public DabUsbTunerInput, DabEnsemble {
 
@@ -89,7 +91,7 @@ private:
     __attribute__((unused)) std::shared_ptr<std::function<void()>> m_ensembleFinishedCb; // it *is* used
 
     std::atomic<bool> m_readFicThreadRunning{false};
-    std::thread m_readFicThread;
+    std::unique_ptr<DabThread> m_readFicThread;
 
     uint8_t m_currentSubchanId{0xFF};
 
@@ -110,11 +112,11 @@ private:
 
     ConcurrentQueue<std::function<void(void)>> m_scanCommandQueue;
     std::atomic<bool> m_scanCommandThreadRunning{false};
-    std::thread m_scanCommandThread;
+    std::unique_ptr<DabThread> m_scanCommandThread;
 
     ConcurrentQueue<std::function<void(void)>> m_commandQueue;
     std::atomic<bool> m_commandThreadRunning{false};
-    std::thread m_commandThread;
+    std::unique_ptr<DabThread> m_commandThread;
 
     int m_antLvlCnt{1};
     int m_prevAntennaLvl{0};

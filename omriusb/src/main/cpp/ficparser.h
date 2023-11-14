@@ -56,6 +56,7 @@
 #include "fig_01_ext_06.h"
 
 #include "callbackhandle.h"
+#include "dabthread.h"
 
 // enable for very verbose logs for deep analysis of FIGs
 // #define LOG_DETAILLED_FIG_ANALYSIS
@@ -193,7 +194,7 @@ private:
     ConcurrentQueue<std::vector<uint8_t> > m_fibDataQueue;
     mutable std::mutex m_fibThreadMutex;
     bool m_fibProcessThreadRunning{false};
-    std::thread m_fibProcessorThread;
+    std::unique_ptr<DabThread> m_fibProcessorThread;
     std::string m_ficProcessorThreadName{""};
 
 private:

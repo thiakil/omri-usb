@@ -325,7 +325,7 @@ void DemoUsbTunerInput::readDataThreadStart() {
         readDataThreadStop();
     }
     m_readThreadRunning = true;
-    m_readThread = new std::thread(&DemoUsbTunerInput::readThreadProc, this);
+    m_readThread = new DabThread([this] () { readThreadProc(); });
 }
 
 void DemoUsbTunerInput::readDataThreadStop() {

@@ -32,14 +32,17 @@ DabMpegServiceComponentDecoder::DabMpegServiceComponentDecoder() {
     //std::cout << m_logTag << "Creating" << std::endl;
 
     m_processThreadRunning = true;
-    m_processThread = std::thread(&DabMpegServiceComponentDecoder::processData, this);
+    m_processThread = std::unique_ptr<DabThread>(
+            new DabThread( [this] () { processData(); }));
 }
 
 DabMpegServiceComponentDecoder::~DabMpegServiceComponentDecoder() {
     //std::cout << m_logTag << "Destroying" << std::endl;
 
     m_processThreadRunning = false;
-    m_processThread.join();
+    if (m_processThread->joinable()) {
+        m_processThread->join();
+    }
     m_conQueue.clear();
 }
 

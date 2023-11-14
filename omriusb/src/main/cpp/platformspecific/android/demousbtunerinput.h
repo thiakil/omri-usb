@@ -109,7 +109,7 @@ private:
     std::shared_ptr<std::function<void()>> m_ensembleFinishedCb;
 
     std::atomic<bool> m_readThreadRunning{false};
-    std::thread * m_readThread{nullptr};
+    DabThread * m_readThread{nullptr};
     std::ifstream m_inFileStream;
 };
 

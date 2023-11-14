@@ -23,6 +23,7 @@
 #include <syscall.h>
 #include <unistd.h>
 
+#include "dabthread.h"
 #include "ficparser.h"
 #include "global_definitions.h"
 
@@ -69,12 +70,21 @@ void FicParser::start() {
 
     if (!m_fibProcessThreadRunning) {
         m_fibProcessThreadRunning = true;
-        if (std::this_thread::get_id() != m_fibProcessorThread.get_id()) {
-            m_fibProcessorThread = std::thread(&FicParser::processFib, this);
+        if (m_fibProcessorThread.get() == nullptr) {
+            m_fibProcessorThread = std::unique_ptr<DabThread>(
+                    new DabThread([this]() { processFib(); }));
         } else {
-            // running on the thread that I should start ?!?
-            std::cout << M_LOG_TAG << "Continue FIB thread " << getParserThreadName() << std::endl;
-            m_fibDataQueue.push(std::vector<uint8_t>(0)); // trigger thread with empty data
+            if (m_fibProcessorThread->joinable()) { // thread seems to be running
+                std::clog << M_LOG_TAG << "Continue FIB thread " << getParserThreadName()
+                          << std::endl;
+                m_fibDataQueue.push(std::vector<uint8_t>(0)); // trigger thread with empty data
+            } else {
+                std::clog << M_LOG_TAG << "Re-Create FIB thread" << std::endl;
+                // create a new thread, other seems already dead
+                m_fibProcessorThread.release();
+                m_fibProcessorThread = std::unique_ptr<DabThread>(
+                        new DabThread([this]() { processFib(); }));
+            }
         }
     }
 }
@@ -84,11 +94,14 @@ void FicParser::stop() {
 
     if (m_fibProcessThreadRunning) {
         m_fibProcessThreadRunning = false;
-        if(m_fibProcessorThread.joinable()) {
-            if (std::this_thread::get_id() != m_fibProcessorThread.get_id()) {
+        if (m_fibProcessorThread.get() == nullptr) {
+            return; // no thread, nothing to do
+        }
+        if(m_fibProcessorThread->joinable()) {
+            if (std::this_thread::get_id() != m_fibProcessorThread->get_id()) {
                 std::cout << M_LOG_TAG << " Joining FIB thread " << getParserThreadName()
                           << std::endl;
-                m_fibProcessorThread.join();
+                m_fibProcessorThread->join();
                 std::cout << M_LOG_TAG << " Joined FIB thread " << getParserThreadName()
                           << std::endl;
             } else {
@@ -135,10 +148,11 @@ void FicParser::call(const std::vector<uint8_t> &data, bool rfLock) {
 }
 
 void FicParser::processFib() {
+    // give thread a name
     long tid = syscall(SYS_gettid);
-    char threadName[TASK_COMM_LEN];
-    snprintf(threadName, TASK_COMM_LEN-1, "FIB-%lx", tid);
-    threadName[TASK_COMM_LEN-1] = '\0';
+    char threadName[DAB_THREAD_NAME_LEN];
+    snprintf(threadName, DAB_THREAD_NAME_LEN-1, "FIB-%ld", tid);
+    threadName[DAB_THREAD_NAME_LEN-1] = '\0';
     pthread_setname_np(pthread_self(), threadName);
     m_ficProcessorThreadName = std::string(threadName);
 

@@ -21,18 +21,17 @@
 #ifndef DABPLUSSERVICECOMPONENTDECODER_H
 #define DABPLUSSERVICECOMPONENTDECODER_H
 
-#include <vector>
+#include <atomic>
+#include <iostream>
 #include <string>
 #include <thread>
-#include <atomic>
+#include <vector>
 
-#include <iostream>
-
-#include "dabservicecomponentdecoder.h"
 #include "concurrent_queue.h"
-
-#include "registered_tables.h"
+#include "dabservicecomponentdecoder.h"
+#include "dabthread.h"
 #include "global_definitions.h"
+#include "registered_tables.h"
 
 class DabPlusServiceComponentDecoder : public DabServiceComponentDecoder {
 
@@ -93,7 +92,7 @@ private:
     CallbackDispatcher<AUDIO_COMPONENT_DATA_CALLBACK> m_audioDataDispatcher;
 
     std::atomic<bool> m_processThreadRunning{false};
-    std::thread m_processThread;
+    std::unique_ptr<DabThread>  m_processThread;
 
     std::vector<uint8_t> m_unsyncDataBuffer;
     bool m_unsyncSync{false};

@@ -69,6 +69,7 @@ add_library( # Sets the name of the library.
              src/main/cpp/dabensemble.cpp
              src/main/cpp/dabservicecomponentmscstream.cpp
              src/main/cpp/ficparser.cpp
+             src/main/cpp/dabthread.cpp
              src/main/cpp/platformspecific/android/raontunerinput.cpp
              src/main/cpp/platformspecific/android/jusbdevice.cpp
              src/main/cpp/platformspecific/android/jtunerusbdevice.cpp
