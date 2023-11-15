@@ -94,6 +94,10 @@ find_library( # Sets the name of the path variable.
 target_compile_options(${PROJECT_NAME} PUBLIC
         # start with super pedantic compiler settings ...
         -Wall -Wextra -pedantic -Werror
+        -Wformat
+        -Wformat-security
+        -Werror=format-security
+        -Werror=array-bounds
         # ... and relax them as needed
         -Wno-c++14-binary-literal
         -Wno-comment
@@ -107,6 +111,16 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -Wno-unused-variable
         # always keep frame-pointer
         -fno-omit-frame-pointer
+        )
+
+# hardening
+target_compile_options(${PROJECT_NAME} PUBLIC
+        -D_FORTIFY_SOURCE=2
+        -fstack-protector-strong # not using -fstack-protector-all because of execution time impact
+        )
+target_link_options(${PROJECT_NAME} PUBLIC
+        -Wl,-z,now -Wl,-z,relro  # GOT protection
+        -Wl,-z,noexecstack       # mark stack not-executable
         )
 
 # Function to set ARCH from ABI
