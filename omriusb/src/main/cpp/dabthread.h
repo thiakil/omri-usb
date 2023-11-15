@@ -128,7 +128,7 @@ private:
 };
 
 /* Select if original std::thread or DabJoiningThread is used as DabThread */
-#if 0 // so far, no benefit of DabJoiningThread over std::thread found
+#if 1 // so far, no benefit of DabJoiningThread over std::thread found
 typedef DabJoiningThread DabThread;
 #else
 typedef std::thread DabThread;
