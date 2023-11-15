@@ -59,13 +59,15 @@ public:
     DabThreadState(),
     Base()
     {
+        // warning: this could mean that you created a thread object on the stack
         std::string str = LOG_TAG;
         str.append("Constructed default");
-        std::cout << str << std::endl;
+        std::clog << str << std::endl;
     };
 
     /**
-     * typical use: DabThread( [this] () -> { some_class_method(); } );
+     * typical use:
+     *   std::unique_ptr<DabThread>(new DabThread( [this] () -> { some_class_method(); } ));
      */
     template<class Func, class... Args>
     explicit DabJoiningThread(const Func f, const Args... args):

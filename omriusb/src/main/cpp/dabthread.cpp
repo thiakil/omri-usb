@@ -55,24 +55,22 @@ void DabJoiningThread::join() {
 }
 
 void DabJoiningThread::threadFuncPre() {
-    // Don't access mNativeThreadId !
-    const long myId = getCurrentThreadNativeId();
-    mNativeThreadId = myId;
+    const long myTid = getCurrentThreadNativeId();
     std::string str = LOG_TAG;
-    str.append("Starting thread ").append(std::to_string(myId));
+    // if next lines crash then this object is on the stack of a thread
+    mNativeThreadId = myTid;
+    str.append("Starting thread ").append(std::to_string(mNativeThreadId));
     std::cout << str << std::endl;
 }
 void DabJoiningThread::threadFuncPost() {
-    // Don't access mNativeThreadId !
-    const long myId = getCurrentThreadNativeId();
     std::string str = LOG_TAG;
-    str.append("Finished thread ").append(std::to_string(myId));
+    // if next line crashes then this object is on the stack of a thread
+    str.append("Finished thread ").append(std::to_string(mNativeThreadId));
     std::cout << str << std::endl;
 }
 void DabJoiningThread::threadFuncException() {
-    // Don't access mNativeThreadId !
-    const long myId = getCurrentThreadNativeId();
     std::string str = LOG_TAG;
-    str.append("Exception thread ").append(std::to_string(myId));
+    // if next line crashes then this object is on the stack of a thread
+    str.append("Exception thread ").append(std::to_string(mNativeThreadId));
     std::cout << str << std::endl;
 }
