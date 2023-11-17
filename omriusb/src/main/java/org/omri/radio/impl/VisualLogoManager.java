@@ -313,14 +313,14 @@ class VisualLogoManager {
                         logoJsonBuilder.append(readBuf, 0, bytesRead);
                     }
 
-                    if (DEBUG)
-                        Log.d(TAG, "Read " + LOGOS_FILENAME + " done: "
-                                + logoJsonBuilder.length() + " length");
+                    Log.d(TAG, "Read " + LOGOS_FILENAME + " done: "
+                            + logoJsonBuilder.length() + " entries");
 
                     JSONArray logoListArr = new JSONArray(logoJsonBuilder.toString());
-                    if (DEBUG) Log.d(TAG, "Read LogoJson length: " + logoListArr.length());
-                    ArrayList<VisualLogoImpl> deserList = new ArrayList<>();
-                    for (int i = 0; i < logoListArr.length(); i++) {
+                    final int logoListArraySize = logoListArr.length();
+                    ArrayList<VisualLogoImpl> deserList = new ArrayList<>(logoListArraySize);
+                    for (int i = 0; i < logoListArraySize; i++) {
+                        if (DEBUG) Log.d(TAG, "Read LogoJson entry " + i + "/" + logoListArraySize);
                         JSONObject logoObj = logoListArr.getJSONObject(i);
 
                         VisualLogoImpl logo = new VisualLogoImpl();
@@ -371,7 +371,7 @@ class VisualLogoManager {
 
                     mLogoList.addAll(deserList);
 
-                    if (DEBUG) Log.d(TAG, "Restoring LogoJson done");
+                    Log.d(TAG, "Restoring LogoJson done");
                 } catch (Throwable e) {
                     if (DEBUG) e.printStackTrace();
                 } finally {
