@@ -2,8 +2,6 @@ package org.omri.radio.impl;
 
 import static org.omri.BuildConfig.DEBUG;
 
-import android.content.Context;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -11,56 +9,20 @@ import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
-/* Removed Exoplayer dependency
-import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.ExoPlaybackException;
-import com.google.android.exoplayer2.ExoPlayer;
-import com.google.android.exoplayer2.ExoPlayerFactory;
-import com.google.android.exoplayer2.PlaybackParameters;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.Renderer;
-import com.google.android.exoplayer2.Timeline;
-import com.google.android.exoplayer2.audio.AudioAttributes;
-import com.google.android.exoplayer2.audio.AudioSink;
-import com.google.android.exoplayer2.audio.MediaCodecAudioRenderer;
-import com.google.android.exoplayer2.extractor.mp3.Mp3Extractor;
-import com.google.android.exoplayer2.extractor.ts.AdtsExtractor;
-import com.google.android.exoplayer2.mediacodec.MediaCodecSelector;
-import com.google.android.exoplayer2.source.ExtractorMediaSource;
-import com.google.android.exoplayer2.source.MediaSource;
-import com.google.android.exoplayer2.source.TrackGroupArray;
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
-import com.google.android.exoplayer2.trackselection.TrackSelector;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.util.Util;
-*/
-import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceIp;
 import org.omri.radioservice.RadioServiceIpStream;
 import org.omri.radioservice.RadioServiceMimeType;
 import org.omri.radioservice.RadioServiceType;
-import org.omri.radioservice.metadata.Textual;
 import org.omri.tuner.Tuner;
 import org.omri.tuner.TunerListener;
 import org.omri.tuner.TunerStatus;
 import org.omri.tuner.TunerType;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLSocketFactory;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -86,10 +48,9 @@ public class TunerIpShoutcast implements Tuner,
 		 */
 		IpServiceScanner.IpScannerListener {
 
-	private final String TAG = "TunerIpShoutcast";
+	private final static String TAG = "TunerIpShoutcast";
 
 	private final static boolean HASPLAYER = false; // has support for a (Exo)Player backend
-	private static final int BUFFER_SIZE = 1024*10*10;
 
 	private final TunerType mTunertype = TunerType.TUNER_TYPE_IP_SHOUTCAST;
 	private TunerStatus mTunerStatus = TunerStatus.TUNER_STATUS_NOT_INITIALIZED;
@@ -821,19 +782,15 @@ public class TunerIpShoutcast implements Tuner,
 	 */
 
 	/**/
-	private class SerializeServicesTask extends AsyncTask<Void, Void, Void> {
+	private static class SerializeServicesTask extends AsyncTask<Void, Void, Void> {
 
 		@Override
 		protected Void doInBackground(Void... params) {
 			RadioServiceManager.getInstance().serializeServices(RadioServiceType.RADIOSERVICE_TYPE_IP);
 			if(DEBUG)Log.d(TAG, "Serializing Services: " + RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_IP));
 			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_IP)) {
-				try {
-					Thread.sleep(10);
-					if(DEBUG)Log.d(TAG, "Waiting for serialized servicelist to be ready");
-				} catch(InterruptedException interExc) {
-					if(DEBUG)interExc.printStackTrace();
-				}
+				if(DEBUG)Log.d(TAG, "Waiting for serialized servicelist to be ready");
+				SystemClock.sleep(100);
 			}
 			return null;
 		}
