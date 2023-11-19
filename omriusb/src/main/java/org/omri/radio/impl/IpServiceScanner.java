@@ -1,7 +1,5 @@
 package org.omri.radio.impl;
 
-import static org.omri.BuildConfig.DEBUG;
-
 import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
@@ -54,7 +52,6 @@ import eu.hradio.core.radiodns.radioepg.name.Name;
 import eu.hradio.core.radiodns.radioepg.serviceinformation.Service;
 import eu.hradio.httprequestwrapper.dtos.service_search.RankedStandaloneService;
 import eu.hradio.httprequestwrapper.dtos.service_search.ServiceList;
-import eu.hradio.httprequestwrapper.exception.HRadioSearchClientException;
 import eu.hradio.httprequestwrapper.listener.OnErrorListener;
 import eu.hradio.httprequestwrapper.listener.OnSearchResultListener;
 import eu.hradio.httprequestwrapper.service.ServiceSearchClient;
@@ -111,6 +108,7 @@ public class IpServiceScanner {
 		}
 	}
 
+	/** @noinspection unused*/
 	void removeScanListener(IpScannerListener listener) {
 		mScannerListeners.remove(listener);
 	}
@@ -128,17 +126,17 @@ public class IpServiceScanner {
 
 			mLookups.remove(radioService);
 
-			if(DEBUG)Log.d(TAG, "Corelookup for: '" + radioService.getServiceLabel() + "' finished, " + mLookups.size() + " lookups remaining");
+			if(BuildConfig.DEBUG)Log.d(TAG, "Corelookup for: '" + radioService.getServiceLabel() + "' finished, " + mLookups.size() + " lookups remaining");
 
 			for(eu.hradio.core.radiodns.RadioDnsService rdnsSrv : availableServices) {
 				if(rdnsSrv.getServiceType() == eu.hradio.core.radiodns.RadioDnsServiceType.RADIO_EPG) {
 					synchronized (mAvailableServices) {
 						if (!mAvailableServices.containsValue(rdnsSrv)) {
-							if (DEBUG)
+							if (BuildConfig.DEBUG)
 								Log.d(TAG, "Adding " + rdnsSrv.getTarget() + " to SI scan list");
 							mAvailableServices.put(radioService, rdnsSrv);
 						} else {
-							if (DEBUG) Log.d(TAG, "AvailServicesMap already contains " + rdnsSrv.getTarget());
+							if (BuildConfig.DEBUG) Log.d(TAG, "AvailServicesMap already contains " + rdnsSrv.getTarget());
 						}
 					}
 					break;
@@ -146,7 +144,7 @@ public class IpServiceScanner {
 			}
 
 			if(mLookups.isEmpty()) {
-				if(DEBUG)Log.d(TAG, "Corelookup scan finished " + mAvailableServices.size() + " EPG services available");
+				if(BuildConfig.DEBUG)Log.d(TAG, "Corelookup scan finished " + mAvailableServices.size() + " EPG services available");
 
 				if(!mAvailableServices.isEmpty()) {
 					mSiCallbacksPendings.set(mAvailableServices.values().size());
@@ -186,7 +184,7 @@ public class IpServiceScanner {
 			notifyListeners((int)(50 + (perSrv*srvsDone++)), false);
 
 			if(rankedSrv.getContent().getName().isEmpty()) {
-				if(DEBUG)Log.w(TAG, "HRadioHttpClient Servicename is empty");
+				if(BuildConfig.DEBUG)Log.w(TAG, "HRadioHttpClient Servicename is empty");
 				continue;
 			}
 
@@ -221,7 +219,7 @@ public class IpServiceScanner {
 								stream.setCost(100);
 								break;
 							case "audio/edi":
-								if(DEBUG)Log.d(TAG, "HRadioHttpClientEDI found EDI stream");
+								if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClientEDI found EDI stream");
 								stream.setMimeType(RadioServiceMimeType.AUDIO_EDI);
 								stream.setCost(100);
 								break;
@@ -233,7 +231,7 @@ public class IpServiceScanner {
 
 						//don't add unknown streams
 						if(stream.getMimeType() != RadioServiceMimeType.UNKNOWN) {
-							if(DEBUG) {
+							if(BuildConfig.DEBUG) {
 								if(stream.getMimeType() == RadioServiceMimeType.AUDIO_EDI) {
 									Log.d(TAG, "HRadioHttpClientEDI adding EDI stream for: " + ipSrv.getServiceLabel());
 								}
@@ -248,7 +246,7 @@ public class IpServiceScanner {
 
 			boolean srvOkay = false;
 			if(ipSrv.getIpStreams().isEmpty()) {
-				if(DEBUG)Log.w(TAG, "HRadioHttpClient IpStreams empty, searching available DAB service");
+				if(BuildConfig.DEBUG)Log.w(TAG, "HRadioHttpClient IpStreams empty, searching available DAB service");
 				for(RadioService searchSrv : Radio.getInstance().getRadioServices()) {
 					if(searchSrv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB || searchSrv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_EDI) {
 						RadioServiceDab dabSrv = (RadioServiceDab)searchSrv;
@@ -256,7 +254,7 @@ public class IpServiceScanner {
 							if (dnsBear.getBearerType() == RadioDnsEpgBearerType.DAB) {
 								RadioDnsEpgBearerDab dabBearer = (RadioDnsEpgBearerDab)dnsBear;
 								if(dabSrv.getEnsembleId() == dabBearer.getEnsembleId() && dabSrv.getEnsembleEcc() == dabBearer.getEnsembleEcc() && dabSrv.getServiceId() == dabBearer.getServiceId()) {
-									if(DEBUG)Log.d(TAG, "HRadioHttpClient Found DAB service '" + dabSrv.getServiceLabel() + "' for IPService without IpStreams");
+									if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Found DAB service '" + dabSrv.getServiceLabel() + "' for IPService without IpStreams");
 									srvOkay = true;
 									break;
 								}
@@ -275,7 +273,7 @@ public class IpServiceScanner {
 				for (eu.hradio.httprequestwrapper.dtos.service_search.MediaDescription mediaDesc : rankedSrv.getContent().getMediaDescriptions()) {
 					if (mediaDesc.getType() != null) {
 						if (mediaDesc.getType().equals("SHORT_DESCRIPTION")) {
-							if(DEBUG)Log.d(TAG, "HRadioHttpClient Setting short description");
+							if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Setting short description");
 							if(mediaDesc.getShortDescription() != null) {
 								if (!mediaDesc.getShortDescription().isEmpty()) {
 									ipSrv.setShortDescription(mediaDesc.getShortDescription());
@@ -284,7 +282,7 @@ public class IpServiceScanner {
 						}
 
 						if (mediaDesc.getType().equals("LONG_DESCRIPTION")) {
-							if(DEBUG)Log.d(TAG, "HRadioHttpClient Setting long description");
+							if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Setting long description");
 							if(mediaDesc.getLongDescription() != null) {
 								if (!mediaDesc.getLongDescription().isEmpty()) {
 									ipSrv.setLongDescription(mediaDesc.getLongDescription());
@@ -293,7 +291,7 @@ public class IpServiceScanner {
 						}
 
 						if(mediaDesc.getType().equals("MULTIMEDIA")) {
-							if(DEBUG)Log.d(TAG, "HRadioHttpClient Setting mediadescription multimedia");
+							if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Setting mediadescription multimedia");
 
 							if(mediaDesc.getMultimediaType() != null) {
 								MultimediaType mmType = null;
@@ -326,7 +324,7 @@ public class IpServiceScanner {
 											}
 										}
 										if(mediaDesc.getHeight() <= 0 || mediaDesc.getWidth() <= 0) {
-											if(DEBUG)Log.w(TAG, "HRadioHttpClient " + MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED + " has invalid dimensions of: " + mediaDesc.getWidth() + "x" + mediaDesc.getHeight());
+											if(BuildConfig.DEBUG)Log.w(TAG, "HRadioHttpClient " + MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED + " has invalid dimensions of: " + mediaDesc.getWidth() + "x" + mediaDesc.getHeight());
 											continue;
 										}
 
@@ -354,8 +352,8 @@ public class IpServiceScanner {
 									List<Visual> logoList = VisualLogoManager.getInstance().getLogoVisuals(ipSrv);
 									for(Visual compVis : logoList) {
 										if(compVis.equals(stationLogo)) {
-											if(DEBUG)Log.d(TAG, "HRadioHttpClient Logo " + ((VisualLogoImpl)compVis).getLogoUrl() + " already exists");
-											if(DEBUG)Log.d(TAG, "HRadioHttpClient Logo for " + ipSrv.getServiceLabel() + " : " + compVis.getVisualWidth() + "x" + compVis.getVisualHeight() + " : " + compVis.getVisualMimeType() + " already exists");
+											if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Logo " + ((VisualLogoImpl)compVis).getLogoUrl() + " already exists");
+											if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Logo for " + ipSrv.getServiceLabel() + " : " + compVis.getVisualWidth() + "x" + compVis.getVisualHeight() + " : " + compVis.getVisualMimeType() + " already exists");
 											downloadLogo = false;
 											break;
 										}
@@ -368,7 +366,7 @@ public class IpServiceScanner {
 											VisualLogoManager.getInstance().addLogoVisual(stationLogo);
 										}
 									} else {
-										if(DEBUG)Log.d(TAG, "HRadioHttpClient Logos for " + ipSrv.getServiceLabel() + " existing, not downloading");
+										if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Logos for " + ipSrv.getServiceLabel() + " existing, not downloading");
 									}
 								} else {
 									Log.w(TAG, "ignore logo with mime '" + logoMime + "'");
@@ -380,7 +378,7 @@ public class IpServiceScanner {
 
 				foundIpServices.add(ipSrv);
 			} else {
-				if(DEBUG)Log.d(TAG, "HRadioHttpClient No IP streams and no matching DAB service found");
+				if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient No IP streams and no matching DAB service found");
 			}
 		}
 
@@ -389,7 +387,7 @@ public class IpServiceScanner {
 				RadioServiceIp ipSrv = (RadioServiceIp)foundSrv;
 				for(RadioServiceIpStream stream : ipSrv.getIpStreams()) {
 					if(stream.getMimeType() == RadioServiceMimeType.AUDIO_EDI) {
-						if(DEBUG)Log.d(TAG, "HRadioHttpClient Found EdiStream Service at: " + stream.getUrl());
+						if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Found EdiStream Service at: " + stream.getUrl());
 					}
 				}
 			}
@@ -406,15 +404,12 @@ public class IpServiceScanner {
 		mIsScanning = false;
 	};
 
-	private OnErrorListener mOnErrorListener = new OnErrorListener() {
-		@Override
-		public void onError(HRadioSearchClientException e) {
-			if (BuildConfig.DEBUG) Log.e(TAG, "HRadioHttpClient onError: " + e.getMessage());
-			if (BuildConfig.DEBUG) e.printStackTrace();
+	private final OnErrorListener mOnErrorListener = e -> {
+		Log.e(TAG, "HRadioHttpClient onError: " + e);
+		if (BuildConfig.DEBUG) e.printStackTrace();
 
-			notifyListeners(100, true);
-			mIsScanning = false;
-		}
+		notifyListeners(100, true);
+		mIsScanning = false;
 	};
 
 	private volatile boolean mEnrichInProgress = false;
@@ -427,159 +422,154 @@ public class IpServiceScanner {
 				if(enrichSrv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB) {
 					RadioServiceDabImpl dabSrv = (RadioServiceDabImpl) enrichSrv;
 					if(dabSrv.isProgrammeService()) {
-						String bearer = "dab:" + Integer.toHexString(dabSrv.getServiceId()).substring(0, 1) + Integer.toHexString(dabSrv.getEnsembleEcc()) + "." +
-								Integer.toHexString(dabSrv.getEnsembleId()) + "." +
-								Integer.toHexString(dabSrv.getServiceId()) + "." +
-								"0";
+						String bearer = "dab:" + Integer.toHexString(dabSrv.getServiceId()).charAt(0)
+								+ Integer.toHexString(dabSrv.getEnsembleEcc()) + "."
+								+ Integer.toHexString(dabSrv.getEnsembleId()) + "."
+								+ Integer.toHexString(dabSrv.getServiceId()) + "."
+								+ "0";
 
-						if(DEBUG)Log.d(TAG, "Enrich BearerId for Service " + dabSrv.getServiceLabel() + " : " + bearer);
+						Log.d(TAG, "Enrich BearerId for Service " + dabSrv.getServiceLabel() + " : " + bearer);
 						Map<String, String> builder = new HashMap<>();
 						builder.put("bearers.address", bearer);
 
 						ServiceSearchClient impl = new ServiceSearchClientImpl();
 
-						impl.asyncServiceSearch(builder, new OnSearchResultListener<ServiceList>() {
-							@Override
-							public void onResult(ServiceList serviceList) {
-								if(DEBUG)Log.d(TAG, "Enrich found " + serviceList.getSize() + " services for bearer: " + bearer);
-								for(RankedStandaloneService rankedSrv : serviceList.getContent()) {
-									if(DEBUG)Log.d(TAG, "Enrich rankedSrv: " + rankedSrv.getContent().getName());
-									for(eu.hradio.httprequestwrapper.dtos.service_search.MediaDescription mDesc : rankedSrv.getContent().getMediaDescriptions()) {
-										if(mDesc.getType().equals("MULTIMEDIA")) {
-											if(DEBUG)Log.d(TAG, "Enrich LogoUrl: " + mDesc.getUrl());
-										}
+						impl.asyncServiceSearch(builder, serviceList -> {
+							if(BuildConfig.DEBUG)Log.d(TAG, "Enrich found " + serviceList.getSize() + " services for bearer: " + bearer);
+							for(RankedStandaloneService rankedSrv : serviceList.getContent()) {
+								if(BuildConfig.DEBUG)Log.d(TAG, "Enrich rankedSrv: " + rankedSrv.getContent().getName());
+								for(eu.hradio.httprequestwrapper.dtos.service_search.MediaDescription mDesc : rankedSrv.getContent().getMediaDescriptions()) {
+									if(mDesc.getType().equals("MULTIMEDIA")) {
+										if(BuildConfig.DEBUG)Log.d(TAG, "Enrich LogoUrl: " + mDesc.getUrl());
 									}
+								}
 
-									//mediadescriptions
-									for (eu.hradio.httprequestwrapper.dtos.service_search.MediaDescription mediaDesc : rankedSrv.getContent().getMediaDescriptions()) {
-										if (mediaDesc.getType() != null) {
+								//mediadescriptions
+								for (eu.hradio.httprequestwrapper.dtos.service_search.MediaDescription mediaDesc : rankedSrv.getContent().getMediaDescriptions()) {
+									if (mediaDesc.getType() != null) {
 
-											if (mediaDesc.getType().equals("SHORT_DESCRIPTION")) {
-												if(DEBUG)Log.d(TAG, "HRadioHttpClient Setting short description");
-												if(mediaDesc.getShortDescription() != null) {
-													if (!mediaDesc.getShortDescription().isEmpty()) {
-														dabSrv.setShortDescription(mediaDesc.getShortDescription());
-													}
+										if (mediaDesc.getType().equals("SHORT_DESCRIPTION")) {
+											if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Setting short description");
+											if(mediaDesc.getShortDescription() != null) {
+												if (!mediaDesc.getShortDescription().isEmpty()) {
+													dabSrv.setShortDescription(mediaDesc.getShortDescription());
 												}
 											}
+										}
 
-											if (mediaDesc.getType().equals("LONG_DESCRIPTION")) {
-												if(DEBUG)Log.d(TAG, "HRadioHttpClient Setting long description");
-												if(mediaDesc.getLongDescription() != null) {
-													if (!mediaDesc.getLongDescription().isEmpty()) {
-														dabSrv.setLongDescription(mediaDesc.getLongDescription());
-													}
+										if (mediaDesc.getType().equals("LONG_DESCRIPTION")) {
+											if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Setting long description");
+											if(mediaDesc.getLongDescription() != null) {
+												if (!mediaDesc.getLongDescription().isEmpty()) {
+													dabSrv.setLongDescription(mediaDesc.getLongDescription());
 												}
 											}
+										}
 
-											if(mediaDesc.getType().equals("MULTIMEDIA")) {
-												if(DEBUG)Log.d(TAG, "HRadioHttpClient Setting mediadescription multimedia");
+										if(mediaDesc.getType().equals("MULTIMEDIA")) {
+											if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Setting mediadescription multimedia");
 
-												if(mediaDesc.getMultimediaType() != null) {
-													MultimediaType mmType = null;
-													VisualMimeType logoMime = VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN;
-													int logoWidth = 0;
-													int logoHeight = 0;
+											if(mediaDesc.getMultimediaType() != null) {
+												MultimediaType mmType = null;
+												VisualMimeType logoMime = VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN;
+												int logoWidth = 0;
+												int logoHeight = 0;
 
-													switch (mediaDesc.getMultimediaType()) {
-														case "logo_colour_square": {
-														mmType = MultimediaType.MULTIMEDIA_LOGO_SQUARE;
+												switch (mediaDesc.getMultimediaType()) {
+													case "logo_colour_square": {
+													mmType = MultimediaType.MULTIMEDIA_LOGO_SQUARE;
+													logoMime = VisualMimeType.METADATA_VISUAL_MIMETYPE_PNG;
+														logoWidth = 32;
+														logoHeight = 32;
+													break;
+													}
+													case "logo_colour_rectangle": {
+														mmType = MultimediaType.MULTIMEDIA_LOGO_RECTANGLE;
 														logoMime = VisualMimeType.METADATA_VISUAL_MIMETYPE_PNG;
-															logoWidth = 32;
-															logoHeight = 32;
+														logoWidth = 112;
+														logoHeight = 32;
 														break;
-														}
-														case "logo_colour_rectangle": {
-															mmType = MultimediaType.MULTIMEDIA_LOGO_RECTANGLE;
-															logoMime = VisualMimeType.METADATA_VISUAL_MIMETYPE_PNG;
-															logoWidth = 112;
-															logoHeight = 32;
-															break;
-														}
-														case "":
-														case "logo_unrestricted": {
-															mmType = MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED;
-															for(VisualMimeType mimeType : VisualMimeType.values()) {
-																if(mimeType.getMimeTypeString().equalsIgnoreCase(mediaDesc.getMimeValue())) {
-																	logoMime = mimeType;
-																	break;
-																}
-															}
-															if(mediaDesc.getHeight() <= 0 || mediaDesc.getWidth() <= 0) {
-																if(DEBUG)Log.w(TAG, "HRadioHttpClient " + MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED.toString() + " has invalid dimensions of: " + mediaDesc.getWidth() + "x" + mediaDesc.getHeight());
-																continue;
-															}
-
-															logoWidth = mediaDesc.getWidth();
-															logoHeight = mediaDesc.getHeight();
-
-															break;
-														}
 													}
-
-													if(logoMime != VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN) {
-														Multimedia logoMm = new Multimedia(mmType, "en", mediaDesc.getUrl(), mediaDesc.getMimeValue(), logoWidth, logoHeight);
-
-														VisualLogoImpl stationLogo = new VisualLogoImpl();
-														stationLogo.setHeight(logoHeight);
-														stationLogo.setWidth(logoWidth);
-
-														stationLogo.setVisualMimeType(logoMime);
-														stationLogo.setLogoUrl(mediaDesc.getUrl());
-														RadioDnsEpgBearerDab dabBearer = new RadioDnsEpgBearerDab(bearer, 20, "audio/aac", dabSrv.getServiceComponents().size() > 0 ? dabSrv.getServiceComponents().get(0).getBitrate() : 0);
-														stationLogo.addBearer(dabBearer);
-
-														Collections.sort(stationLogo.getBearers());
-
-														boolean downloadLogo = true;
-														List<Visual> logoList = VisualLogoManager.getInstance().getLogoVisuals(dabSrv);
-														for(Visual compVis : logoList) {
-															if(compVis.equals(stationLogo)) {
-																if(DEBUG)Log.d(TAG, "HRadioHttpClient Logo " + ((VisualLogoImpl)compVis).getLogoUrl() + " already exists");
-																if(DEBUG)Log.d(TAG, "HRadioHttpClient Logo for " + dabSrv.getServiceLabel() + " : " + compVis.getVisualWidth() + "x" + compVis.getVisualHeight() + " : " + compVis.getVisualMimeType() + " already exists");
-																downloadLogo = false;
+													case "":
+													case "logo_unrestricted": {
+														mmType = MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED;
+														for(VisualMimeType mimeType : VisualMimeType.values()) {
+															if(mimeType.getMimeTypeString().equalsIgnoreCase(mediaDesc.getMimeValue())) {
+																logoMime = mimeType;
 																break;
 															}
 														}
+														if(mediaDesc.getHeight() <= 0 || mediaDesc.getWidth() <= 0) {
+															if(BuildConfig.DEBUG)Log.w(TAG, "HRadioHttpClient " + MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED + " has invalid dimensions of: " + mediaDesc.getWidth() + "x" + mediaDesc.getHeight());
+															continue;
+														}
 
-														if(downloadLogo) {
-															String logoPath = downloadHttpLogoFile(logoMm.getUrl(), logoMm, stationLogo);
-															if (logoPath != null) {
-																stationLogo.setFilePath(logoPath);
-																VisualLogoManager.getInstance().addLogoVisual(stationLogo);
-															}
-														} else {
-															if(DEBUG)Log.d(TAG, "HRadioHttpClient Logos for " + dabSrv.getServiceLabel() + " existing, not downloading");
+														logoWidth = mediaDesc.getWidth();
+														logoHeight = mediaDesc.getHeight();
+
+														break;
+													}
+												}
+
+												if(logoMime != VisualMimeType.METADATA_VISUAL_MIMETYPE_UNKNOWN) {
+													Multimedia logoMm = new Multimedia(mmType, "en", mediaDesc.getUrl(), mediaDesc.getMimeValue(), logoWidth, logoHeight);
+
+													VisualLogoImpl stationLogo = new VisualLogoImpl();
+													stationLogo.setHeight(logoHeight);
+													stationLogo.setWidth(logoWidth);
+
+													stationLogo.setVisualMimeType(logoMime);
+													stationLogo.setLogoUrl(mediaDesc.getUrl());
+													RadioDnsEpgBearerDab dabBearer = new RadioDnsEpgBearerDab(bearer, 20, "audio/aac", dabSrv.getServiceComponents().size() > 0 ? dabSrv.getServiceComponents().get(0).getBitrate() : 0);
+													stationLogo.addBearer(dabBearer);
+
+													Collections.sort(stationLogo.getBearers());
+
+													boolean downloadLogo = true;
+													List<Visual> logoList = VisualLogoManager.getInstance().getLogoVisuals(dabSrv);
+													for(Visual compVis : logoList) {
+														if(compVis.equals(stationLogo)) {
+															if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Logo " + ((VisualLogoImpl)compVis).getLogoUrl() + " already exists");
+															if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Logo for " + dabSrv.getServiceLabel() + " : " + compVis.getVisualWidth() + "x" + compVis.getVisualHeight() + " : " + compVis.getVisualMimeType() + " already exists");
+															downloadLogo = false;
+															break;
+														}
+													}
+
+													if(downloadLogo) {
+														String logoPath = downloadHttpLogoFile(logoMm.getUrl(), logoMm, stationLogo);
+														if (logoPath != null) {
+															stationLogo.setFilePath(logoPath);
+															VisualLogoManager.getInstance().addLogoVisual(stationLogo);
 														}
 													} else {
-														Log.w(TAG, "ignore logo with mime '" + logoMime + "'");
+														if(BuildConfig.DEBUG)Log.d(TAG, "HRadioHttpClient Logos for " + dabSrv.getServiceLabel() + " existing, not downloading");
 													}
+												} else {
+													Log.w(TAG, "ignore logo with mime '" + logoMime + "'");
 												}
 											}
 										}
 									}
-
-									VisualLogoManager.getInstance().serializeLogos();
 								}
+
+								VisualLogoManager.getInstance().serializeLogos();
 							}
-						}, new OnErrorListener() {
-							@Override
-							public void onError(HRadioSearchClientException e) {
-								if(DEBUG)Log.e(TAG, "Enrich onError: " + e.getMessage());
-								if(DEBUG)e.printStackTrace();
-							}
+						}, e -> {
+							Log.e(TAG, "Enrich onError: " + e);
+							if(BuildConfig.DEBUG)e.printStackTrace();
 						});
 					}
 				}
 
 				mEnrichInProgress = false;
-				if(DEBUG)Log.d(TAG, "Enrich finished");
+				if(BuildConfig.DEBUG)Log.d(TAG, "Enrich finished");
 			}
 		}
 	}
 
 	synchronized private void scanHradioServices(Bundle optBundle) {
-		if(DEBUG)Log.d(TAG, "Starting HRadio ServiceScan: " + mIsScanning);
+		if(BuildConfig.DEBUG)Log.d(TAG, "Starting HRadio ServiceScan: " + mIsScanning);
 		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
 		if(context != null) {
 			if (!mIsScanning) {
@@ -596,7 +586,7 @@ public class IpServiceScanner {
 				for(String scanOptKey : optBundle.keySet()) {
 					Object scanOptVal = optBundle.get(scanOptKey);
 					if(scanOptVal instanceof String) {
-						if(DEBUG)Log.d(TAG, "ScanOption: " + scanOptKey + " : " + scanOptVal);
+						if(BuildConfig.DEBUG)Log.d(TAG, "ScanOption: " + scanOptKey + " : " + scanOptVal);
 						scanOptMap.put(scanOptKey, (String)scanOptVal);
 					}
 				}
@@ -622,12 +612,12 @@ public class IpServiceScanner {
 			final List<Service> siServices = radioEpgServiceInformation.getServices();
 			for (Service siSrv : siServices) {
 				if (siSrv != null) {
-					if (DEBUG)
+					if (BuildConfig.DEBUG)
 						Log.d(TAG, "SI ServiceName: " + (siSrv.getNames().size() > 0 ? siSrv.getNames().get(0).getName() : ""));
 					RadioServiceIpImpl ipSrv = new RadioServiceIpImpl();
 
 					for (Bearer bearer : siSrv.getBearers()) {
-						if (DEBUG)
+						if (BuildConfig.DEBUG)
 							Log.d(TAG, "SI Bearer: " + bearer.getBearerIdString() + ", MIME: " + bearer.getMimeType());
 						ipSrv.addBearer(bearer);
 
@@ -664,7 +654,7 @@ public class IpServiceScanner {
 					//TODO no IP bearers
 					boolean srvOkay = true;
 					if (ipSrv.getIpStreams().isEmpty()) {
-						if (DEBUG)
+						if (BuildConfig.DEBUG)
 							Log.w(TAG, "IpStreams empty, searching available DAB service");
 						srvOkay = false;
 						final List<RadioService> radioServiceList = new ArrayList<>(Radio.getInstance().getRadioServices());
@@ -681,7 +671,7 @@ public class IpServiceScanner {
 											if (dabSrv.getEnsembleId() == dabBearer.getEnsembleId()
 													&& dabSrv.getEnsembleEcc() == dabBearer.getEnsembleEcc()
 													&& dabSrv.getServiceId() == dabBearer.getServiceId()) {
-												if (DEBUG)
+												if (BuildConfig.DEBUG)
 													Log.d(TAG, "Found DAB service '" + dabSrv.getServiceLabel() + "' for IPService without IpStreams");
 												srvOkay = true;
 												break;
@@ -734,7 +724,7 @@ public class IpServiceScanner {
 
 						for (MediaDescription mediaDesc : siSrv.getMediaDescriptions()) {
 							if (!mIsScanning) {
-								if (DEBUG)
+								if (BuildConfig.DEBUG)
 									Log.d(TAG, "Stopping multimedia processing because scan was stopped");
 								return;
 							}
@@ -754,14 +744,14 @@ public class IpServiceScanner {
 
 							Multimedia multiMedia = mediaDesc.getMultimedia();
 							if (multiMedia != null) {
-								if (DEBUG)
+								if (BuildConfig.DEBUG)
 									Log.d(TAG, "SI Multimedia Type: " + multiMedia.getType().toString() + ", Width: " + multiMedia.getWidth() + ", Height: " + multiMedia.getHeight());
 
 								//check for dimensions if type is MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED
 								if (multiMedia.getType() == MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED) {
 									if (multiMedia.getHeight() <= 0 || multiMedia.getWidth() <= 0) {
-										if (DEBUG)
-											Log.w(TAG, MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED.toString() + " has invalid dimensions of: " + multiMedia.getWidth() + "x" + multiMedia.getHeight());
+										if (BuildConfig.DEBUG)
+											Log.w(TAG, MultimediaType.MULTIMEDIA_LOGO_UNRESTRICTED + " has invalid dimensions of: " + multiMedia.getWidth() + "x" + multiMedia.getHeight());
 										continue;
 									}
 								}
@@ -788,6 +778,7 @@ public class IpServiceScanner {
 									final int minWidth = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MIN_WIDTH, -1);
 									final int minHeight = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MIN_HEIGHT, -1);
 									boolean downloadAllowed = true;
+									//noinspection RedundantIfStatement
 									if (maxWidth != -1 && multiMedia.getWidth() > maxWidth) {
 										downloadAllowed = false;
 									}
@@ -801,7 +792,7 @@ public class IpServiceScanner {
 										downloadAllowed = false;
 									}
 									if (!downloadAllowed) {
-										if (DEBUG) {
+										if (BuildConfig.DEBUG) {
 											Log.d(TAG, "Not downloading logo "
 													+ multiMedia.getWidth() + "x" + multiMedia.getHeight()
 													+ " due to restriction max " + maxWidth + "x" + maxHeight
@@ -842,13 +833,13 @@ public class IpServiceScanner {
 
 
 						if (ipSrv.getIpStreams().isEmpty()) {
-							if (DEBUG)
+							if (BuildConfig.DEBUG)
 								Log.w(TAG, "Empty IpStreams for: " + ipSrv.getServiceLabel() + " with " + ipSrv.getLogos().size() + " logos");
 						}
 
 						foundIpServices.add(ipSrv);
 					} else {
-						if (DEBUG) Log.d(TAG, "IpStreams empty and no DAB service found");
+						if (BuildConfig.DEBUG) Log.d(TAG, "IpStreams empty and no DAB service found");
 					}
 				}
 			}
@@ -857,7 +848,7 @@ public class IpServiceScanner {
 				listener.foundStreamingServices(new ArrayList<>(foundIpServices));
 			}
 
-			if(DEBUG) {
+			if(BuildConfig.DEBUG) {
 				Log.d(TAG, "Found " + foundIpServices.size() + " IpServices");
 				for (RadioService foundSrv : foundIpServices) {
 					Log.d(TAG, "Found " + foundSrv.getServiceLabel());
@@ -896,13 +887,13 @@ public class IpServiceScanner {
 					scanRdnsServices(searchOptions);
 				}
 			} else {
-				scanRdnsServices(searchOptions);
+				scanRdnsServices(null);
 			}
 		}
 	}
 
 	synchronized private void scanRdnsServices(@Nullable Bundle searchOptions) {
-		if(DEBUG)Log.d(TAG, "Starting ServiceScan: " + mIsScanning);
+		if(BuildConfig.DEBUG)Log.d(TAG, "Starting ServiceScan: " + mIsScanning);
 		final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
 		if(context != null) {
 			if (!mIsScanning) {
@@ -923,7 +914,7 @@ public class IpServiceScanner {
 				}
 
 				ArrayList<RadioService> srvList = new ArrayList<>(Radio.getInstance().getRadioServices());
-				if (DEBUG) Log.d(TAG, "Scanning " + srvList.size() + " services");
+				if (BuildConfig.DEBUG) Log.d(TAG, "Scanning " + srvList.size() + " services");
 				if (!srvList.isEmpty()) {
 					for (RadioService srv : srvList) {
 						if (srv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB || srv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_EDI) {
@@ -931,7 +922,7 @@ public class IpServiceScanner {
 
 								RadioDnsCore coreLookup = RadioDnsFactory.createCoreLookup(srv, true);
 								mLookups.put(srv, coreLookup);
-								if (DEBUG) Log.d(TAG, "Running lookuptasks: " + mLookups.size());
+								if (BuildConfig.DEBUG) Log.d(TAG, "Running lookuptasks: " + mLookups.size());
 							}
 						}
 					}
@@ -971,11 +962,11 @@ public class IpServiceScanner {
 		File dir = VisualLogoManager.getInstance().getLogoFilesCacheDir();
 		final android.content.Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
 		if(context != null && dir != null) {
-			if(DEBUG)Log.d(TAG, "LogoFilesCacheDir: " + dir.getAbsolutePath());
+			if(BuildConfig.DEBUG)Log.d(TAG, "LogoFilesCacheDir: " + dir.getAbsolutePath());
 			if(!dir.exists()) {
 				boolean logoCacheCreated = dir.mkdirs();
 				if(logoCacheCreated) {
-					if(DEBUG)Log.d(TAG, "Created successfully LogoFilesCacheDir");
+					if(BuildConfig.DEBUG)Log.d(TAG, "Created successfully LogoFilesCacheDir");
 				} else {
 					Log.w(TAG, "Creating LogoFilesCacheDir failed");
 					dir = null;
@@ -1029,8 +1020,9 @@ public class IpServiceScanner {
 				} else {
 					Log.d(TAG, logoUrl + " remote last-modified unknown");
 				}
-			} catch (Exception e) {
-				e.printStackTrace();
+			} catch (Throwable e) {
+				Log.e(TAG, "exception: " + e);
+				if (BuildConfig.DEBUG) e.printStackTrace();
 			} finally {
 				if (httpUrlConnection != null) httpUrlConnection.disconnect();
 			}
@@ -1044,8 +1036,9 @@ public class IpServiceScanner {
 					Log.d(TAG, logoUrl + " no download, not modified, code " + httpResponseCode);
 					downloadNeeded = false;
 				}
-			} catch (Exception e) {
-				e.printStackTrace();
+			}  catch (Throwable e) {
+				Log.e(TAG, "exception: " + e);
+				if (BuildConfig.DEBUG) e.printStackTrace();
 			} finally {
 				if (httpUrlConnection != null) httpUrlConnection.disconnect();
 			}
@@ -1074,8 +1067,9 @@ public class IpServiceScanner {
 							if (!logofile.createNewFile()) {
 								Log.w(TAG, "Logofile: '" + logofile.getAbsolutePath() + "' failed to create");
 							}
-						} catch (Exception e) {
-							e.printStackTrace();
+						}  catch (Throwable e) {
+							Log.e(TAG, "exception: " + e);
+							if (BuildConfig.DEBUG) e.printStackTrace();
 						}
 					}
 					fileOutputStream = new FileOutputStream(logofile);
@@ -1087,8 +1081,9 @@ public class IpServiceScanner {
 						fileOutputStream.write(downBuff, 0, len);
 					}
 				}
-			} catch(Exception e) {
-				e.printStackTrace();
+			}  catch (Throwable e) {
+				Log.e(TAG, "exception: " + e);
+				if (BuildConfig.DEBUG) e.printStackTrace();
 				logofile = null;
 			} finally {
 				try {
@@ -1101,8 +1096,9 @@ public class IpServiceScanner {
 					if (httpUrlConnection != null) {
 						httpUrlConnection.disconnect();
 					}
-				} catch (Exception e) {
-					e.printStackTrace();
+				}  catch (Throwable e) {
+					Log.e(TAG, "exception: " + e);
+					if (BuildConfig.DEBUG) e.printStackTrace();
 				}
 			}
 		}
@@ -1179,8 +1175,9 @@ public class IpServiceScanner {
 					if (!logoFile.createNewFile()) {
 						Log.w(TAG, "Logofile: '" + logoFile.getAbsolutePath() + "' failed to create");
 					}
-				} catch (Exception e) {
-					e.printStackTrace();
+				}  catch (Throwable e) {
+					Log.e(TAG, "exception: " + e);
+					if (BuildConfig.DEBUG) e.printStackTrace();
 				}
 				Log.d(TAG, "Logofile: '" + logoFile.getAbsolutePath() + "' didn't exist");
 			}
