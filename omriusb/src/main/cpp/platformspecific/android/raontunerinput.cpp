@@ -1460,8 +1460,8 @@ void RaonTunerInput::rawRecordOpen(const std::shared_ptr<JDabService>& serviceLi
         snprintf(ensembleIdCString, sizeof(ensembleIdCString)-1, "%x", serviceLink->getEnsembleId());
         ensembleIdCString[sizeof(ensembleIdCString)-1] = '\0';
         std::string filenameAfterDateWithoutSuffix = labelString;
-        filenameAfterDateWithoutSuffix.append("_").append(serviceIdCString);
         filenameAfterDateWithoutSuffix.append("_").append(ensembleIdCString);
+        filenameAfterDateWithoutSuffix.append("_").append(serviceIdCString);
 
         __rawRecordOpen(filenameAfterDateWithoutSuffix);
     }
