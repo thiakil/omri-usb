@@ -58,9 +58,9 @@ public class TunerUsbImpl implements TunerUsb {
 	private final List<TunerListener> mTunerlisteners = Collections.synchronizedList(new ArrayList<>());
 	@Nullable private RadioServiceDab mCurrentlyRunningService = null;
 
-	private UsbDevice mUsbDevice = null;
+	private final @NonNull UsbDevice mUsbDevice;
 
-	TunerUsbImpl(UsbDevice device) {
+	TunerUsbImpl(@NonNull UsbDevice device) {
 		mUsbDevice = device;
 	}
 
@@ -77,13 +77,17 @@ public class TunerUsbImpl implements TunerUsb {
 	@Override
 	public void initializeTuner() {
 		if(mTunerStatus == TunerStatus.TUNER_STATUS_NOT_INITIALIZED) {
-			if (DEBUG) Log.d(TAG, "Initializing Tuner");
-
-			UsbHelper.getInstance().attachDevice(this);
-			if(!mRestoreServicesInProgress) {
-				mRestoreServicesInProgress = true;
-				mRestoreServicesTask = new RestoreServicesTask();
-				mRestoreServicesTask.execute();
+			final UsbHelper usbHelper = UsbHelper.getInstance();
+			if (usbHelper != null) {
+				if (DEBUG) Log.d(TAG, "Initializing Tuner");
+				usbHelper.attachDevice(this);
+				if (!mRestoreServicesInProgress) {
+					mRestoreServicesInProgress = true;
+					mRestoreServicesTask = new RestoreServicesTask();
+					mRestoreServicesTask.execute();
+				}
+			} else {
+				Log.e(TAG, "UsbHelper null");
 			}
 		}
 	}
@@ -95,8 +99,10 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void suspendTuner() {
-		UsbHelper.getInstance().stopService(mUsbDevice.getDeviceName());
-
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if (usbHelper != null) {
+			usbHelper.stopService(mUsbDevice.getDeviceName());
+		}
 		switch (mTunerStatus) {
 			case TUNER_STATUS_SUSPENDED:
 			case TUNER_STATUS_NOT_INITIALIZED:
@@ -114,7 +120,6 @@ public class TunerUsbImpl implements TunerUsb {
 				}
 				break;
 			}
-
 		}
 	}
 
@@ -209,9 +214,14 @@ public class TunerUsbImpl implements TunerUsb {
 			stopRadioService();
 			SystemClock.sleep(300); // allow time to process the request
 		}
-		UsbHelper.getInstance().startEnsembleScan(mUsbDevice.getDeviceName());
-		synchronized (mScannedServices) {
-			mScannedServices.clear();
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if (usbHelper != null) {
+			usbHelper.startEnsembleScan(mUsbDevice.getDeviceName());
+			synchronized (mScannedServices) {
+				mScannedServices.clear();
+			}
+		} else {
+			Log.e(TAG, "startRadioServiceScan: UsbHelper null");
 		}
 	}
 
@@ -238,21 +248,32 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void stopRadioServiceScan() {
-		UsbHelper.getInstance().stopEnsembleScan(mUsbDevice.getDeviceName());
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if (usbHelper != null) {
+			usbHelper.stopEnsembleScan(mUsbDevice.getDeviceName());
+		} else {
+			Log.e(TAG, "stopRadioServiceScan UsbHelper null");
+		}
 	}
 
 	@Override
 	public void startRadioService(RadioService radioService) {
 		if(DEBUG)Log.d(TAG, "Starting Service: " + radioService.getServiceLabel());
-
-		if(radioService.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB) {
-			UsbHelper.getInstance().startService(mUsbDevice.getDeviceName(), (RadioServiceDab) radioService);
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if(radioService.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB
+				&& usbHelper != null) {
+			usbHelper.startService(mUsbDevice.getDeviceName(), (RadioServiceDab) radioService);
 		}
 	}
 
 	@Override
 	public void stopRadioService() {
-		UsbHelper.getInstance().stopService(mUsbDevice.getDeviceName());
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if (usbHelper != null) {
+			UsbHelper.getInstance().stopService(mUsbDevice.getDeviceName());
+		} else {
+			Log.e(TAG, "stopRadioService UsbHelper null");
+		}
 	}
 
 	@Override
@@ -263,11 +284,12 @@ public class TunerUsbImpl implements TunerUsb {
 	@Override
 	public @NonNull ArrayList<RadioService> getLinkedRadioServices(@NonNull RadioService service) {
 		ArrayList<RadioService> retLinkedRadioServices = new ArrayList<>();
-		if (service instanceof RadioServiceDab) {
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if (service instanceof RadioServiceDab && usbHelper != null) {
 
 			// retrieve DAB services that are linked to the given service
 			final ArrayList<RadioServiceDab> linkedDabServices =
-					UsbHelper.getInstance().getLinkedDabServices(mUsbDevice.getDeviceName(),
+					usbHelper.getLinkedDabServices(mUsbDevice.getDeviceName(),
 							(RadioServiceDab) service);
 
 			if (linkedDabServices != null) {
@@ -281,8 +303,9 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public @NonNull String getHardwareVersion() {
-		if (mUsbDevice != null) {
-			String hwVersion = UsbHelper.getInstance().getHwVersion(mUsbDevice.getDeviceName());
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if (usbHelper != null) {
+			String hwVersion = usbHelper.getHwVersion(mUsbDevice.getDeviceName());
 			if (hwVersion != null) {
 				return hwVersion;
 			}
@@ -292,7 +315,8 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public @NonNull String getSoftwareVersion() {
-		if (mUsbDevice != null) {
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if (usbHelper != null) {
 			String swVersion = UsbHelper.getInstance().getSwVersion(mUsbDevice.getDeviceName());
 			if (swVersion != null) {
 				return swVersion;
@@ -303,14 +327,16 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void setDirectBulkTransferModeEnabled(boolean direct) {
-		if (mUsbDevice != null) {
-			UsbHelper.getInstance().setDirectBulkTransferModeEnabled(mUsbDevice.getDeviceName(), direct);
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if (usbHelper != null) {
+			usbHelper.setDirectBulkTransferModeEnabled(mUsbDevice.getDeviceName(), direct);
 		}
 	}
 
 	@Override
 	public boolean getDirectBulkTransferModeEnabled() {
-		if (mUsbDevice != null) {
+		final UsbHelper usbHelper = UsbHelper.getInstance();
+		if (usbHelper != null) {
 			return UsbHelper.getInstance().getDirectBulkTransferModeEnabled(mUsbDevice.getDeviceName());
 		}
 		return true; // should not come here, default is in jusbdevice.h
@@ -424,7 +450,7 @@ public class TunerUsbImpl implements TunerUsb {
 					for (RadioService currentService : currentServices) {
 						if (service.equals(currentService)) {
 							if (DEBUG) {
-								Log.d(TAG, "serviceFound already known: " + service.toString());
+								Log.d(TAG, "serviceFound already known: " + service);
 							}
 							return;
 						}
@@ -435,7 +461,7 @@ public class TunerUsbImpl implements TunerUsb {
 			}
 		}
 		if(DEBUG) {
-			Log.d(TAG, "serviceFound: " + service.toString());
+			Log.d(TAG, "serviceFound: " + service);
 		}
 
 		// add with scheduled serialization

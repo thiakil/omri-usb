@@ -140,7 +140,7 @@ public class UsbHelper {
 		return foundSpecificDevices;
 	}
 
-	public static UsbHelper getInstance() {
+	public static @Nullable UsbHelper getInstance() {
 		return mInstance;
 	}
 
