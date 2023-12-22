@@ -135,6 +135,9 @@ android {
             returnDefaultValues = true
         }
     }
+    buildFeatures {
+        buildConfig true
+    }
 }
 
 dependencies {
