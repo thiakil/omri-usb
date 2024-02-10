@@ -180,19 +180,21 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 		UsbHelper.create(appContext, this, redirectCoutToALog, rawRecordingPath);
 
-		//List of Pairs consisiting of first.VendorId and second.ProductId
+		//List of Pairs consisting of first.VendorId and second.ProductId
 		ArrayList<Pair<Integer, Integer>> wantedDevices = new ArrayList<>();
 
 		if (!demoMode) {
 			//Raon DAB USB sticks
 			wantedDevices.add(Pair.create(0x16C0, 0x05DC));
-
-			for (UsbDevice dev : UsbHelper.getInstance().scanForSpecificDevices(wantedDevices)) {
-				if (DEBUG) Log.d(TAG, "Found Siano device!");
-				Tuner usbTuner = new TunerUsbImpl(dev);
-				usbTuner.subscribe(this);
-				synchronized (mTunerList) {
-					mTunerList.add(usbTuner);
+			final UsbHelper usbHelper = UsbHelper.getInstance();
+			if (usbHelper != null) {
+				for (UsbDevice dev : usbHelper.scanForSpecificDevices(wantedDevices)) {
+					if (DEBUG) Log.d(TAG, "Found Siano device!");
+					Tuner usbTuner = new TunerUsbImpl(dev);
+					usbTuner.subscribe(this);
+					synchronized (mTunerList) {
+						mTunerList.add(usbTuner);
+					}
 				}
 			}
 		} else {
