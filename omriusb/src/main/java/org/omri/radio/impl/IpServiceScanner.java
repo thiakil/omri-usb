@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import org.omri.BuildConfig;
@@ -35,11 +36,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.net.ssl.HttpsURLConnection;
+
 import eu.hradio.core.radiodns.RadioDnsCore;
 import eu.hradio.core.radiodns.RadioDnsCoreLookupCallback;
 import eu.hradio.core.radiodns.RadioDnsFactory;
+import eu.hradio.core.radiodns.RadioDnsService;
 import eu.hradio.core.radiodns.RadioDnsServiceEpg;
 import eu.hradio.core.radiodns.RadioDnsServiceEpgSiCallback;
+import eu.hradio.core.radiodns.RadioDnsServiceSpi;
+import eu.hradio.core.radiodns.RadioDnsServiceType;
 import eu.hradio.core.radiodns.radioepg.bearer.Bearer;
 import eu.hradio.core.radiodns.radioepg.bearer.BearerType;
 import eu.hradio.core.radiodns.radioepg.description.Description;
@@ -79,6 +85,9 @@ public class IpServiceScanner {
 
 	private final static String TAG = "IpServiceScanner";
 
+	private final static String HTTPS_REQUEST_AUTHORIZATION = "Authorization";
+	private final static String HTTPS_REQUEST_CLIENT_IDENTIFIER = "ClientIdentifier";
+
 	private final static IpServiceScanner mScannerInstance = new IpServiceScanner();
 
 	private final List<IpScannerListener> mScannerListeners = new ArrayList<>();
@@ -92,13 +101,16 @@ public class IpServiceScanner {
 
 	private File mLogoCacheDir;
 
-	private Bundle mScanRdnsOptionsBundle = null;
+	private @NonNull Bundle mScanRdnsOptionsBundle = new Bundle();
+
+	// HashMap of key=<Authoritative FQDN> and value=<ClientIdentification>
+	private final HashMap<String, String> mClientIdentifications = new HashMap<>();
 
  	private IpServiceScanner() {
 		createLogoFilesCacheDir();
 	}
 
-	static IpServiceScanner getInstance() {
+	public static @NonNull IpServiceScanner getInstance() {
 		return mScannerInstance;
 	}
 
@@ -128,8 +140,10 @@ public class IpServiceScanner {
 
 			if(BuildConfig.DEBUG)Log.d(TAG, "Corelookup for: '" + radioService.getServiceLabel() + "' finished, " + mLookups.size() + " lookups remaining");
 
-			for(eu.hradio.core.radiodns.RadioDnsService rdnsSrv : availableServices) {
-				if(rdnsSrv.getServiceType() == eu.hradio.core.radiodns.RadioDnsServiceType.RADIO_EPG) {
+			for(RadioDnsService rdnsSrv : availableServices) {
+				final RadioDnsServiceType serviceType = rdnsSrv.getServiceType();
+				if (serviceType == RadioDnsServiceType.RADIO_EPG
+						|| serviceType == RadioDnsServiceType.RADIO_SPI) {
 					synchronized (mAvailableServices) {
 						if (!mAvailableServices.containsValue(rdnsSrv)) {
 							if (BuildConfig.DEBUG)
@@ -152,8 +166,12 @@ public class IpServiceScanner {
 					notifyListeners(50, false);
 
 					synchronized (mAvailableServices) {
-						for (eu.hradio.core.radiodns.RadioDnsService rdnsSrv : mAvailableServices.values()) {
-							((RadioDnsServiceEpg) rdnsSrv).getServiceInformation(mSiCallback);
+						for (RadioDnsService rdnsSrv : mAvailableServices.values()) {
+							if (rdnsSrv instanceof RadioDnsServiceSpi) {
+								((RadioDnsServiceSpi) rdnsSrv).getServiceInformation(mSiCallback);
+							} else if (rdnsSrv instanceof RadioDnsServiceEpg) {
+								((RadioDnsServiceEpg) rdnsSrv).getServiceInformation(mSiCallback);
+							}
 						}
 					}
 				} else {
@@ -406,7 +424,9 @@ public class IpServiceScanner {
 
 	private final OnErrorListener mOnErrorListener = e -> {
 		Log.e(TAG, "HRadioHttpClient onError: " + e);
-		if (BuildConfig.DEBUG) e.printStackTrace();
+		if (BuildConfig.DEBUG)
+			//noinspection CallToPrintStackTrace
+			e.printStackTrace();
 
 		notifyListeners(100, true);
 		mIsScanning = false;
@@ -520,7 +540,7 @@ public class IpServiceScanner {
 
 													stationLogo.setVisualMimeType(logoMime);
 													stationLogo.setLogoUrl(mediaDesc.getUrl());
-													RadioDnsEpgBearerDab dabBearer = new RadioDnsEpgBearerDab(bearer, 20, "audio/aac", dabSrv.getServiceComponents().size() > 0 ? dabSrv.getServiceComponents().get(0).getBitrate() : 0);
+													RadioDnsEpgBearerDab dabBearer = new RadioDnsEpgBearerDab(bearer, 20, "audio/aac", !dabSrv.getServiceComponents().isEmpty() ? dabSrv.getServiceComponents().get(0).getBitrate() : 0);
 													stationLogo.addBearer(dabBearer);
 
 													Collections.sort(stationLogo.getBearers());
@@ -557,7 +577,10 @@ public class IpServiceScanner {
 							}
 						}, e -> {
 							Log.e(TAG, "Enrich onError: " + e);
-							if(BuildConfig.DEBUG)e.printStackTrace();
+							if(BuildConfig.DEBUG) {
+								//noinspection CallToPrintStackTrace
+								e.printStackTrace();
+							}
 						});
 					}
 				}
@@ -613,7 +636,7 @@ public class IpServiceScanner {
 			for (Service siSrv : siServices) {
 				if (siSrv != null) {
 					if (BuildConfig.DEBUG)
-						Log.d(TAG, "SI ServiceName: " + (siSrv.getNames().size() > 0 ? siSrv.getNames().get(0).getName() : ""));
+						Log.d(TAG, "SI ServiceName: " + (!siSrv.getNames().isEmpty() ? siSrv.getNames().get(0).getName() : ""));
 					RadioServiceIpImpl ipSrv = new RadioServiceIpImpl();
 
 					for (Bearer bearer : siSrv.getBearers()) {
@@ -762,17 +785,13 @@ public class IpServiceScanner {
 
 								// check for logo size restrictions
 								// create local copy of Bundle
-								Bundle scanRdnsOptions = null;
-								if (mScanRdnsOptionsBundle != null) {
-									scanRdnsOptions = new Bundle(mScanRdnsOptionsBundle);
-								}
+								Bundle scanRdnsOptions = new Bundle(mScanRdnsOptionsBundle);
+
 								// check for restriction of MIN or MAX width/height
-								if (scanRdnsOptions != null &&
-										( scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH) ||
+								if (scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH) ||
 										  scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT) ||
 										  scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MIN_WIDTH) ||
-										  scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MIN_HEIGHT)
-										) ) {
+										  scanRdnsOptions.containsKey(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MIN_HEIGHT) ) {
 									final int maxWidth = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_WIDTH, -1);
 									final int maxHeight = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MAX_HEIGHT, -1);
 									final int minWidth = scanRdnsOptions.getInt(RadioImpl.SERVICE_SEARCH_OPT_LOGO_MIN_WIDTH, -1);
@@ -906,6 +925,21 @@ public class IpServiceScanner {
 				mSiCallbacksPendings.set(0);
 				if (searchOptions != null) {
 					mScanRdnsOptionsBundle = new Bundle(searchOptions);
+				} else {
+					mScanRdnsOptionsBundle = new Bundle(); // empty
+				}
+
+				mClientIdentifications.clear();
+				@Nullable Bundle clientIdsBundle = mScanRdnsOptionsBundle
+						.getBundle(RadioImpl.SERVICE_SEARCH_OPT_RADIO_DNS_CLIENT_IDENTIFICATION);
+				if (clientIdsBundle != null) {
+					for (String key : clientIdsBundle.keySet()) {
+						final String clientId = clientIdsBundle.getString(key);
+						mClientIdentifications.put(key, clientId);
+						if (BuildConfig.DEBUG) {
+							Log.i(TAG, "ClientIdentification '" + key + "' '" + clientId + "'");
+						}
+					}
 				}
 
 				for (IpScannerListener listener : mScannerListeners) {
@@ -1022,7 +1056,9 @@ public class IpServiceScanner {
 				}
 			} catch (Throwable e) {
 				Log.e(TAG, "exception: " + e);
-				if (BuildConfig.DEBUG) e.printStackTrace();
+				if (BuildConfig.DEBUG)
+					//noinspection CallToPrintStackTrace
+					e.printStackTrace();
 			} finally {
 				if (httpUrlConnection != null) httpUrlConnection.disconnect();
 			}
@@ -1038,7 +1074,9 @@ public class IpServiceScanner {
 				}
 			}  catch (Throwable e) {
 				Log.e(TAG, "exception: " + e);
-				if (BuildConfig.DEBUG) e.printStackTrace();
+				if (BuildConfig.DEBUG)
+					//noinspection CallToPrintStackTrace
+					e.printStackTrace();
 			} finally {
 				if (httpUrlConnection != null) httpUrlConnection.disconnect();
 			}
@@ -1069,7 +1107,9 @@ public class IpServiceScanner {
 							}
 						}  catch (Throwable e) {
 							Log.e(TAG, "exception: " + e);
-							if (BuildConfig.DEBUG) e.printStackTrace();
+							if (BuildConfig.DEBUG)
+								//noinspection CallToPrintStackTrace
+								e.printStackTrace();
 						}
 					}
 					fileOutputStream = new FileOutputStream(logofile);
@@ -1083,7 +1123,9 @@ public class IpServiceScanner {
 				}
 			}  catch (Throwable e) {
 				Log.e(TAG, "exception: " + e);
-				if (BuildConfig.DEBUG) e.printStackTrace();
+				if (BuildConfig.DEBUG)
+					//noinspection CallToPrintStackTrace
+					e.printStackTrace();
 				logofile = null;
 			} finally {
 				try {
@@ -1098,7 +1140,9 @@ public class IpServiceScanner {
 					}
 				}  catch (Throwable e) {
 					Log.e(TAG, "exception: " + e);
-					if (BuildConfig.DEBUG) e.printStackTrace();
+					if (BuildConfig.DEBUG)
+						//noinspection CallToPrintStackTrace
+						e.printStackTrace();
 				}
 			}
 		}
@@ -1118,7 +1162,7 @@ public class IpServiceScanner {
 		return logofile != null ? logofile.getName() : null;
 	}
 
-	public static @Nullable HttpURLConnection getConnection(String connUrl) throws IOException {
+	public @Nullable HttpURLConnection getConnection(String connUrl) throws IOException {
 		final URL url = new URL(connUrl);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		conn.setReadTimeout(10000);
@@ -1126,10 +1170,23 @@ public class IpServiceScanner {
 		conn.setRequestMethod("GET");
 		conn.setInstanceFollowRedirects(true);
 		conn.setDoInput(true);
+		boolean addedClientIdentification = false;
+		if (conn instanceof HttpsURLConnection) {
+			addedClientIdentification = addClientIdentification((HttpsURLConnection)conn);
+		}
 		conn.connect();
 
-		int httpResponseCode = conn.getResponseCode();
-		Log.d(TAG, "GetConnection HTTP: " + httpResponseCode + " " + connUrl);
+		// HTTP response codes 200 - 399 are good
+		// see https://httpwg.org/specs/rfc9110.html#overview.of.status.codes
+		final int httpResponseCode = conn.getResponseCode();
+		if (httpResponseCode >= HttpURLConnection.HTTP_OK
+				&& httpResponseCode < HttpURLConnection.HTTP_BAD_REQUEST) {
+			Log.d(TAG, "GetConnection HTTP: " + httpResponseCode + " " + connUrl
+					+ (addedClientIdentification ? " w/ ClientIdentifier" : ""));
+		} else {
+			Log.i(TAG, "GetConnection HTTP: " + httpResponseCode + " " + connUrl
+					+ (addedClientIdentification ? " w/ ClientIdentifier" : ""));
+		}
 		switch (httpResponseCode) {
 			case HttpURLConnection.HTTP_OK:
 				// all fine
@@ -1146,7 +1203,7 @@ public class IpServiceScanner {
 				if (redirectUrl != null) {
 					Log.d(TAG, "GetConnection Following redirect to: " + redirectUrl);
 					conn.disconnect();
-					return IpServiceScanner.getConnection(redirectUrl);
+					return getConnection(redirectUrl);
 				} else {
 					Log.w(TAG, "GetConnection Redirect URL had no field Location: null");
 				}
@@ -1177,13 +1234,49 @@ public class IpServiceScanner {
 					}
 				}  catch (Throwable e) {
 					Log.e(TAG, "exception: " + e);
-					if (BuildConfig.DEBUG) e.printStackTrace();
+					if (BuildConfig.DEBUG)
+						//noinspection CallToPrintStackTrace
+						e.printStackTrace();
 				}
 				Log.d(TAG, "Logofile: '" + logoFile.getAbsolutePath() + "' didn't exist");
 			}
 		}
 
 		return logoFile;
+	}
+
+	/**
+	 * Adds a Client Identification to a not yet connected {@link HttpsURLConnection}
+	 *
+	 * @param connection {@link HttpsURLConnection}
+	 * @return true if HTTP request header "Authorization: ClientIdentifier ..." was added
+	 * @see "ETSI TS 102 818 v3.3.1, 10.5.5 Client Identification"
+	 */
+	private boolean addClientIdentification(@NonNull HttpsURLConnection connection) {
+		try {
+			final URL url = connection.getURL();
+			if (url != null) {
+				final String host = url.getHost();
+				if (host != null) {
+					final @Nullable String clientId = mClientIdentifications.get(host);
+					if (clientId != null) {
+						connection.setRequestProperty(HTTPS_REQUEST_AUTHORIZATION,
+								HTTPS_REQUEST_CLIENT_IDENTIFIER + " " + clientId); // space is a MUST
+						if (BuildConfig.DEBUG) {
+							Log.v(TAG, "host '" + host + "': " + HTTPS_REQUEST_AUTHORIZATION
+									+ ": " + HTTPS_REQUEST_CLIENT_IDENTIFIER + " " + clientId);
+						}
+						return true;
+					}
+				}
+			} else {
+				Log.w(TAG, "has no URL: " + connection);
+			}
+		} catch (Throwable e) {
+			//noinspection CallToPrintStackTrace
+			e.printStackTrace();
+		}
+		return false;
 	}
 
 	/* Callback Interface */

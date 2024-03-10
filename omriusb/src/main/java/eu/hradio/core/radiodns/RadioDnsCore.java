@@ -105,6 +105,10 @@ public class RadioDnsCore
                                 this.mFoundServices.add(new RadioDnsServiceEpg(serviceRecord, this.mRdnsSrvId, this.mBearerUri, rdnsType, this.mLookupSrv));
                                 break;
                             }
+                            case RADIO_SPI: {
+                                this.mFoundServices.add(new RadioDnsServiceSpi(serviceRecord, this.mRdnsSrvId, this.mBearerUri, rdnsType, this.mLookupSrv));
+                                break;
+                            }
                             case RADIO_TAG: {
                                 this.mFoundServices.add(new RadioDnsServiceTag(serviceRecord, this.mRdnsSrvId, this.mBearerUri, rdnsType, this.mLookupSrv));
                                 break;

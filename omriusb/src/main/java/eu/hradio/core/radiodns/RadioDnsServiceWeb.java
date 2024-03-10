@@ -43,7 +43,7 @@ public class RadioDnsServiceWeb extends RadioDnsService
                     public void run() {
                         try {
                             final RadioWebApplicationParser parser = new RadioWebApplicationParser();
-                            final HttpURLConnection urlConnection = IpServiceScanner.getConnection(mAilUrl);
+                            final HttpURLConnection urlConnection = IpServiceScanner.getInstance().getConnection(mAilUrl);
                             if (urlConnection != null) {
                                 RadioDnsServiceWeb.this.mAIL = parser.parse(urlConnection.getInputStream());
                                 if (BuildConfig.DEBUG) Log.i(TAG, "getApplicationInformationList: parsed " + urlConnection.getURL().toString());

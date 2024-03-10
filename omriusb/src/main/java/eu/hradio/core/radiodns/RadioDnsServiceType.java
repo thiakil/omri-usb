@@ -3,7 +3,8 @@ package eu.hradio.core.radiodns;
 public enum RadioDnsServiceType
 {
     RADIO_VIS("radiovis"), 
-    RADIO_EPG("radioepg"), 
+    RADIO_EPG("radioepg"), // for application servers not supporting TLS
+    RADIO_SPI("radiospi"), // for application servers requiring TLS
     RADIO_TAG("radiotag"), 
     RADIO_WEB("radioweb");
     

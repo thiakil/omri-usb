@@ -626,6 +626,15 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	 */
 	public final static String SERVICE_SEARCH_OPT_LOGO_MIN_HEIGHT = "logo_min_height"; // argument type: int
 
+	/**
+	 * Option for {@link TunerIpShoutcast#startRadioServiceScan(Object scanOptions)}.
+	 * Applies only to RadioDNS based scan.
+	 * Argument is a Bundle consisting of key/value pairs:
+	 * {@link String} key = Authoritative FQDN as result of RadioDNS SRV lookup
+	 * {@link String} value = Client Identifier
+	 */
+	public final static String SERVICE_SEARCH_OPT_RADIO_DNS_CLIENT_IDENTIFICATION = "clientId"; // argument type: Bundle
+
 	public final static String RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS = "verbose_native_logs";
 	public final static String RADIO_INIT_OPT_RAW_RECORDING_PATH = "raw_recording_path";
 	public final static String RADIO_INIT_OPT_DEMO_MODE = "demo_mode";
