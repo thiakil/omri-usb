@@ -1,6 +1,7 @@
 package eu.hradio.core.radiodns;
 
 import android.content.Context;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -61,7 +62,7 @@ public class RadioDnsCore
         if (this.mFoundServices.isEmpty() && this.mFqdn != null && this.mRdnsSrvId != null && this.mBearerUri != null) {
             if (!this.mLookupRunning) {
                 this.mLookupRunning = true;
-                final Thread lookupThread = new LookupThread(context);
+                final Thread lookupThread = new LookupThread(context, this.mLookupSrv);
                 lookupThread.start();
             }
         }
@@ -76,6 +77,7 @@ public class RadioDnsCore
                 try {
                     this.mCbExe.execute(() -> cb.coreLookupFinished(RadioDnsCore.this.mLookupSrv, RadioDnsCore.this.mFoundServices));
                 } catch (Throwable e) {
+                    //noinspection CallToPrintStackTrace
                     e.printStackTrace();
                 }
             }
@@ -91,6 +93,9 @@ public class RadioDnsCore
                 final ResolverResult<SRV> result = ResolverApi.INSTANCE.resolve(appFqdn, SRV.class);
                 if (result.wasSuccessful()) {
                     for (final SRV serviceRecord : result.getAnswers()) {
+                        Log.d(TAG, "SRV for '" + appFqdn
+                                + "' : target '" + serviceRecord.target.toString()
+                                + "' port " + serviceRecord.port);
                         switch (rdnsType) {
                             case RADIO_VIS: {
                                 this.mFoundServices.add(new RadioDnsServiceVis(serviceRecord, this.mRdnsSrvId, this.mBearerUri, rdnsType, this.mLookupSrv));
@@ -110,9 +115,12 @@ public class RadioDnsCore
                             }
                         }
                     }
+                } else {
+                    Log.i(TAG, "SRV failed for '" + appFqdn + "' code:" + result.getResponseCode());
                 }
             }
             catch (Throwable e) {
+                //noinspection CallToPrintStackTrace
                 e.printStackTrace();
             }
         }
@@ -120,9 +128,11 @@ public class RadioDnsCore
 
     private class LookupThread extends Thread {
         private final Context context;
+        private final RadioService radioService;
 
-        public LookupThread(Context context) {
+        public LookupThread(Context context, RadioService radioService) {
             this.context = context;
+            this.radioService = radioService;
         }
 
         @Override
@@ -133,11 +143,18 @@ public class RadioDnsCore
                     final ResolverResult<CNAME> result = ResolverApi.INSTANCE.resolve(RadioDnsCore.this.mFqdn, CNAME.class);
                     if (result.wasSuccessful()) {
                         for (final CNAME cname : result.getAnswers()) {
+                            Log.d(TAG, "CNAME for '" + radioService.getServiceLabel()
+                                    + "' FQDN '" + RadioDnsCore.this.mFqdn
+                                    + "' : '" + cname.getTarget().toString() + "'");
                             RadioDnsCore.this.resolveServiceRecords(cname, context);
                         }
+                    } else {
+                        Log.i(TAG, "CNAME failed for '" + radioService.getServiceLabel()
+                                + "' FQDN '" + RadioDnsCore.this.mFqdn + "' code:" + result.getResponseCode());
                     }
                 }
             } catch (Throwable e) {
+                //noinspection CallToPrintStackTrace
                 e.printStackTrace();
             } finally {
                 RadioDnsCore.this.callCallbacks();
