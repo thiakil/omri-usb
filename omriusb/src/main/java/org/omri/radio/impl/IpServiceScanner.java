@@ -986,7 +986,7 @@ public class IpServiceScanner {
 	}
 
 	@Nullable File getLogoFilesCacheDir() {
-	    if (mLogoCacheDir == null) {
+		if (mLogoCacheDir == null) {
 			mLogoCacheDir = createLogoFilesCacheDir();
         }
 		return mLogoCacheDir;
@@ -1165,8 +1165,8 @@ public class IpServiceScanner {
 	public @Nullable HttpURLConnection getConnection(String connUrl) throws Exception {
 		final URL url = new URL(connUrl);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-		conn.setReadTimeout(10000);
-		conn.setConnectTimeout(15000);
+		conn.setReadTimeout(60000);
+		conn.setConnectTimeout(60000);
 		conn.setRequestMethod("GET");
 		conn.setInstanceFollowRedirects(true);
 		conn.setDoInput(true);
