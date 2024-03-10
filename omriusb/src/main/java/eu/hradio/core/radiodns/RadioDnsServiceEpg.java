@@ -9,7 +9,7 @@ import org.omri.BuildConfig;
 import org.omri.radio.impl.IpServiceScanner;
 import org.omri.radioservice.RadioService;
 
-import java.io.IOException;
+import java.io.BufferedInputStream;
 import java.net.HttpURLConnection;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -57,7 +57,7 @@ public class RadioDnsServiceEpg extends RadioDnsService
                         final RadioEpgSiParser parser = new RadioEpgSiParser();
                         final HttpURLConnection urlConnection = IpServiceScanner.getInstance().getConnection(mSiUrl);
                         if (urlConnection != null) {
-                            mSi = parser.parse(urlConnection.getInputStream());
+                            mSi = parser.parse(new BufferedInputStream(urlConnection.getInputStream()));
                             if (BuildConfig.DEBUG) Log.i(TAG, "getServiceInformation: parsed " + urlConnection.getURL().toString());
                         } else {
                             Log.w(TAG,"failed to connect to " + mSiUrl);
@@ -85,7 +85,7 @@ public class RadioDnsServiceEpg extends RadioDnsService
     public void getProgrammeInformation(@NonNull final RadioDnsServiceEpgPiCallback cb) {
         this.getProgrammeInformation(0, cb);
     }
-    
+
     public void getProgrammeInformation(final int dayOffset, @NonNull final RadioDnsServiceEpgPiCallback cb) {
         final String dateString = this.createPiDate(dayOffset);
         final String piUrl = this.createEpgPiUrl(dateString);
@@ -111,14 +111,14 @@ public class RadioDnsServiceEpg extends RadioDnsService
                         final RadioEpgPiParser parser = new RadioEpgPiParser();
                         final HttpURLConnection urlConnection = IpServiceScanner.getInstance().getConnection(piUrl);
                         if (urlConnection != null) {
-                            mPiMap.put(dateString, parser.parse(urlConnection.getInputStream()));
+                            mPiMap.put(dateString, parser.parse(new BufferedInputStream(urlConnection.getInputStream())));
 
                         } else {
                             Log.w(TAG, "failed to connect to " + piUrl);
                         }
                         callPiCallbacks(dateString, this);
                     }
-                    catch (IOException e) {
+                    catch (Throwable e) {
                         //noinspection CallToPrintStackTrace
                         e.printStackTrace();
                     }

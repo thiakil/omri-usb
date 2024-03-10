@@ -9,7 +9,6 @@ import org.omri.BuildConfig;
 import org.omri.radio.impl.IpServiceScanner;
 import org.omri.radioservice.RadioService;
 
-import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -52,7 +51,7 @@ public class RadioDnsServiceWeb extends RadioDnsService
                             }
                             RadioDnsServiceWeb.this.callCallbacks();
                         }
-                        catch (IOException e) {
+                        catch (Throwable e) {
                             e.printStackTrace();
                         }
                         finally {

@@ -18,9 +18,9 @@ import org.omri.radioservice.RadioServiceType;
 import org.omri.radioservice.metadata.Visual;
 import org.omri.radioservice.metadata.VisualMimeType;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -1097,7 +1097,7 @@ public class IpServiceScanner {
 				httpUrlConnection = getConnection(logoUrl);
 
 				if (httpUrlConnection != null) {
-					inputStream = httpUrlConnection.getInputStream();
+					inputStream = new BufferedInputStream(httpUrlConnection.getInputStream());
 					Log.d(TAG, "Downloading LogoFile: " + logofile.getAbsolutePath()
 							+ " from " + httpUrlConnection.getURL().toString());
 					if (!logofile.exists()) {
@@ -1162,7 +1162,7 @@ public class IpServiceScanner {
 		return logofile != null ? logofile.getName() : null;
 	}
 
-	public @Nullable HttpURLConnection getConnection(String connUrl) throws IOException {
+	public @Nullable HttpURLConnection getConnection(String connUrl) throws Exception {
 		final URL url = new URL(connUrl);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		conn.setReadTimeout(10000);
