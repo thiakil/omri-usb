@@ -115,7 +115,7 @@ std::vector<std::shared_ptr<DabService>> DabEnsemble::getDabServices() {
     std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
     std::vector<std::shared_ptr<DabService>> services;
     for(const auto& srv : m_servicesMap) {
-        services.push_back(std::make_shared<DabService>(srv.second));
+        services.push_back(srv.second);
     }
     return services;
 }
@@ -388,7 +388,7 @@ void DabEnsemble::fig00_02_input(const Fig_00_Ext_02 &fig02) {
 
             service.setEnsembleFrequency(m_ensembleFrequency);
             service.setDabEnsemble(this);
-            m_servicesMap.emplace(srvDesc.serviceId, std::move(service));
+            m_servicesMap.emplace(srvDesc.serviceId, std::make_shared<DabService>(service));
         }
     }
 }
@@ -741,7 +741,7 @@ void DabEnsemble::fig00_13_input(const Fig_00_Ext_13& fig13) {
     for(const auto& uAppInfo : fig13.getUserApplicationInformations()) {
         auto serviceIter = m_servicesMap.find(uAppInfo.serviceID);
         if(serviceIter != m_servicesMap.end()) {
-            for(const auto& component : (*serviceIter).second.getServiceComponents()) {
+            for(const auto& component : (*serviceIter).second->getServiceComponents()) {
                 if(component->getServiceComponentIdWithinService() == uAppInfo.scIdS) {
                     for(const auto& uApp : uAppInfo.userApplications) {
                         std::cout << m_logTag << " FIG 00 Ext 13 Adding UserApplication: " << uApp.userAppType << std::endl;
@@ -790,8 +790,8 @@ void DabEnsemble::fig00_17_input(const Fig_00_Ext_17& fig17) {
     for(const auto& ptyInfo : fig17.getProgrammeTypeInformations()) {
         auto serviceIter = m_servicesMap.find(ptyInfo.serviceId);
         if(serviceIter != m_servicesMap.cend()) {
-            serviceIter->second.setProgrammeTypeIsDynamic(ptyInfo.isDynamic);
-            serviceIter->second.setProgrammeTypeCode(ptyInfo.intPtyCode);
+            serviceIter->second->setProgrammeTypeIsDynamic(ptyInfo.isDynamic);
+            serviceIter->second->setProgrammeTypeCode(ptyInfo.intPtyCode);
         }
     }
 }
@@ -861,9 +861,9 @@ void DabEnsemble::fig01_01_input(const Fig_01_Ext_01& fig11) {
     std::cout << m_logTag << " ServiceSanity FIG 1/1: " << std::hex << +fig11.getProgrammeServiceId() << std::dec << " : " << fig11.getProgrammeServiceLabel() << std::endl;
     auto serviceIter = m_servicesMap.find(fig11.getProgrammeServiceId());
     if(serviceIter != m_servicesMap.cend()) {
-        serviceIter->second.setLabelCharset(fig11.getCharset());
-        serviceIter->second.setServiceLabel(fig11.getProgrammeServiceLabel());
-        serviceIter->second.setServiceShortLabel(fig11.getProgrammeServiceShortLabel());
+        serviceIter->second->setLabelCharset(fig11.getCharset());
+        serviceIter->second->setServiceLabel(fig11.getProgrammeServiceLabel());
+        serviceIter->second->setServiceShortLabel(fig11.getProgrammeServiceShortLabel());
     }
 }
 
@@ -872,7 +872,7 @@ void DabEnsemble::fig01_04_input(const Fig_01_Ext_04& fig14) {
     std::cout << m_logTag << " ServiceSanity FIG 1/4: " << std::hex << +fig14.getServiceId() << std::dec << ", SCIdS: " << +fig14.getServiceComponentIdWithinService() << " : " << fig14.getServiceComponentLabel() << std::endl;
     auto serviceIter = m_servicesMap.find(fig14.getServiceId());
     if(serviceIter != m_servicesMap.cend()) {
-        for(auto& component : serviceIter->second.getServiceComponents()) {
+        for(auto& component : serviceIter->second->getServiceComponents()) {
             if(component->getServiceComponentIdWithinService() == fig14.getServiceComponentIdWithinService()) {
                 component->setLabelCharset(fig14.getCharset());
                 component->setServiceComponentLabel(fig14.getServiceComponentLabel());
@@ -887,9 +887,9 @@ void DabEnsemble::fig01_05_input(const Fig_01_Ext_05& fig15) {
     std::cout << m_logTag << " ServiceSanity FIG 1/5: " << std::hex << +fig15.getDataServiceId() << std::dec << " : " << fig15.getDataServiceLabel() << std::endl;
     auto serviceIter = m_servicesMap.find(fig15.getDataServiceId());
     if(serviceIter != m_servicesMap.cend()) {
-        serviceIter->second.setLabelCharset(fig15.getCharset());
-        serviceIter->second.setServiceLabel(fig15.getDataServiceLabel());
-        serviceIter->second.setServiceShortLabel(fig15.getDataServiceShortLabel());
+        serviceIter->second->setLabelCharset(fig15.getCharset());
+        serviceIter->second->setServiceLabel(fig15.getDataServiceLabel());
+        serviceIter->second->setServiceShortLabel(fig15.getDataServiceShortLabel());
     }
 }
 
@@ -1069,7 +1069,7 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
         // find specific service and check its sanity
         const auto & iter = m_servicesMap.find(serviceId);
         if (iter != m_servicesMap.cend()) {
-            if (! iter->second.checkSanity() ){
+            if (! iter->second->checkSanity() ){
                 std::stringstream logStr;
                 logStr << m_logTag << "checkServiceSanity failed for SId 0x" << std::hex << +serviceId << std::dec;
                 if (logAsWarning) {
@@ -1095,10 +1095,10 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
         std::vector<std::shared_ptr<DabService>> incompleteDabServices;
         // check all services in ensemble
         for (const auto &srvMapEntry : m_servicesMap) {
-            bool wasSane = srvMapEntry.second.checkSanity();
+            bool wasSane = srvMapEntry.second->checkSanity();
             if (wasSane) {
                 std::vector<uint8_t> primAudioSubChannelIds;
-                for (const auto &srvCmp : srvMapEntry.second.getServiceComponents()) {
+                for (const auto &srvCmp : srvMapEntry.second->getServiceComponents()) {
                     if (srvCmp->isPrimary() && srvCmp->isAudioComponent()) {
                         primAudioSubChannelIds.push_back(srvCmp->getSubChannelId());
                     }
@@ -1106,7 +1106,7 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
                 if (primAudioSubChannelIds.size() > 1) {
                     std::stringstream logStr;
                     logStr << m_logTag << "checkServiceSanity SId 0x" << std::hex
-                              << +srvMapEntry.second.getServiceId() << std::dec << ": "
+                              << +srvMapEntry.second->getServiceId() << std::dec << ": "
                               << +primAudioSubChannelIds.size() << " prim audio SubChanIds:";
                     for (const auto & subChanId : primAudioSubChannelIds) {
                         logStr << " " << +subChanId;
@@ -1117,13 +1117,13 @@ void DabEnsemble::checkServiceSanity(const uint32_t serviceId ) {
             if (!wasSane) {
                 std::stringstream logStr;
                 logStr << m_logTag << "checkServiceSanity failed for SId 0x" << std::hex
-                       << +srvMapEntry.second.getServiceId() << std::dec;
+                       << +srvMapEntry.second->getServiceId() << std::dec;
                 if (logAsWarning) {
                     std::clog << logStr.rdbuf() << std::endl;
                 } else {
                     std::cout << logStr.rdbuf() << std::endl;
                 }
-                incompleteDabServices.push_back(std::make_shared<DabService>(srvMapEntry.second));
+                incompleteDabServices.push_back(srvMapEntry.second);
             }
         }
         if (!incompleteDabServices.empty()) {

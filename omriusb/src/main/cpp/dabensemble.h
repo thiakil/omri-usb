@@ -187,7 +187,7 @@ private:
     std::string m_ensembleShortLabel{""};
 
     //Service information mappings
-    std::map<uint32_t, DabService> m_servicesMap;
+    std::map<uint32_t, std::shared_ptr<DabService>> m_servicesMap;
     std::map<uint8_t, std::shared_ptr<DabServiceComponent>> m_streamComponentsMap;
     std::map<uint16_t, std::shared_ptr<DabServiceComponentMscPacketData>> m_packetComponentsMap;
 
