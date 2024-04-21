@@ -14,6 +14,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.Process;
 import android.os.RemoteException;
@@ -73,7 +74,7 @@ class DabAudioDecoder {
 
 	private DabDecoderCallback mCallback = null;
 
-	private boolean mHasBuiltInMpegDec = false;
+	private final boolean mHasBuiltInMpegDec = false;
 	private boolean mHasMpegDecPlug = false;
 
 	private int mConfCodec = 0;
@@ -158,7 +159,11 @@ class DabAudioDecoder {
 			public void run(){
 				final Context context = ((RadioImpl)Radio.getInstance()).getAppContext();
 				if (context != null) {
-					context.bindService(srvIntent, mDecoderConnection, Context.BIND_AUTO_CREATE);
+					int flags = Context.BIND_AUTO_CREATE;
+					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+						flags |= Context.BIND_ALLOW_ACTIVITY_STARTS;
+					}
+					context.bindService(srvIntent, mDecoderConnection, flags);
 				} else {
 					if (DEBUG) Log.w(TAG, "Radio context null");
 				}
@@ -167,7 +172,11 @@ class DabAudioDecoder {
 		t.start();
 		final Context radioContext = ((RadioImpl)Radio.getInstance()).getAppContext();
 		if (radioContext != null) {
-			return radioContext.bindService(srvIntent, mDecoderConnection, Context.BIND_AUTO_CREATE);
+			int flags = Context.BIND_AUTO_CREATE;
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+				flags |= Context.BIND_ALLOW_ACTIVITY_STARTS;
+			}
+			return radioContext.bindService(srvIntent, mDecoderConnection, flags);
 		} else {
 			if(DEBUG) Log.w(TAG, "Radio context null");
 			return false;
