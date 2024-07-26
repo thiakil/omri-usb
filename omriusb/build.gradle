@@ -147,7 +147,7 @@ dependencies {
     //noinspection GradleDependency  // do not want to update
 //    implementation 'com.google.android.exoplayer:exoplayer-core:2.7.3'
     implementation 'androidx.core:core:1.13.1'
-    implementation 'androidx.annotation:annotation:1.8.0'
+    implementation 'androidx.annotation:annotation:1.8.1'
     implementation 'androidx.preference:preference:1.2.1'
 
     def minidnsVersion = '1.0.4'
