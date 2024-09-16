@@ -1258,7 +1258,18 @@ public class IpServiceScanner {
 			if (url != null) {
 				final String host = url.getHost();
 				if (host != null) {
-					final @Nullable String clientId = mClientIdentifications.get(host);
+					@Nullable String clientId = mClientIdentifications.get(host);
+					if (clientId == null) {
+						// no exact match, try substring search
+                        for (String h : mClientIdentifications.keySet()) {
+                            if (h != null) {
+								if (host.contains(h)) {
+									clientId = mClientIdentifications.get(h);
+									break;
+								}
+							}
+                        }
+                    }
 					if (clientId != null) {
 						connection.setRequestProperty(HTTPS_REQUEST_AUTHORIZATION,
 								HTTPS_REQUEST_CLIENT_IDENTIFIER + " " + clientId); // space is a MUST
