@@ -52,6 +52,12 @@ println("omri-usb: targetSdk:" + omriUsbTargetSdkVersion
         + ", ndkVersion:" + omriUsbNdkVersion
         + ", clangVersion:" + omriUsbClangVersion)
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
 android {
 
     compileSdk omriUsbCompileSdkVersion
@@ -113,11 +119,6 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-
     externalNativeBuild {
         cmake {
             path "CMakeLists.txt"
@@ -146,9 +147,9 @@ dependencies {
     implementation project(path: ':dabaudiodecoderplugininterface')
     //noinspection GradleDependency  // do not want to update
 //    implementation 'com.google.android.exoplayer:exoplayer-core:2.7.3'
-    implementation 'androidx.core:core:1.13.1'
-    implementation 'androidx.annotation:annotation:1.8.2'
-    implementation 'androidx.preference:preference:1.2.1'
+    implementation 'androidx.core:core-ktx:1.15.0'
+    implementation 'androidx.annotation:annotation:1.9.1'
+    implementation 'androidx.preference:preference-ktx:1.2.1'
 
     def minidnsVersion = '1.0.4'
     implementation 'org.minidns:minidns-core:' + minidnsVersion
@@ -160,7 +161,7 @@ dependencies {
 
     // unit testing with JUnit and Mockito
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.mockito:mockito-core:5.13.0'
+    testImplementation 'org.mockito:mockito-core:5.15.2'
 }
 
 tasks.register('cleanNativeAsanLibs') {
