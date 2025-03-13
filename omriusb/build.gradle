@@ -154,7 +154,6 @@ dependencies {
     implementation 'org.minidns:minidns-core:' + minidnsVersion
     implementation 'org.minidns:minidns-hla:' + minidnsVersion
     implementation 'org.minidns:minidns-android21:' + minidnsVersion
-    implementation 'net.ser1:gozirra-client:0.4.1'
 
 //    implementation 'eu.hradio.core:radiodns:1.1.2'
 //    implementation 'eu.hradio.core:platformsearch:1.0.3'
