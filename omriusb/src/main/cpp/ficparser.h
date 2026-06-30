@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <list>
+#include <functional>
 
 #include "callback.h"
 #include "concurrent_queue.h"

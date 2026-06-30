@@ -22,6 +22,7 @@
 #define CMAKETEST_JUSBDEVICE_H
 
 #include <jni.h>
+#include <cstdint>
 #include <string>
 #include <functional>
 #include <vector>

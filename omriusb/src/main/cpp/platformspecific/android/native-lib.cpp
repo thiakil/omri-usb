@@ -24,8 +24,6 @@
 #include <vector>
 #include <memory>
 
-#include "androidlogbuf.h"
-
 #include "jtunerusbdevice.h"
 #include "jusbdevice.h"
 #include "raontunerinput.h"
@@ -79,7 +77,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 
     //TODO set to enable debug output
 #ifdef DEBUGOUTPUT
-    std::cout.rdbuf(new androidlogbuf);
+//    std::cout.rdbuf(new androidlogbuf);
 #endif
 
     JNIEnv* env;

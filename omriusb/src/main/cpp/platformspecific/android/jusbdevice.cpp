@@ -158,7 +158,7 @@ int JUsbDevice::writeBulkTransferData(uint8_t endPointAddress, const std::vector
 
         int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
         if(envState == JNI_EDETACHED) {
-            if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+            if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
                 wasDeattached = true;
             } else {
                 std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -197,7 +197,7 @@ int JUsbDevice::readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_
 
         int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
         if(envState == JNI_EDETACHED) {
-            if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+            if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
                 wasDeattached = true;
             } else {
                 std::cout << "jniEnv thread failed to attach!" << std::endl;

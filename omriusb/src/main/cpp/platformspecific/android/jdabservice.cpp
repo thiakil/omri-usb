@@ -96,7 +96,7 @@ JDabService::~JDabService() {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << m_logTag << "jniEnv thread failed to attach!" << std::endl;
@@ -194,7 +194,7 @@ void JDabService::audioDataInput(const std::vector<uint8_t>& audioData, int asct
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cout << m_logTag << "jniEnv thread failed to attach!" << std::endl;
@@ -292,7 +292,7 @@ void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>&
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cout << m_logTag << "jniEnv thread failed to attach!" << std::endl;
@@ -354,7 +354,7 @@ void JDabService::callJavaDynamiclabelCallback(const std::shared_ptr<DabDynamicL
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cout << m_logTag << "jniEnv thread failed to attach!" << std::endl;

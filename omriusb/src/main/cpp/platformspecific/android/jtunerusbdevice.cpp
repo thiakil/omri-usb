@@ -128,7 +128,7 @@ void JTunerUsbDevice::callCallback(TUNER_CALLBACK_TYPE callbackType) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -155,7 +155,7 @@ void JTunerUsbDevice::scanProgress(int percentDone) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -179,7 +179,7 @@ void JTunerUsbDevice::ensembleReady(const DabEnsemble& ensemble) {
 
     int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
     if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
+        if (m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -413,7 +413,7 @@ void JTunerUsbDevice::serviceStarted(jobject dabService) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -434,7 +434,7 @@ void JTunerUsbDevice::serviceStopped(jobject dabService) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -455,7 +455,7 @@ void JTunerUsbDevice::receptionStatistics(bool rfLock, int qual) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;

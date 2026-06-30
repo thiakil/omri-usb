@@ -29,6 +29,8 @@
 #include <memory>
 #include <array>
 
+typedef unsigned int uint_t;
+
 class RaonTunerInput final : public DabUsbTunerInput, DabEnsemble {
 
 public:
