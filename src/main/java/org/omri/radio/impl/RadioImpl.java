@@ -21,14 +21,14 @@ import org.omri.tuner.TunerListener;
 import org.omri.tuner.TunerStatus;
 import org.omri.tuner.TunerType;
 
-import android.content.Context;
+import com.thiakil.standin.Context;
 import android.content.SharedPreferences;
 import android.hardware.usb.UsbDevice;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.Pair;
 
-import static org.omri.BuildConfig.DEBUG;
+import static com.thiakil.standin.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -124,7 +124,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	public RadioErrorCode initialize(Context appContext) {
 		if(DEBUG)Log.d(TAG, "Initializing with Context!");
 
-		mContext = appContext.getApplicationContext();
+		mContext = appContext;
 
 		if(mContext != null) {
 

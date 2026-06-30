@@ -8,7 +8,7 @@ import org.omri.tuner.Tuner;
 import org.omri.tuner.TunerListener;
 import org.omri.tuner.TunerType;
 
-import android.content.Context;
+import com.thiakil.standin.Context;
 
 /**
  * Copyright (C) 2016 Open Mobile Radio Interface (OMRI) Group

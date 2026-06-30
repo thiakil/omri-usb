@@ -2,7 +2,7 @@ package org.omri.radio.impl;
 
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
-import android.content.Context;
+import com.thiakil.standin.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.usb.UsbDevice;
@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.omri.BuildConfig.DEBUG;
+import static com.thiakil.standin.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH

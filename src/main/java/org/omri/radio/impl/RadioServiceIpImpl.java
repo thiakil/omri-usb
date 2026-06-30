@@ -24,7 +24,7 @@ import java.util.Objects;
 import eu.hradio.core.radiodns.radioepg.bearer.Bearer;
 import eu.hradio.core.radiodns.radioepg.radiodns.RadioDns;
 
-import static org.omri.BuildConfig.DEBUG;
+import static com.thiakil.standin.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH

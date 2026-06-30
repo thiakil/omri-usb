@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static org.omri.BuildConfig.DEBUG;
+import static com.thiakil.standin.BuildConfig.DEBUG;
 import static org.omri.tuner.TunerStatus.TUNER_STATUS_SCANNING;
 
 /**

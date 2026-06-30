@@ -3,7 +3,7 @@ package org.omri.radio.impl;
 import android.os.Bundle;
 import android.util.Log;
 
-import org.omri.BuildConfig;
+import com.thiakil.standin.BuildConfig;
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
@@ -53,7 +53,7 @@ import eu.hradio.httprequestwrapper.listener.OnSearchResultListener;
 import eu.hradio.httprequestwrapper.service.ServiceSearchClient;
 import eu.hradio.httprequestwrapper.service.ServiceSearchClientImpl;
 
-import static org.omri.BuildConfig.DEBUG;
+import static com.thiakil.standin.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH

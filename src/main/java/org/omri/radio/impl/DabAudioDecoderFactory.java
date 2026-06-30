@@ -4,7 +4,7 @@ import android.util.Log;
 
 import java.util.Vector;
 
-import static org.omri.BuildConfig.DEBUG;
+import static com.thiakil.standin.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH

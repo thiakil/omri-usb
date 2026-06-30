@@ -24,7 +24,7 @@ import org.omri.radioservice.metadata.Visual;
 import org.omri.radioservice.metadata.VisualDabSlideShow;
 import org.omri.radioservice.metadata.VisualMetadataListener;
 
-import static org.omri.BuildConfig.DEBUG;
+import static com.thiakil.standin.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH

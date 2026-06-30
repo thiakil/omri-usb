@@ -1,7 +1,7 @@
 package org.omri.radio.impl;
 
 import android.content.ComponentName;
-import android.content.Context;
+import com.thiakil.standin.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import de.irt.dabaudiodecoderplugininterface.IDabPluginCallback;
 import de.irt.dabaudiodecoderplugininterface.IDabPluginInterface;
 
-import static org.omri.BuildConfig.DEBUG;
+import static com.thiakil.standin.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH

@@ -3,7 +3,7 @@ package org.omri.radio.impl;
 import android.os.Build;
 import android.util.Log;
 
-import org.omri.BuildConfig;
+import com.thiakil.standin.BuildConfig;
 import org.omri.radio.Radio;
 import org.omri.radioservice.metadata.VisualType;
 

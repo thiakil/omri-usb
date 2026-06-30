@@ -2,7 +2,7 @@ package org.omri.radio.impl;
 
 import android.util.Log;
 
-import org.omri.BuildConfig;
+import com.thiakil.standin.BuildConfig;
 import org.omri.radioservice.RadioServiceDabEdi;
 import org.omri.radioservice.RadioServiceType;
 import org.omri.radioservice.metadata.SbtItem;

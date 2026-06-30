@@ -21,7 +21,7 @@ import org.omri.tuner.TunerType;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.omri.BuildConfig.DEBUG;
+import static com.thiakil.standin.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH

@@ -2,7 +2,7 @@ package org.omri.radio.impl;
 
 import android.util.Log;
 
-import org.omri.BuildConfig;
+import com.thiakil.standin.BuildConfig;
 
 import eu.hradio.httprequestwrapper.dtos.service_search.Bearer;
 import eu.hradio.httprequestwrapper.dtos.service_search.RankedStandaloneService;
