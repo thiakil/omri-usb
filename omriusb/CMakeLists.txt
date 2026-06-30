@@ -2,12 +2,14 @@
 # documentation: https://d.android.com/studio/projects/add-native-code.html
 
 # Sets the minimum version of CMake required to build the native library.
-
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.5)
+project(irtdab)
 
 find_package (Java REQUIRED)
 find_package (JNI REQUIRED)
 include (UseJava)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBUSB libusb-1.0 REQUIRED)
 
 include_directories(src/main/cpp/thirdparty/fec)
 add_subdirectory(src/main/cpp/thirdparty/fec)
@@ -95,12 +97,15 @@ add_library( # Sets the name of the library.
 # build script, prebuilt third-party libraries, or system libraries.
 #target_include_directories (HelloWorldJNI-cpp PRIVATE ${JNI_INCLUDE_DIRS})
 #target_link_libraries (HelloWorldJNI-cpp PRIVATE HelloWorldJNI-native ${JNI_LIBRARIES})
+#include_directories(${LIBUSB_INCLUDE_DIRS})
+#target_link_libraries(wradio ${LIBUSB_LIBRARIES})
 
-target_include_directories (irtdab PRIVATE ${JNI_INCLUDE_DIRS})
+target_include_directories (irtdab PRIVATE ${JNI_INCLUDE_DIRS} ${LIBUSB_INCLUDE_DIRS})
 target_link_libraries( # Specifies the target library.
                        irtdab
 
         ${JNI_LIBRARIES}
+        ${LIBUSB_LIBRARIES}
                        fec
                        )
 
