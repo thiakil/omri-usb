@@ -1,28 +1,71 @@
-buildscript {
-    repositories {
-        jcenter()
-        google()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:3.3.1'
-        classpath "org.jfrog.buildinfo:build-info-extractor-gradle:4.9.0"
-    }
+import org.gradle.internal.jvm.Jvm
+
+plugins {
+    id 'java'
+    id 'application'
+    id 'c'
 }
 
-allprojects {
-    repositories {
-        jcenter()
-        google()
-        maven {
-            url "https://artifactory.irt.de/artifactory/hradio"
-            credentials {
-                username = "${artifactory_username}"
-                password = "${artifactory_password}"
+//mainClassName = 'HelloWorld'//todo
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    //implementation fileTree(include: ['*.jar'], dir: 'libs')
+    //implementation 'de.irt.hradio:dabaudiodecoderplugininterface:1.0.0'
+    //implementation 'com.google.android.exoplayer:exoplayer-core:2.7.3'
+
+    //implementation 'eu.hradio.core:radiodns:1.1.2'
+    //implementation 'eu.hradio.core:platformsearch:1.0.3'
+
+    //testImplementation 'junit:junit:4.12'
+}
+
+application {
+    applicationDefaultJvmArgs = ["-Djava.library.path=" + file("${buildDir}/libs/irtdab/shared").absolutePath]
+}
+
+model {
+    platforms {
+        x64 {
+            architecture "x86_64"
+        }
+    }
+
+    components {
+        irtdab(NativeLibrarySpec) {
+            targetPlatform "x64"
+            binaries.all {
+                def jvmHome = Jvm.current().javaHome
+                if (targetPlatform.operatingSystem.macOsX) {
+                    cCompiler.args '-I', "${jvmHome}/include"
+                    cCompiler.args '-I', "${jvmHome}/include/darwin"
+                    cCompiler.args '-mmacosx-version-min=10.4'
+                    linker.args '-mmacosx-version-min=10.4'
+                } else if (targetPlatform.operatingSystem.linux) {
+                    cCompiler.args '-I', "${jvmHome}/include"
+                    cCompiler.args '-I', "${jvmHome}/include/linux"
+                    cCompiler.args '-D_FILE_OFFSET_BITS=64'
+                } else if (targetPlatform.operatingSystem.windows) {
+                    cCompiler.args "-I${jvmHome}/include"
+                    cCompiler.args "-I${jvmHome}/include/win32"
+                } else if (targetPlatform.operatingSystem.freeBSD) {
+                    cCompiler.args '-I', "${jvmHome}/include"
+                    cCompiler.args '-I', "${jvmHome}/include/freebsd"
+                }
             }
         }
     }
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
-}
+classes.dependsOn 'irtdabSharedLibrary'
+
+
+/*
+cmake {
+                cppFlags "-std=c++11 -frtti -fexceptions"
+                arguments "-DANDROID_STL=c++_shared"
+            }
+            */
