@@ -13,6 +13,8 @@ repositories {
 }
 
 dependencies {
+    // Source: https://mvnrepository.com/artifact/org.json/json
+    implementation("org.json:json:20260522")
     //implementation fileTree(include: ['*.jar'], dir: 'libs')
     //implementation 'de.irt.hradio:dabaudiodecoderplugininterface:1.0.0'
     //implementation 'com.google.android.exoplayer:exoplayer-core:2.7.3'

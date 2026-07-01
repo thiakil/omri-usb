@@ -1,6 +1,5 @@
 package org.omri.radio.impl;
 
-import android.os.Build;
 import android.support.annotation.NonNull;
 import com.thiakil.standin.Log;
 
@@ -168,21 +167,8 @@ public class RadioDnsEpgBearerDab extends RadioDnsEpgBearer implements Serializa
 
 	@Override
 	public int hashCode() {
-		if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			return Objects.hash(mEnsembleId, mBearerId, mServiceId, mEnsembleEcc, mScid, mCost, mBitrate, mMimeVal);
-		} else {
-			int hash = 2;
-			hash = 63 * hash + (int)(this.mEnsembleId ^ (this.mEnsembleId >>> 32));
-			hash = 63 * hash + this.mBearerId.hashCode() ^ (this.mBearerId.hashCode() >>> 32);
-			hash = 63 * hash + (int)(this.mServiceId ^ (this.mServiceId >>> 32));
-			hash = 63 * hash + (int)(this.mEnsembleEcc ^ (this.mEnsembleEcc >>> 32));
-			hash = 63 * hash + (int)(this.mScid ^ (this.mScid >>> 32));
-			hash = 63 * hash + (int)(this.mCost ^ (this.mCost >>> 32));
-			hash = 63 * hash + (int)(this.mBitrate ^ (this.mBitrate >>> 32));
-			hash = 63 * hash + this.mMimeVal.hashCode() ^ (this.mMimeVal.hashCode() >>> 32);
-
-			return hash;
-		}
+		//todo regenerate?
+		return Objects.hash(mEnsembleId, mBearerId, mServiceId, mEnsembleEcc, mScid, mCost, mBitrate, mMimeVal);
 	}
 
 	@Override
