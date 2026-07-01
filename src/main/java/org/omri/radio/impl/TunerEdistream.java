@@ -2,7 +2,7 @@ package org.omri.radio.impl;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
+import com.thiakil.standin.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;

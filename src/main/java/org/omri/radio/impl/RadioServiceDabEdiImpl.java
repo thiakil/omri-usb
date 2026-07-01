@@ -1,6 +1,6 @@
 package org.omri.radio.impl;
 
-import android.util.Log;
+import com.thiakil.standin.Log;
 
 import com.thiakil.standin.BuildConfig;
 import org.omri.radioservice.RadioServiceDabEdi;

@@ -2,7 +2,7 @@ package org.omri.radio.impl;
 
 import android.net.Uri;
 import android.text.TextUtils;
-import android.util.Log;
+import com.thiakil.standin.Log;
 
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.upstream.DataSpec;

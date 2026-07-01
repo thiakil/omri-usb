@@ -1,7 +1,7 @@
 package org.omri.radio.impl;
 
 import android.os.Build;
-import android.util.Log;
+import com.thiakil.standin.Log;
 
 import com.thiakil.standin.BuildConfig;
 import org.omri.radio.Radio;

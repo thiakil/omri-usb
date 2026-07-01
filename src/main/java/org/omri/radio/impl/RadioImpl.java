@@ -25,7 +25,7 @@ import com.thiakil.standin.Context;
 import android.content.SharedPreferences;
 import android.hardware.usb.UsbDevice;
 import android.preference.PreferenceManager;
-import android.util.Log;
+import com.thiakil.standin.Log;
 import android.util.Pair;
 
 import static com.thiakil.standin.BuildConfig.DEBUG;

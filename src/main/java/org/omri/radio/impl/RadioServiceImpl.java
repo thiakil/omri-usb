@@ -1,6 +1,6 @@
 package org.omri.radio.impl;
 
-import android.util.Log;
+import com.thiakil.standin.Log;
 
 import java.io.IOException;
 import java.io.Serializable;

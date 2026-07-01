@@ -18,7 +18,7 @@
 package org.omri.radio.impl;
 
 import android.os.SystemClock;
-import android.util.Log;
+import com.thiakil.standin.Log;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;

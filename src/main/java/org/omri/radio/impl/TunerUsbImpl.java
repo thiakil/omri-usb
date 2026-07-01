@@ -3,7 +3,7 @@ package org.omri.radio.impl;
 import android.hardware.usb.UsbDevice;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
+import com.thiakil.standin.Log;
 
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;

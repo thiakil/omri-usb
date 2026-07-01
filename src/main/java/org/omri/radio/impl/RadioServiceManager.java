@@ -2,7 +2,7 @@ package org.omri.radio.impl;
 
 import android.support.annotation.NonNull;
 import android.util.Base64;
-import android.util.Log;
+import com.thiakil.standin.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
