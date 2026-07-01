@@ -26,6 +26,7 @@ import org.omri.radioservice.metadata.VisualType;
  * @author Fabian Sattler, IRT GmbH
  */
 
+//used from C
 public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlideShow, Serializable {
 
 	private int mCatId = -1;

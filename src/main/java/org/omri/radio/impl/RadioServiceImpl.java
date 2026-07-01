@@ -150,8 +150,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	
 	@Override
 	public List<Visual> getLogos() {
-		//return mLogoVisuals;
-		return VisualLogoManager.getInstance().getLogoVisuals(this);
+		return mLogoVisuals;
 	}
 
 	public void addLogo(Visual logoVisual) {
@@ -308,17 +307,6 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	void labeReceived(Textual label) {
 		for(TextualMetadataListener dlsListener : mLabelListeners) {
 			dlsListener.newTextualMetadata(label);
-		}
-	}
-
-	void spiReceived(String spiPath) {
-		if(DEBUG)Log.d(TAG, "RadioDns Spi Path: " + spiPath);
-
-		SpiProgrammeInformationImpl spiInfo = new SpiProgrammeInformationImpl(spiPath);
-
-		if(DEBUG)Log.d(TAG, "RadioDns DocsSize: " + spiInfo.getSpiDocument().getElementsByTagName("schedule").getLength());
-		for(ProgrammeServiceMetadataListener metaListener : mSpiListeners) {
-			metaListener.newProgrammeInformation(spiInfo);
 		}
 	}
 

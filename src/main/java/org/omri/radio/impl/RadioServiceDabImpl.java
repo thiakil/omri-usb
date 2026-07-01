@@ -1,6 +1,5 @@
 package org.omri.radio.impl;
 
-import android.os.Build;
 import com.thiakil.standin.Log;
 
 import java.io.Serializable;
@@ -33,6 +32,7 @@ import static com.thiakil.standin.BuildConfig.DEBUG;
  * @author Fabian Sattler, IRT GmbH
  */
 
+//used from C
 public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServiceDab, Serializable {
 
 	private static final long serialVersionUID = 6561664196086864931L;
@@ -186,17 +186,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 
 	@Override
 	public int hashCode() {
-		if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			return Objects.hash(mEnsembleId, mEnsembleFrequency, mServiceId, mEnsembleEcc);
-		} else {
-			int hash = 5;
-			hash = 67 * hash + (int)(this.mEnsembleId ^ (this.mEnsembleId >>> 32));
-			hash = 67 * hash + (int)(this.mEnsembleFrequency ^ (this.mEnsembleFrequency >>> 32));
-			hash = 67 * hash + (int)(this.mServiceId ^ (this.mServiceId >>> 32));
-			hash = 67 * hash + (int)(this.mEnsembleEcc ^ (this.mEnsembleEcc >>> 32));
-
-			return hash;
-		}
+		return Objects.hash(mEnsembleId, mEnsembleFrequency, mServiceId, mEnsembleEcc);
 	}
 
 	@Override

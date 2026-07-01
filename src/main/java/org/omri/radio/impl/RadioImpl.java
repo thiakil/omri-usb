@@ -22,11 +22,8 @@ import org.omri.tuner.TunerStatus;
 import org.omri.tuner.TunerType;
 
 import com.thiakil.standin.Context;
-import android.content.SharedPreferences;
 import com.thiakil.standin.UsbDevice;
-import android.preference.PreferenceManager;
 import com.thiakil.standin.Log;
-import android.util.Pair;
 
 import static com.thiakil.standin.BuildConfig.DEBUG;
 
@@ -53,16 +50,9 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	
 	private RadioStatus mRadioStatus = RadioStatus.STATUS_RADIO_SUSPENDED;
 	
-	private List<Tuner> mTunerList = null;
-	private List<RadioService> mRadioserviceList = null;
-	private List<RadioStatusListener> mRadioStatusListeners = null;
-
-	/* NTP time for unreliable System time */
-	//fallback to system time as default
-	private static long mNtpPosixMs = new Date().getTime() * 1000000;
-	private static long mStartSystemNano;
-	private final static long NANO_PART = 1000000;
-	private static boolean mNtpSync = false;
+	private List<Tuner> mTunerList = new ArrayList<Tuner>();
+	private List<RadioService> mRadioserviceList = new ArrayList<RadioService>();
+	private List<RadioStatusListener> mRadioStatusListeners = new ArrayList<>();
 
 	Context mContext = null;
 
@@ -75,43 +65,6 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	public RadioImpl() {
-		this(null);
-		mStartSystemNano = System.nanoTime();
-	}
-	
-	private RadioImpl(Context context) {
-		this.mContext = context;
-		this.mTunerList = new ArrayList<Tuner>();
-		this.mRadioserviceList = new ArrayList<RadioService>();
-		this.mRadioStatusListeners = new ArrayList<>();
-
-		if(DEBUG)Log.d(TAG, "Getting NTP time");
-		mStartSystemNano = System.nanoTime();
-		SNTPClient.getDate(TimeZone.getTimeZone("UTC"), new SNTPClient.SntpListener() {
-			@Override
-			public void onTimeReceived(long posixMs) {
-				Date curDate = new Date();
-				Date ntpDate = new Date(posixMs);
-				long curDatePosix = curDate.getTime();
-				long nowNtpDiff = curDatePosix - posixMs;
-
-				mNtpPosixMs = posixMs;
-				mNtpSync = true;
-
-				if(DEBUG)Log.d(TAG, "SBT NTP time received: " + ntpDate.toString() + " : " + curDate.toString() + " - " + posixMs + " - " + curDatePosix + ", DIff: " + nowNtpDiff);
-			}
-
-			@Override
-			public void onError(Exception ex) {
-				if(DEBUG)Log.d(TAG, "SBT NTP error: " + ex.getMessage());
-				mNtpSync = true;
-			}
-		});
-	}
-
-	static long getNtpPosixMs() {
-		long nowNano = System.nanoTime();
-		return mNtpPosixMs + ((nowNano-mStartSystemNano) / NANO_PART);
 	}
 	
 	@Override
@@ -128,46 +81,13 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 		if(mContext != null) {
 
-			int ntpRetries = 5;
-			while(!mNtpSync && ntpRetries > 0) {
-				//Waiting for NTP time sync, will block up to 5000 ms
-				--ntpRetries;
-
-				try {
-					if(DEBUG)Log.d(TAG, "Waiting for NTP sync...");
-					Thread.sleep(10);
-				} catch(InterruptedException interExc) {
-					if(DEBUG)interExc.printStackTrace();
-				}
-			}
-
-			SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
-			boolean useLookupOnMobile = prefs.getBoolean("omri_use_iplookup_onmobile", false);
-			boolean useIpStreamOnMobile = prefs.getBoolean("omri_use_ipstream_onmobile", false);
-			boolean useIpStreamHqOnMobile = prefs.getBoolean("omri_use_ipstream_hq_onmobile", false);
-
-			if (DEBUG) Log.d(TAG, "Prefs LookupOnMobile: " + useLookupOnMobile);
-			if (DEBUG) Log.d(TAG, "Prefs StreamMobile: " + useIpStreamOnMobile);
-			if (DEBUG) Log.d(TAG, "Prefs StreamHqMobile: " + useIpStreamHqOnMobile);
-
-			//early initializing LogoManager as it takes some time to restore serialized Logos
-			while(!VisualLogoManager.getInstance().isReady()) {
-				//Waiting for Logomanager
-				try {
-					if(DEBUG)Log.d(TAG, "Waiting for VisualLogomanager...");
-					Thread.sleep(10);
-				} catch(InterruptedException interExc) {
-					if(DEBUG)interExc.printStackTrace();
-				}
-			}
-
 			UsbHelper.create(mContext, this);
 
 			//List of Pairs consisiting of first.VendorId and second.ProductId
-			ArrayList<Pair<Integer, Integer>> wantedDevices = new ArrayList<>();
+			ArrayList<UsbHelper.UsbId> wantedDevices = new ArrayList<>();
 
 			//Raon DAB USB sticks
-			wantedDevices.add(Pair.create(0x16C0, 0x05DC));
+			wantedDevices.add(new UsbHelper.UsbId(0x16C0, 0x05DC));
 
 			for(UsbDevice dev : UsbHelper.getInstance().scanForSpecificDevices(wantedDevices)) {
 				if(DEBUG)Log.d(TAG, "Found Siano device!");
@@ -277,22 +197,6 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		switch (radioService.getRadioServiceType()) {
 			case RADIOSERVICE_TYPE_DAB: {
 				wantedType = TunerType.TUNER_TYPE_DAB;
-				break;
-			}
-			case RADIOSERVICE_TYPE_FM: {
-				wantedType = TunerType.TUNER_TYPE_FM;
-				break;
-			}
-			case RADIOSERVICE_TYPE_HDRADIO: {
-				wantedType = TunerType.TUNER_TYPE_HDRADIO;
-				break;
-			}
-			case RADIOSERVICE_TYPE_SIRIUS: {
-				wantedType = TunerType.TUNER_TYPE_SIRIUS;
-				break;
-			}
-			case RADIOSERVICE_TYPE_EDI: {
-				wantedType = TunerType.TUNER_TYPE_IP_EDI;
 				break;
 			}
 			default: {
@@ -542,21 +446,6 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		if(DEBUG)Log.d(TAG, "DabTime: " + dabTime.getPosixMillis());
 	}
 
-	public void startDirectSbtStream(String streamUrl) {
-		if(streamUrl != null) {
-			if (DEBUG) Log.d(TAG, "Starting direct SBT stream: " + streamUrl);
-
-			for(Tuner tuner : mTunerList) {
-				if(tuner.getTunerType() == TunerType.TUNER_TYPE_IP_EDI) {
-					tuner.startRadioService(new RadioServiceDabEdiImpl(streamUrl));
-					break;
-				}
-			}
-		}
-	}
-
-	public final static String SERVICE_SEARCH_OPT_USE_HRADIO = "use_hradio";
 	public final static String SERVICE_SEARCH_OPT_DELETE_SERVICES = "delete_services";
-	public final static String SERVICE_SEARCH_OPT_HYBRID_SCAN = "hybrid_scan";
 	/* */
 }

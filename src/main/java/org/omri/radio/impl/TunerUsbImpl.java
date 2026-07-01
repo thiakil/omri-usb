@@ -1,8 +1,7 @@
 package org.omri.radio.impl;
 
 import com.thiakil.standin.UsbDevice;
-import android.os.AsyncTask;
-import android.os.Bundle;
+import com.thiakil.standin.AsyncTask ;
 import com.thiakil.standin.Log;
 
 import org.omri.radio.Radio;
@@ -171,8 +170,8 @@ public class TunerUsbImpl implements TunerUsb {
 	@Override
 	public void startRadioServiceScan(Object scanOptions) {
 		if(scanOptions != null) {
-			if(scanOptions instanceof Bundle) {
-				if(((Bundle)scanOptions).getBoolean(RadioImpl.SERVICE_SEARCH_OPT_DELETE_SERVICES, false)) {
+			if(scanOptions instanceof SearchSettings) {
+				if(((SearchSettings)scanOptions).clearExisting()) {
 					if(DEBUG)Log.d(TAG, "Clearing existing services before new scan");
 					RadioServiceManager.getInstance().clearServiceList(RadioServiceType.RADIOSERVICE_TYPE_DAB);
 				}
@@ -245,7 +244,7 @@ public class TunerUsbImpl implements TunerUsb {
 						mIsScanning = false;
 						mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
 
-						new EnrichServicesData().execute();
+						new SerializeServicesTask(this).execute();
 					}
 					break;
 				}
@@ -360,12 +359,7 @@ public class TunerUsbImpl implements TunerUsb {
 		}
 
 		@Override
-		protected void onPreExecute() {
-			super.onPreExecute();
-		}
-
-		@Override
-		protected Void doInBackground(Void... voids) {
+		protected Void doInBackground(Void voids) {
 			RadioServiceManager.getInstance().serializeServices(RadioServiceType.RADIOSERVICE_TYPE_DAB);
 
 			return null;
@@ -386,17 +380,12 @@ public class TunerUsbImpl implements TunerUsb {
 	private class RestoreServicesTask extends AsyncTask<Void, Void, Void> {
 
 		@Override
-		protected void onPreExecute() {
-			super.onPreExecute();
-		}
-
-		@Override
-		protected Void doInBackground(Void... params) {
+		protected Void doInBackground(Void params) {
 			if(DEBUG)Log.d(TAG, "Restoring services....");
-			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB) || !VisualLogoManager.getInstance().isReady()) {
+			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB)) {
 				try {
 					Thread.sleep(10);
-					if(DEBUG)Log.d(TAG, "Waiting for servicelist or VisualLogoManager to be ready");
+					if(DEBUG)Log.d(TAG, "Waiting for servicelist to be ready");
 				} catch(InterruptedException interExc) {
 					if(DEBUG)interExc.printStackTrace();
 				}
@@ -408,7 +397,6 @@ public class TunerUsbImpl implements TunerUsb {
 
 		@Override
 		protected void onPostExecute(Void aVoid) {
-			super.onPostExecute(aVoid);
 			if(DEBUG)Log.d(TAG, "Restore services finished");
 
 			mRestoreServicesDone = true;
@@ -423,35 +411,5 @@ public class TunerUsbImpl implements TunerUsb {
 		new SerializeServicesTask(this).execute();
 	}
 
-	private class EnrichServicesData extends AsyncTask<Void, Void, Void> {
-
-		@Override
-		protected Void doInBackground(Void... voids) {
-			for(Tuner ipTuner : Radio.getInstance().getAvailableTuners()) {
-				if(ipTuner.getTunerType() == TunerType.TUNER_TYPE_IP_SHOUTCAST) {
-					for(RadioService ipSrv : ipTuner.getRadioServices()) {
-						for (RadioService dabSrv : mServices) {
-							if (ipSrv.equals(dabSrv)) {
-								if (!ipSrv.getLogos().isEmpty()) {
-									((RadioServiceDabImpl) dabSrv).addLogo(ipSrv.getLogos());
-								}
-							}
-						}
-					}
-
-					break;
-				}
-			}
-			return null;
-		}
-
-		@Override
-		protected void onPostExecute(Void aVoid) {
-			afterEnrich();
-		}
-	}
-
-	private void afterEnrich() {
-		new SerializeServicesTask(this).execute();
-	}
+	public record SearchSettings(boolean clearExisting){}
 }

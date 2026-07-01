@@ -24,6 +24,7 @@ import org.omri.radioservice.RadioServiceDabUserApplicationType;
  * @author Fabian Sattler, IRT GmbH
  */
 
+//used from C
 public class RadioServiceDabUserApplicationImpl implements RadioServiceDabUserApplication, Serializable {
 
 	private static final long serialVersionUID = -2789012667334731485L;

@@ -1,22 +1,16 @@
 package org.omri.radio.impl;
 
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import com.thiakil.standin.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import com.thiakil.standin.UsbDevice;
 import com.thiakil.standin.UsbDeviceConnection;
-import android.hardware.usb.UsbManager;
 import com.thiakil.standin.Log;
-import android.util.Pair;
 
+import java.util.Collections;
+import java.util.Map;
 import org.omri.radioservice.RadioServiceDab;
-import org.omri.radioservice.RadioServiceDabEdi;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 
 import static com.thiakil.standin.BuildConfig.DEBUG;
@@ -49,10 +43,7 @@ public class UsbHelper {
 	private static UsbHelper mInstance = null;
 	private static UsbHelperCallback mUsbCb = null;
 
-	private UsbManager mUsbManager;
-	private PendingIntent mUsbPermissionIntent;
-
-	private HashMap<String, UsbDevice> mUsbDeviceList;
+	private Map<String, UsbDevice> mUsbDeviceList;
 
 	static {
 		System.loadLibrary("c++_shared");
@@ -72,23 +63,22 @@ public class UsbHelper {
 
 
 	private UsbHelper(Context context) {
-		if(DEBUG)Log.d(TAG, "Contructing UsbHelper...");
-		mContext = context.getApplicationContext();
+		if(DEBUG)Log.d(TAG, "Constructing UsbHelper...");
+		mContext = context;
 
 		if(mContext != null) {
-			mUsbManager = (UsbManager)mContext.getSystemService(Context.USB_SERVICE);
-			mUsbPermissionIntent = PendingIntent.getBroadcast(mContext, 0, new Intent(ACTION_USB_PERMISSION), 0);
+			/*mUsbManager = (UsbManager)mContext.getSystemService(Context.USB_SERVICE);*/
 
-			IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+			/*IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
 			filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
 			filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
 
-			mContext.registerReceiver(mUsbBroadcastReceiver, filter);
+			mContext.registerReceiver(mUsbBroadcastReceiver, filter);*/
 			created();
 		}
 	}
 
-	public void scanUsbDevices() {
+	/*public void scanUsbDevices() {
 		if(mUsbManager != null) {
 			mUsbDeviceList = mUsbManager.getDeviceList();
 			Iterator<UsbDevice> udevIter = mUsbDeviceList.values().iterator();
@@ -105,24 +95,24 @@ public class UsbHelper {
 				if(DEBUG)Log.d(TAG, "DeviceIfCount: " + devIfCount);
 			}
 		}
-	}
+	}*/
 
-	List<UsbDevice> scanForSpecificDevices(List<Pair<Integer, Integer>> usbVendorDeviceIdParams) {
+
+	List<UsbDevice> scanForSpecificDevices(List<UsbId> usbVendorDeviceIdParams) {
 		ArrayList<UsbDevice> foundSpecificDevices = new ArrayList<>();
 
-		if(mUsbManager != null) {
-			mUsbDeviceList = mUsbManager.getDeviceList();
+		//TODO: move to native libusb
+		mUsbDeviceList = Collections.emptyMap();//mUsbManager.getDeviceList();
 
-			for(UsbDevice dev : mUsbDeviceList.values()) {
-				int devVenId = dev.getVendorId();
-				int devPId = dev.getProductId();
-				if(DEBUG)Log.d(TAG, " Found USB Device: VId: " + devVenId + " and PId: " + devPId);
-				for(Pair<Integer, Integer> devVenPId : usbVendorDeviceIdParams) {
-					if(DEBUG)Log.d(TAG, "Searching for USB VId: " + devVenPId.first + " and PId: " + devVenPId.second);
-					if(devVenId == devVenPId.first && devPId == devVenPId.second) {
-						if(DEBUG)Log.d(TAG, "Found specific device");
-						foundSpecificDevices.add(dev);
-					}
+		for(UsbDevice dev : mUsbDeviceList.values()) {
+			int devVenId = dev.getVendorId();
+			int devPId = dev.getProductId();
+			if(DEBUG)Log.d(TAG, " Found USB Device: VId: " + devVenId + " and PId: " + devPId);
+			for(UsbId devVenPId : usbVendorDeviceIdParams) {
+				if(DEBUG)Log.d(TAG, "Searching for USB VId: " + devVenPId.vendor + " and PId: " + devVenPId.product);
+				if(devVenId == devVenPId.vendor && devPId == devVenPId.product) {
+					if(DEBUG)Log.d(TAG, "Found specific device");
+					foundSpecificDevices.add(dev);
 				}
 			}
 		}
@@ -162,29 +152,21 @@ public class UsbHelper {
 		deviceAttached(dev);
 	}
 
-	private boolean mPermissionPending = false;
-	private UsbDevice mPendingPermissionDevice = null;
-
+	//todo remove from native
 	private void requestPermission(UsbDevice device) {
-		if(mPermissionPending) {
-			mPendingPermissionDevice = device;
-		} else {
-			if(DEBUG)Log.d(TAG, "Requesting permission for device: " + device.getDeviceName());
 
-			mPermissionPending = true;
-			mUsbManager.requestPermission(device, mUsbPermissionIntent);
-		}
 	}
 
+	//todo remove from native
 	private UsbDeviceConnection openDevice(UsbDevice device) {
-		if(DEBUG)Log.d(TAG, "Opening device: " + device.getDeviceName());
+		/*if(DEBUG)Log.d(TAG, "Opening device: " + device.getDeviceName());
 		try {
 			return mUsbManager.openDevice(device);
 		} catch(SecurityException secExc) {
 			secExc.printStackTrace();
 			return null;
-		}
-
+		}*/
+		return null;
 	}
 
 	static void create(Context context, UsbHelperCallback cb) {
@@ -200,32 +182,12 @@ public class UsbHelper {
 		}
 	}
 
-	private final BroadcastReceiver mUsbBroadcastReceiver = new BroadcastReceiver() {
+	//TODO move to libusb?
+	/*private final BroadcastReceiver mUsbBroadcastReceiver = new BroadcastReceiver() {
 		public void onReceive(Context context, Intent intent) {
 			UsbDevice device = (UsbDevice)intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 			String action = intent.getAction();
 			synchronized (this) {
-				if (ACTION_USB_PERMISSION.equals(action)) {
-					if(DEBUG)Log.d(TAG, "Received Permission request: " + action);
-
-					mPermissionPending = false;
-
-					if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-						if(DEBUG)Log.d(TAG, "permission granted for device " + device.getDeviceName());
-						devicePermission(device.getDeviceName(), true);
-					} else {
-						if(DEBUG)Log.d(TAG, "permission denied for device " + device.getDeviceName());
-						devicePermission(device.getDeviceName(), false);
-					}
-
-					if(device.equals(mPendingPermissionDevice)) {
-						mPendingPermissionDevice = null;
-					}
-
-					if(mPendingPermissionDevice != null) {
-						requestPermission(mPendingPermissionDevice);
-					}
-				}
 				if (action.equals(UsbManager.ACTION_USB_DEVICE_DETACHED)) {
 					if(DEBUG)Log.d(TAG, "USB Device detached: " + device.getDeviceName());
 					deviceDetached(device.getDeviceName());
@@ -238,7 +200,7 @@ public class UsbHelper {
 				}
 			}
 		}
-	};
+	};*/
 
 	interface UsbHelperCallback {
 
@@ -246,4 +208,6 @@ public class UsbHelper {
 
 		void UsbTunerDeviceDetached(UsbDevice detachedDevice);
 	}
+
+	public record UsbId(int vendor, int product){}
 }

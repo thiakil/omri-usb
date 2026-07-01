@@ -26,6 +26,7 @@ import org.omri.radioservice.metadata.TextualType;
  * @author Fabian Sattler, IRT GmbH
  */
 
+//used from C
 public class TextualDabDynamicLabelImpl extends TextualImpl implements TextualDabDynamicLabel, Serializable {
 
 	private static final long serialVersionUID = 342793136525104857L;

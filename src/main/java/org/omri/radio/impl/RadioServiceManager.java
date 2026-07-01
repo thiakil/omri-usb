@@ -1,7 +1,6 @@
 package org.omri.radio.impl;
 
 import org.jetbrains.annotations.NotNull;
-import android.util.Base64;
 import com.thiakil.standin.Log;
 
 import org.json.JSONArray;
@@ -11,8 +10,6 @@ import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDabComponent;
 import org.omri.radioservice.RadioServiceDabUserApplication;
-import org.omri.radioservice.RadioServiceIpStream;
-import org.omri.radioservice.RadioServiceMimeType;
 import org.omri.radioservice.RadioServiceType;
 import org.omri.radioservice.metadata.TermId;
 
@@ -30,8 +27,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-import eu.hradio.core.radiodns.radioepg.radiodns.RadioDns;
 
 import static com.thiakil.standin.BuildConfig.DEBUG;
 
@@ -64,24 +59,16 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 
 	private final String SERVICES_DIR;
 	private final String SERVICES_JSON_DAB;
-	private final String SERVICES_JSON_IP;
-	private final String SERVICES_JSON_EDI;
 
 	private boolean mFirstInitDab = true;
-	private boolean mFirstInitEdi = true;
-	private boolean mFirstInitIp = true;
 
 	private RadioServiceManager() {
 		if (((RadioImpl) Radio.getInstance()).mContext != null) {
 			SERVICES_DIR = ((RadioImpl) Radio.getInstance()).mContext.getFilesDir() + "/services/";
 			SERVICES_JSON_DAB = SERVICES_DIR + "dabservices.json";
-			SERVICES_JSON_IP = SERVICES_DIR + "ipservices.json";
-			SERVICES_JSON_EDI = SERVICES_DIR + "ediservices.json";
 		} else {
 			SERVICES_DIR = null;
 			SERVICES_JSON_DAB = null;
-			SERVICES_JSON_IP = null;
-			SERVICES_JSON_EDI = null;
 		}
 
 		File servicesDir = new File(SERVICES_DIR);
@@ -91,16 +78,13 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		}
 
 		mServicesMap.put(RadioServiceType.RADIOSERVICE_TYPE_DAB, new CopyOnWriteArrayList<RadioService>());
-		mServicesMap.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, new CopyOnWriteArrayList<RadioService>());
 
 		mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_DAB, true);
-		mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, true);
 
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
 				deserializeDabServices();
-				deSerializeEdiServices();
 			}
 		}).start();
 	}
@@ -162,13 +146,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 				mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_DAB, true);
 				serializeDabServices();
 				break;
-			case RADIOSERVICE_TYPE_EDI:
-				mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, true);
-				serializeEdiServices();
-				break;
-			case RADIOSERVICE_TYPE_FM:
-			case RADIOSERVICE_TYPE_SIRIUS:
-			case RADIOSERVICE_TYPE_HDRADIO:
 			default:
 				break;
 		}
@@ -275,7 +252,8 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 				uappObj.put("caOrg", uapp.getCaOrganization());
 				uappObj.put("dscty", uapp.getDataServiceComponentType().getType());
 				uappObj.put("uappType", uapp.getType().getType());
-				uappObj.put("uappData", uapp.getUserApplicationData() != null ? new String(Base64.encode(uapp.getUserApplicationData(), Base64.NO_WRAP)) : "");
+				//todo app data?
+				//uappObj.put("uappData", uapp.getUserApplicationData() != null ? new String(Base64.encode(uapp.getUserApplicationData(), Base64.NO_WRAP)) : "");
 				uappObj.put("xpadAppType", uapp.getXpadAppType());
 				uappObj.put("caProtected", uapp.isCaProtected());
 				uappObj.put("dgUsed", uapp.isDatagroupTransportUsed());
@@ -329,39 +307,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		saveSrvObj.put("shortDescription", service.getShortDescription());
 
 		return saveSrvObj;
-	}
-
-	private void serializeEdiServices() {
-		if (SERVICES_JSON_EDI != null) {
-			mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, true);
-
-			CopyOnWriteArrayList<RadioService> serialisingServices = mServicesMap.get(RadioServiceType.RADIOSERVICE_TYPE_EDI);
-			if (serialisingServices != null) {
-				JSONArray srvFileArr = new JSONArray();
-				for (RadioService saveSrv : serialisingServices) {
-					RadioServiceDabEdiImpl ediSaveSrv = (RadioServiceDabEdiImpl) saveSrv;
-					try {
-						JSONObject dabJsonObj = createDabServiceObject(ediSaveSrv);
-						dabJsonObj.put("ediurl", ediSaveSrv.getUrl());
-						srvFileArr.put(dabJsonObj);
-					} catch (JSONException jsonExc) {
-						if (DEBUG) jsonExc.printStackTrace();
-					}
-				}
-
-				try {
-					writeServicesFile(SERVICES_JSON_EDI, srvFileArr.toString(2));
-				} catch (JSONException jsonExc) {
-					if (DEBUG) jsonExc.printStackTrace();
-				} catch (IOException ioExc) {
-					if (DEBUG) ioExc.printStackTrace();
-				} finally {
-					mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, false);
-				}
-
-				if (DEBUG) Log.d(TAG, "Serializing EDI SrvListJson done!");
-			}
-		}
 	}
 
 	private void serializeDabServices() {
@@ -441,9 +386,10 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 				uapp.setUserApplicationType(uappObj.getInt("uappType"));
 
 				String uappDataString = uappObj.getString("uappData");
-				if (!uappDataString.isEmpty()) {
+				//todo app data?
+				/*if (!uappDataString.isEmpty()) {
 					uapp.setUappdata(Base64.decode(uappDataString, Base64.NO_WRAP));
-				}
+				}*/
 
 				uapp.setXpadApptype(uappObj.getInt("xpadAppType"));
 				uapp.setIsCaProtected(uappObj.getBoolean("caProtected"));
@@ -484,63 +430,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 
 		dabSrv.setLongDescription(srvObj.getString("longDescription"));
 		dabSrv.setShortDescription(srvObj.getString("shortDescription"));
-	}
-
-	private void deSerializeEdiServices() {
-		if (SERVICES_JSON_EDI != null) {
-			Boolean deserInProgress = mServicesDeSerializingInProgress.get(RadioServiceType.RADIOSERVICE_TYPE_EDI);
-			if (deserInProgress != null && deserInProgress && !mFirstInitEdi) {
-				if (DEBUG) Log.w(TAG, "Deserializing EDI services already in progress");
-				return;
-			}
-
-			mFirstInitEdi = false;
-
-			try {
-				String savedSrvFileString = readServiceFile(SERVICES_JSON_EDI);
-				if (savedSrvFileString != null) {
-					mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, true);
-
-					ArrayList<RadioService> tempAddList = new ArrayList<>();
-
-					JSONArray srvListArr = new JSONArray(savedSrvFileString);
-					if (DEBUG) Log.d(TAG, "Read EDISrvListJson length: " + srvListArr.length());
-					for (int i = 0; i < srvListArr.length(); i++) {
-						JSONObject srvObj = srvListArr.getJSONObject(i);
-
-						String ediurl = srvObj.getString("ediurl");
-						if (ediurl == null) {
-							continue;
-						}
-
-						RadioServiceDabEdiImpl ediSrv = new RadioServiceDabEdiImpl(ediurl);
-
-						recreateDabService(srvObj, ediSrv);
-
-						tempAddList.add(ediSrv);
-					}
-
-					mServicesMap.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, new CopyOnWriteArrayList<>(tempAddList));
-
-					if (DEBUG) Log.d(TAG, "Restoring EdiSrvListJson done!");
-				}
-			} catch (JSONException jsonExc) {
-				if (DEBUG) jsonExc.printStackTrace();
-			} catch (FileNotFoundException fnfExc) {
-				if (DEBUG) fnfExc.printStackTrace();
-			} catch (IOException ioExc) {
-				if (DEBUG) ioExc.printStackTrace();
-			} finally {
-				if (DEBUG) Log.d(TAG, "Unlocking list for: " + RadioServiceType.RADIOSERVICE_TYPE_EDI.toString());
-				mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, false);
-
-				if(DEBUG)Log.d(TAG, "EDI List unlocked: " + mServicesDeSerializingInProgress.get(RadioServiceType.RADIOSERVICE_TYPE_EDI));
-			}
-		} else {
-			if (DEBUG) Log.d(TAG, "Restoring EdiSrvListJson does not exist");
-		}
-
-		mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, false);
 	}
 
 	private void deserializeDabServices() {
@@ -629,16 +518,9 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 			public void run() {
 				if(DEBUG)Log.d(TAG, "Executing DelSaveServices task for: " + type.toString());
 
-				switch (type) {
-					case RADIOSERVICE_TYPE_DAB:
-						serializeDabServices();
-						break;
-					case RADIOSERVICE_TYPE_EDI:
-						serializeEdiServices();
-						break;
-					default:
-						break;
-				}
+                if (type == RadioServiceType.RADIOSERVICE_TYPE_DAB) {
+                    serializeDabServices();
+                }
 			}
 		}, 5000);
 	}
