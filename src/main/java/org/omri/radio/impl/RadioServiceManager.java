@@ -1,6 +1,6 @@
 package org.omri.radio.impl;
 
-import android.support.annotation.NonNull;
+import org.jetbrains.annotations.NotNull;
 import android.util.Base64;
 import com.thiakil.standin.Log;
 
@@ -118,7 +118,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		return false;
 	}
 
-	void addService(@NonNull RadioService addSrv) {
+	void addService(@NotNull RadioService addSrv) {
 		CopyOnWriteArrayList<RadioService> addList = mServicesMap.get(addSrv.getRadioServiceType());
 		if (addList != null) {
 			//TODO remove service and add new one for update?
@@ -149,14 +149,14 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		return false;
 	}
 
-	void clearServiceList(@NonNull RadioServiceType type) {
+	void clearServiceList(@NotNull RadioServiceType type) {
 		CopyOnWriteArrayList<RadioService> addList = mServicesMap.get(type);
 		if (addList != null) {
 			addList.clear();
 		}
 	}
 
-	void serializeServices(@NonNull RadioServiceType type) {
+	void serializeServices(@NotNull RadioServiceType type) {
 		switch (type) {
 			case RADIOSERVICE_TYPE_DAB:
 				mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_DAB, true);

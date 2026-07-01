@@ -1,7 +1,6 @@
 package org.omri.radio.impl;
 
-import android.os.Build;
-import android.support.annotation.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -20,7 +19,7 @@ import java.util.Objects;
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
+ *
  * @author Fabian Sattler, IRT GmbH
  */
 
@@ -79,21 +78,11 @@ public class RadioDnsEpgBearerIpHttp extends RadioDnsEpgBearer implements Serial
 
 	@Override
 	public int hashCode() {
-		if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			return Objects.hash(mBearerId, mCost, mBitrate, mMimeVal);
-		} else {
-			int hash = 4;
-			hash = 61 * hash + this.mBearerId.hashCode() ^ (this.mBearerId.hashCode() >>> 32);
-			hash = 61 * hash + (int)(this.mCost ^ (this.mCost >>> 32));
-			hash = 61 * hash + (int)(this.mBitrate ^ (this.mBitrate >>> 32));
-			hash = 61 * hash + this.mMimeVal.hashCode() ^ (this.mMimeVal.hashCode() >>> 32);
-
-			return hash;
-		}
+        return Objects.hash(mBearerId, mCost, mBitrate, mMimeVal);
 	}
 
 	@Override
-	public int compareTo(@NonNull RadioDnsEpgBearer o) {
+	public int compareTo(@NotNull RadioDnsEpgBearer o) {
 		return this.mBearerId.compareTo(o.getBearerId());
 	}
 }

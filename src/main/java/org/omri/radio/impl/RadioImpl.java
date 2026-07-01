@@ -23,7 +23,7 @@ import org.omri.tuner.TunerType;
 
 import com.thiakil.standin.Context;
 import android.content.SharedPreferences;
-import android.hardware.usb.UsbDevice;
+import com.thiakil.standin.UsbDevice;
 import android.preference.PreferenceManager;
 import com.thiakil.standin.Log;
 import android.util.Pair;

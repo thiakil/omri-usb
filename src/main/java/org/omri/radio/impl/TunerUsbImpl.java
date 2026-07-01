@@ -1,6 +1,6 @@
 package org.omri.radio.impl;
 
-import android.hardware.usb.UsbDevice;
+import com.thiakil.standin.UsbDevice;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import com.thiakil.standin.Log;
@@ -62,8 +62,6 @@ public class TunerUsbImpl implements TunerUsb {
 	private boolean mRestoreServicesDone = false;
 	private boolean mRestoreInProgress = false;
 	private boolean mTunerInitDone = false;
-
-	private boolean mHybridScanEnabled = false;
 
 	@Override
 	public void initializeTuner() {

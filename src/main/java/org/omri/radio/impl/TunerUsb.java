@@ -1,6 +1,6 @@
 package org.omri.radio.impl;
 
-import android.hardware.usb.UsbDevice;
+import com.thiakil.standin.UsbDevice;
 
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.tuner.Tuner;

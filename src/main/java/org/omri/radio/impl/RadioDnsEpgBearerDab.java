@@ -1,6 +1,6 @@
 package org.omri.radio.impl;
 
-import android.support.annotation.NonNull;
+import org.jetbrains.annotations.NotNull;
 import com.thiakil.standin.Log;
 
 import org.omri.radioservice.RadioServiceMimeType;
@@ -172,7 +172,7 @@ public class RadioDnsEpgBearerDab extends RadioDnsEpgBearer implements Serializa
 	}
 
 	@Override
-	public int compareTo(@NonNull RadioDnsEpgBearer o) {
+	public int compareTo(@NotNull RadioDnsEpgBearer o) {
 		return this.mBearerId.compareTo(o.getBearerId());
 	}
 }
