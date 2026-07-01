@@ -178,9 +178,6 @@ public class TunerUsbImpl implements TunerUsb {
 					if(DEBUG)Log.d(TAG, "Clearing existing services before new scan");
 					RadioServiceManager.getInstance().clearServiceList(RadioServiceType.RADIOSERVICE_TYPE_DAB);
 				}
-				if(((Bundle)scanOptions).getBoolean(RadioImpl.SERVICE_SEARCH_OPT_HYBRID_SCAN, false)) {
-					mHybridScanEnabled = true;
-				}
 			}
 		}
 
@@ -373,12 +370,6 @@ public class TunerUsbImpl implements TunerUsb {
 		protected Void doInBackground(Void... voids) {
 			RadioServiceManager.getInstance().serializeServices(RadioServiceType.RADIOSERVICE_TYPE_DAB);
 
-			if(mHybridScanEnabled) {
-				if(DEBUG)Log.d(TAG, "Enrich Services");
-				IpServiceScanner.getInstance().enrichServices(RadioServiceManager.getInstance().getRadioServices(RadioServiceType.RADIOSERVICE_TYPE_DAB));
-			}
-
-			mHybridScanEnabled = false;
 			return null;
 		}
 

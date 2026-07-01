@@ -106,23 +106,6 @@ class VisualLogoManager {
 					}
 				}
 			}
-		} else if(service.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_IP) {
-			for(VisualLogoImpl vis : mLogoList) {
-				boolean logoFound = false;
-				for(RadioDnsEpgBearer bearer : vis.getBearers()) {
-					for(RadioDnsEpgBearer srvBearer : ((RadioServiceIpImpl)service).getBearers()) {
-						if(bearer.equals(srvBearer)) {
-							retArr.add(vis);
-							logoFound = true;
-							break;
-						}
-					}
-
-					if(logoFound) {
-						break;
-					}
-				}
-			}
 		}
 
 		return retArr;

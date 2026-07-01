@@ -206,16 +206,6 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 				//A DAB service is uniquely identified by its Service Identifier (SId) and in conjunction with the Extended Country Code unique world-wide
 				RadioServiceDab compSrv = (RadioServiceDab) otherSrv;
 				return (compSrv.getServiceId() == this.mServiceId) && (compSrv.getEnsembleEcc() == this.mEnsembleEcc);
-			} else if(otherSrv instanceof RadioServiceIpImpl) {
-				RadioServiceIpImpl ipSrv = (RadioServiceIpImpl) otherSrv;
-				for(RadioDnsEpgBearer bearer : ipSrv.getBearers()) {
-					if(bearer.getBearerType() == RadioDnsEpgBearerType.DAB) {
-						RadioDnsEpgBearerDab dabBearer = (RadioDnsEpgBearerDab)bearer;
-						if(dabBearer.getServiceId() == this.mServiceId && dabBearer.getEnsembleEcc() == this.mEnsembleEcc) {
-							return true;
-						}
-					}
-				}
 			}
 		}
 

@@ -176,16 +176,6 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 				mTunerList.add(usbTuner);
 			}
 
-			TunerIpShoutcast ipTuner = new TunerIpShoutcast();
-			ipTuner.subscribe(this);
-			mTunerList.add(ipTuner);
-
-			if(DEBUG)Log.d(TAG, "Adding EdiStreamTuner");
-			TunerEdistream ediTuner = new TunerEdistream();
-			UsbHelper.getInstance().ediStreamTunerAttached(ediTuner);
-			ediTuner.subscribe(this);
-			mTunerList.add(ediTuner);
-
 			if(DEBUG)Log.d(TAG, "Initialized with " + mTunerList + " tuners");
 		} else {
 			if(DEBUG)Log.d(TAG, "Context is null!");
@@ -291,10 +281,6 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 			}
 			case RADIOSERVICE_TYPE_FM: {
 				wantedType = TunerType.TUNER_TYPE_FM;
-				break;
-			}
-			case RADIOSERVICE_TYPE_IP: {
-				wantedType = TunerType.TUNER_TYPE_IP_SHOUTCAST;
 				break;
 			}
 			case RADIOSERVICE_TYPE_HDRADIO: {

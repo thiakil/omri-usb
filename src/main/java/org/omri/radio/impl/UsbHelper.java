@@ -70,12 +70,6 @@ public class UsbHelper {
 	private native void startServiceScan(String deviceName);
 	private native void stopServiceScan(String deviceName);
 
-	/* EdiStream */
-	private native void ediTunerAttached(TunerEdistream ediTuner);
-	private native void ediTunerDetached(TunerEdistream ediTuner);
-	private native void startEdiStream(TunerEdistream ediTuner, RadioServiceDabEdi ediSrv);
-	private native void ediStreamData(byte[] ediData, int size);
-	private native void ediFlushBuffer();
 
 	private UsbHelper(Context context) {
 		if(DEBUG)Log.d(TAG, "Contructing UsbHelper...");
@@ -146,25 +140,7 @@ public class UsbHelper {
 	}
 
 	/* EdiStream */
-	void ediStreamTunerAttached(TunerEdistream ediTuner) {
-		ediTunerAttached(ediTuner);
-	}
 
-	void ediStreamTunerDetached(TunerEdistream ediTuner) {
-		ediTunerDetached(ediTuner);
-	}
-
-	void startEdiStreamService(TunerEdistream ediTuner, RadioServiceDabEdi ediSrv) {
-		startEdiStream(ediTuner, ediSrv);
-	}
-
-	void ediStream(byte[] ediData, int size) {
-		ediStreamData(ediData, size);
-	}
-
-	void flushEdiData() {
-		ediFlushBuffer();
-	}
 
 	public void stopService(String deviceName) {
 		stopSrv(deviceName);

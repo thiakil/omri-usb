@@ -244,46 +244,5 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopServiceScan(JNIEnv
     }
 }
 
-/* EdiStream -> highly experimental */
-std::vector<std::shared_ptr<EdiInput>> m_ediInputs;
-
-JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_ediTunerAttached(JNIEnv* env, jobject thiz, jobject ediTuner) {
-    std::cout << LOG_TAG << "EdiTuner attached" << std::endl;
-
-    std::shared_ptr<EdiInput> jediTuner = std::shared_ptr<EdiInput>(new EdiInput(m_javaVm, env, ediTuner));
-    jediTuner->setJavaClassEdiTuner(env, m_ediTunerClass);
-    jediTuner->setJavaClassDabTime(env, m_dabTimeClass);
-    jediTuner->setJavaClassDabService(env, m_dabServiceClass);
-    jediTuner->setJavaClassDabServiceComponent(env, m_dabServiceComponentClass);
-    jediTuner->setJavaClassDabServiceUserApplication(env, m_dabServiceUserApplicationClass);
-    jediTuner->setJavaClassTermId(env, m_termIdClass);
-
-    m_ediInputs.push_back(jediTuner);
-}
-
-JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_ediTunerDetached(JNIEnv* env, jobject thiz, jobject ediTuner) {
-    std::cout << LOG_TAG << "EdiTuner detached" << std::endl;
-
-    //TODO only erase specific tuner instance instead of clear
-    m_ediInputs.clear();
-}
-
-JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startEdiStream(JNIEnv* env, jobject thiz, jobject ediTuner, jobject dabService) {
-    m_ediInputs[0]->startService(std::move(std::shared_ptr<JDabService>(new JDabService(m_javaVm, env, m_dabServiceClass, m_dynamicLabelClass, m_dynamicLabelPlusItemClass, m_slideshowClass, dabService))));
-}
-
-JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_ediStreamData(JNIEnv* env, jobject thiz, jbyteArray dabEdiData, jint size) {
-    //std::cout << LOG_TAG << " UsbHelper starting EdistreamService: " << std::endl;
-    std::vector<uint8_t> dataArr(size);
-    env->GetByteArrayRegion (dabEdiData, 0, size, reinterpret_cast<jbyte*>(dataArr.data()));
-
-    m_ediInputs[0]->ediDataInput(dataArr, size);
-}
-
-JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_ediFlushBuffer(JNIEnv* env, jobject thiz) {
-    std::cout << LOG_TAG << " UsbHelper flushing component data" << std::endl;
-
-    m_ediInputs[0]->flushComponentBuffer();
-}
 
 }

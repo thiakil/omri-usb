@@ -91,17 +91,14 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		}
 
 		mServicesMap.put(RadioServiceType.RADIOSERVICE_TYPE_DAB, new CopyOnWriteArrayList<RadioService>());
-		mServicesMap.put(RadioServiceType.RADIOSERVICE_TYPE_IP, new CopyOnWriteArrayList<RadioService>());
 		mServicesMap.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, new CopyOnWriteArrayList<RadioService>());
 
 		mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_DAB, true);
-		mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_IP, true);
 		mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, true);
 
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
-				deSerializeIpServices();
 				deserializeDabServices();
 				deSerializeEdiServices();
 			}
@@ -164,10 +161,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 			case RADIOSERVICE_TYPE_DAB:
 				mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_DAB, true);
 				serializeDabServices();
-				break;
-			case RADIOSERVICE_TYPE_IP:
-				mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_IP, true);
-				serializeIpServices();
 				break;
 			case RADIOSERVICE_TYPE_EDI:
 				mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_EDI, true);
@@ -238,217 +231,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		}
 
 		return null;
-	}
-
-	private void serializeIpServices() {
-		if (SERVICES_JSON_IP != null) {
-			mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_IP, true);
-
-			CopyOnWriteArrayList<RadioService> serialisingServices = mServicesMap.get(RadioServiceType.RADIOSERVICE_TYPE_IP);
-			if (serialisingServices != null) {
-				JSONArray srvFileArr = new JSONArray();
-				for (RadioService saveSrv : serialisingServices) {
-					RadioServiceIpImpl ipSaveSrv = (RadioServiceIpImpl) saveSrv;
-					JSONObject saveSrvObj = new JSONObject();
-					try {
-						saveSrvObj.put("serviceLabel", ipSaveSrv.getServiceLabel());
-
-						JSONArray bearersArr = new JSONArray();
-						for (RadioDnsEpgBearer ipSrvBearer : ipSaveSrv.getBearers()) {
-							JSONObject ipSrvBearerObj = new JSONObject();
-
-							ipSrvBearerObj.put("mimeValue", ipSrvBearer.getMimeValue());
-							ipSrvBearerObj.put("bearerId", ipSrvBearer.getBearerId());
-							ipSrvBearerObj.put("bearerType", ipSrvBearer.getBearerType().toString());
-							ipSrvBearerObj.put("bitrate", ipSrvBearer.getBitrate());
-							ipSrvBearerObj.put("cost", ipSrvBearer.getCost());
-
-							bearersArr.put(ipSrvBearerObj);
-						}
-						saveSrvObj.put("bearers", bearersArr);
-
-						JSONArray ipStreamsArr = new JSONArray();
-						for (RadioServiceIpStream ipStream : ipSaveSrv.getIpStreams()) {
-							JSONObject ipStreamObj = new JSONObject();
-
-							ipStreamObj.put("bitrate", ipStream.getBitrate());
-							ipStreamObj.put("cost", ipStream.getCost());
-							ipStreamObj.put("mimeType", ipStream.getMimeType().getMimeTypeString());
-							ipStreamObj.put("offset", ipStream.getOffset());
-							ipStreamObj.put("url", ipStream.getUrl());
-
-							ipStreamsArr.put(ipStreamObj);
-						}
-						saveSrvObj.put("ipStreams", ipStreamsArr);
-
-						if (ipSaveSrv.getRadioDns() != null) {
-							JSONObject ipSrvRdnsObj = new JSONObject();
-							ipSrvRdnsObj.put("fqdn", ipSaveSrv.getRadioDns().getFqdn());
-							ipSrvRdnsObj.put("srvId", ipSaveSrv.getRadioDns().getServiceIdentifier());
-							saveSrvObj.put("radiodns", ipSrvRdnsObj);
-						}
-
-						JSONArray genreArr = new JSONArray();
-						for (TermId termId : ipSaveSrv.getGenres()) {
-							JSONObject termIdObj = new JSONObject();
-							termIdObj.put("termId", termId.getTermId());
-							termIdObj.put("termHref", termId.getGenreHref());
-							termIdObj.put("termText", termId.getText());
-
-							genreArr.put(termIdObj);
-						}
-						saveSrvObj.put("genres", genreArr);
-
-						JSONArray keyWordsArr = new JSONArray();
-						for (String keyWord : ipSaveSrv.getKeywords()) {
-							keyWordsArr.put(keyWord);
-						}
-						saveSrvObj.put("keywords", keyWordsArr);
-
-						JSONArray linkArr = new JSONArray();
-						for (String link : ipSaveSrv.getLinks()) {
-							linkArr.put(link);
-						}
-						saveSrvObj.put("links", linkArr);
-
-						saveSrvObj.put("longDescription", ipSaveSrv.getLongDescription());
-						saveSrvObj.put("shortDescription", ipSaveSrv.getShortDescription());
-
-						srvFileArr.put(saveSrvObj);
-					} catch (JSONException jsonExc) {
-						if (DEBUG) jsonExc.printStackTrace();
-					}
-				}
-
-				try {
-					writeServicesFile(SERVICES_JSON_IP, srvFileArr.toString(2));
-				} catch (JSONException jsonExc) {
-					if (DEBUG) jsonExc.printStackTrace();
-				} catch (IOException ioExc) {
-					if (DEBUG) ioExc.printStackTrace();
-				} finally {
-					mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_IP, false);
-				}
-
-				if (DEBUG) Log.d(TAG, "Serializing IP SrvListJson done!");
-			}
-		}
-	}
-
-	private void deSerializeIpServices() {
-		if (SERVICES_JSON_IP != null) {
-			Boolean deserInProgress = mServicesDeSerializingInProgress.get(RadioServiceType.RADIOSERVICE_TYPE_IP);
-			if (deserInProgress != null && deserInProgress && !mFirstInitIp) {
-				if (DEBUG) Log.w(TAG, "Deserializing IP services already in progress");
-				return;
-			}
-
-			mFirstInitIp = false;
-
-			try {
-				String jsonArrString = readServiceFile(SERVICES_JSON_IP);
-				if (jsonArrString != null) {
-					mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_IP, true);
-
-					ArrayList<RadioService> tempAddList = new ArrayList<>();
-
-					JSONArray srvListArr = new JSONArray(jsonArrString);
-					if (DEBUG) Log.d(TAG, "Read IpSrvListJson length: " + srvListArr.length());
-					for (int i = 0; i < srvListArr.length(); i++) {
-						JSONObject srvObj = srvListArr.getJSONObject(i);
-
-						RadioServiceIpImpl ipSrv = new RadioServiceIpImpl();
-						ipSrv.setServiceLabel(srvObj.getString("serviceLabel"));
-
-						JSONArray bearersArr = srvObj.getJSONArray("bearers");
-						for (int j = 0; j < bearersArr.length(); j++) {
-							JSONObject bearerObj = bearersArr.getJSONObject(j);
-
-							RadioDnsEpgBearerType bearerType = RadioDnsEpgBearerType.valueOf(bearerObj.getString("bearerType"));
-							String bearerId = bearerObj.getString("bearerId");
-							String mimeValue = bearerObj.getString("mimeValue");
-							int bitrate = bearerObj.getInt("bitrate");
-							int cost = bearerObj.getInt("cost");
-							switch (bearerType) {
-								case DAB:
-									ipSrv.addBearer(new RadioDnsEpgBearerDab(bearerId, cost, mimeValue, bitrate));
-									break;
-								case IP_HTTP:
-									ipSrv.addBearer(new RadioDnsEpgBearerIpHttp(bearerId, cost, mimeValue, bitrate));
-									break;
-								default:
-									break;
-							}
-						}
-
-						JSONArray ipStreamsArr = srvObj.getJSONArray("ipStreams");
-						for (int j = 0; j < ipStreamsArr.length(); j++) {
-							JSONObject ipStreamObj = ipStreamsArr.getJSONObject(j);
-
-							RadioServiceIpStreamImpl ipStream = new RadioServiceIpStreamImpl();
-							ipStream.setBitrate(ipStreamObj.getInt("bitrate"));
-							ipStream.setCost(ipStreamObj.getInt("cost"));
-							ipStream.setMimeType(RadioServiceMimeType.fromMimeValue(ipStreamObj.getString("mimeType")));
-							ipStream.setOffset(ipStreamObj.getInt("offset"));
-							ipStream.setStreamUrl(ipStreamObj.getString("url"));
-
-							ipSrv.addStream(ipStream);
-						}
-
-						JSONObject rdnsOptObj = srvObj.optJSONObject("radiodns");
-						if (rdnsOptObj != null) {
-							String fqdn = rdnsOptObj.getString("fqdn");
-							String sid = rdnsOptObj.getString("srvId");
-							RadioDns rdns = new RadioDns(fqdn, sid);
-
-							ipSrv.setRadioDns(rdns);
-						}
-
-						JSONArray genreArr = srvObj.getJSONArray("genres");
-						for (int l = 0; l < genreArr.length(); l++) {
-							JSONObject genreObj = genreArr.getJSONObject(l);
-
-							TermIdImpl termId = new TermIdImpl();
-							termId.setTermId(genreObj.getString("termId"));
-							termId.setGenreHref(genreObj.getString("termHref"));
-							termId.setGenreText(genreObj.getString("termText"));
-
-							ipSrv.addGenre(termId);
-						}
-
-						JSONArray keyWordsArr = srvObj.getJSONArray("keywords");
-						for (int l = 0; l < keyWordsArr.length(); l++) {
-							ipSrv.addKeyword(keyWordsArr.getString(l));
-						}
-
-						JSONArray linksArr = srvObj.getJSONArray("links");
-						for (int l = 0; l < linksArr.length(); l++) {
-							ipSrv.addLink(linksArr.getString(l));
-						}
-
-						ipSrv.setLongDescription(srvObj.getString("longDescription"));
-						ipSrv.setShortDescription(srvObj.getString("shortDescription"));
-
-						tempAddList.add(ipSrv);
-					}
-
-					mServicesMap.put(RadioServiceType.RADIOSERVICE_TYPE_IP, new CopyOnWriteArrayList<>(tempAddList));
-					if (DEBUG) Log.d(TAG, "Restoring IPSrvListJson done with " + tempAddList.size() + " services");
-				}
-			} catch (JSONException jsonExc) {
-				if (DEBUG) jsonExc.printStackTrace();
-			} catch (FileNotFoundException fnfExc) {
-				if (DEBUG) fnfExc.printStackTrace();
-			} catch (IOException ioExc) {
-				if (DEBUG) ioExc.printStackTrace();
-			} finally {
-				mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_IP, false);
-
-				if(DEBUG)Log.d(TAG, "IP List unlocked: " + mServicesDeSerializingInProgress.get(RadioServiceType.RADIOSERVICE_TYPE_IP));
-			}
-		}
-
-		mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_IP, false);
 	}
 
 	private JSONObject createDabServiceObject(RadioServiceDabImpl service) throws JSONException {
@@ -853,9 +635,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 						break;
 					case RADIOSERVICE_TYPE_EDI:
 						serializeEdiServices();
-						break;
-					case RADIOSERVICE_TYPE_IP:
-						serializeIpServices();
 						break;
 					default:
 						break;
