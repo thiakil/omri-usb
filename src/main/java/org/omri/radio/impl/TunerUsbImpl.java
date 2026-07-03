@@ -19,6 +19,7 @@ import org.omri.tuner.TunerType;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.usb4java.Device;
 
 import static com.thiakil.standin.BuildConfig.DEBUG;
 
@@ -52,9 +53,9 @@ public class TunerUsbImpl implements TunerUsb {
 	private List<TunerListener> mTunerlisteners = new ArrayList<>();
 	private RadioServiceDab mCurrentlyRunningService = null;
 
-	private UsbDevice mUsbDevice = null;
+	private final Device mUsbDevice;
 
-	TunerUsbImpl(UsbDevice device) {
+	TunerUsbImpl(Device device) {
 		mUsbDevice = device;
 	}
 
@@ -76,13 +77,13 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
-	public UsbDevice getUsbDevice() {
+	public Device getUsbDevice() {
 		return mUsbDevice;
 	}
 
 	@Override
 	public void suspendTuner() {
-		UsbHelper.getInstance().stopService(mUsbDevice.getDeviceName());
+		UsbHelper.getInstance().stopService(getUsbDevice());
 
 		switch (mTunerStatus) {
 			case TUNER_STATUS_SUSPENDED:
@@ -127,7 +128,7 @@ public class TunerUsbImpl implements TunerUsb {
 			case TUNER_STATUS_ERROR:
 			case TUNER_STATUS_INITIALIZED: {
 				if(UsbHelper.getInstance() != null) {
-					UsbHelper.getInstance().stopService(mUsbDevice.getDeviceName());
+					UsbHelper.getInstance().stopService(mUsbDevice);
 					UsbHelper.getInstance().removeDevice(mUsbDevice);
 				}
 
@@ -161,7 +162,7 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void startRadioServiceScan() {
-		UsbHelper.getInstance().startEnsembleScan(mUsbDevice.getDeviceName());
+		UsbHelper.getInstance().startEnsembleScan(mUsbDevice);
 		//TODO scanning without deleting old services
 		//mServices.clear();
 		mScannedServices.clear();
@@ -183,7 +184,7 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void stopRadioServiceScan() {
-		UsbHelper.getInstance().stopEnsembleScan(mUsbDevice.getDeviceName());
+		UsbHelper.getInstance().stopEnsembleScan(mUsbDevice);
 	}
 
 	@Override
@@ -191,13 +192,13 @@ public class TunerUsbImpl implements TunerUsb {
 		if(DEBUG)Log.d(TAG, "Starting Service: " + radioService.getServiceLabel());
 
 		if(radioService.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB) {
-			UsbHelper.getInstance().startService(mUsbDevice.getDeviceName(), (RadioServiceDab) radioService);
+			UsbHelper.getInstance().startService(mUsbDevice, (RadioServiceDab) radioService);
 		}
 	}
 
 	@Override
 	public void stopRadioService() {
-		UsbHelper.getInstance().stopService(mUsbDevice.getDeviceName());
+		UsbHelper.getInstance().stopService(mUsbDevice);
 	}
 
 	@Override
@@ -229,7 +230,7 @@ public class TunerUsbImpl implements TunerUsb {
 			}
 		} else {
 			TunerUsbCallbackTypes type = TunerUsbCallbackTypes.getTypeByValue(callbackType);
-			if(DEBUG)Log.d(TAG, "Native callback for device: " + mUsbDevice.getDeviceName() + " with CallbackType: " + type.toString());
+			if(DEBUG)Log.d(TAG, "Native callback for device: " + mUsbDevice.getPointer() + " with CallbackType: " + type.toString());
 			switch(type) {
 				case TUNER_READY: {
 					if (!mIsScanning) {

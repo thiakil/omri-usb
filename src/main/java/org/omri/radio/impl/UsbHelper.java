@@ -1,8 +1,6 @@
 package org.omri.radio.impl;
 
-import com.thiakil.standin.Context;
 import com.thiakil.standin.UsbDevice;
-import com.thiakil.standin.UsbDeviceConnection;
 import com.thiakil.standin.Log;
 
 import java.util.Collections;
@@ -11,6 +9,12 @@ import org.omri.radioservice.RadioServiceDab;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.usb4java.Context;
+import org.usb4java.Device;
+import org.usb4java.DeviceDescriptor;
+import org.usb4java.DeviceList;
+import org.usb4java.LibUsb;
+import org.usb4java.LibUsbException;
 
 import static com.thiakil.standin.BuildConfig.DEBUG;
 
@@ -36,6 +40,8 @@ public class UsbHelper {
 
 	private static final String TAG = "UsbHelper";
 
+	private Context usbContext = new Context();
+
 	private static UsbHelper mInstance = null;
 	private static UsbHelperCallback mUsbCb = null;
 
@@ -48,17 +54,21 @@ public class UsbHelper {
 	}
 
 	private native void created();
-	private native void deviceDetached(String deviceName);
-	private native void deviceAttached(TunerUsb usbDevice);
-	private native void devicePermission(String deviceName, boolean granted);
-	private native void startSrv(String deviceName, RadioServiceDab service);
-	private native void stopSrv(String deviceName);
-	private native void tuneFreq(String deviceName, long freq);
-	private native void startServiceScan(String deviceName);
-	private native void stopServiceScan(String deviceName);
+	private native void deviceAttached(TunerUsb usbDevice, long libUsbDevice);
+	private native void detachDevice(long libUsbDevice);
+	private native void startSrv(long libUsbDevice, RadioServiceDab service);
+	private native void stopSrv(long libUsbDevice);
+	private native void tuneFreq(long libUsbDevice, long freq);
+	private native void startServiceScan(long libUsbDevice);
+	private native void stopServiceScan(long libUsbDevice);
 
 
 	private UsbHelper() {
+		int result = LibUsb.init(usbContext);
+		if (result < 0)
+		{
+			throw new LibUsbException("Unable to initialize libusb", result);
+		}
 		if(DEBUG)Log.d(TAG, "Constructing UsbHelper...");
 		created();
 	}
@@ -83,23 +93,46 @@ public class UsbHelper {
 	}*/
 
 
-	List<UsbDevice> scanForSpecificDevices(List<UsbId> usbVendorDeviceIdParams) {
-		ArrayList<UsbDevice> foundSpecificDevices = new ArrayList<>();
+	List<Device> scanForSpecificDevices(List<UsbId> usbVendorDeviceIdParams) {
+		ArrayList<Device> foundSpecificDevices = new ArrayList<>();
 
-		//TODO: move to native libusb
-		mUsbDeviceList = Collections.emptyMap();//mUsbManager.getDeviceList();
+		// Read the USB device list
+		DeviceList list = new DeviceList();
+		int result = LibUsb.getDeviceList(usbContext, list);
+		if (result < 0)
+		{
+			throw new LibUsbException("Unable to get device list", result);
+		}
 
-		for(UsbDevice dev : mUsbDeviceList.values()) {
-			int devVenId = dev.getVendorId();
-			int devPId = dev.getProductId();
-			if(DEBUG)Log.d(TAG, " Found USB Device: VId: " + devVenId + " and PId: " + devPId);
-			for(UsbId devVenPId : usbVendorDeviceIdParams) {
-				if(DEBUG)Log.d(TAG, "Searching for USB VId: " + devVenPId.vendor + " and PId: " + devVenPId.product);
-				if(devVenId == devVenPId.vendor && devPId == devVenPId.product) {
-					if(DEBUG)Log.d(TAG, "Found specific device");
-					foundSpecificDevices.add(dev);
+		try
+		{
+			// Iterate over all devices and list them
+			for (Device device: list)
+			{
+				DeviceDescriptor descriptor = new DeviceDescriptor();
+				result = LibUsb.getDeviceDescriptor(device, descriptor);
+				if (result < 0)
+				{
+					throw new LibUsbException(
+						"Unable to read device descriptor", result);
+				}
+				int devVenId = descriptor.idVendor();
+				int devPId = descriptor.idProduct();
+				if(DEBUG)Log.d(TAG, " Found USB Device: VId: " + devVenId + " and PId: " + devPId);
+				for(UsbId devVenPId : usbVendorDeviceIdParams) {
+					if(DEBUG)Log.d(TAG, "Searching for USB VId: " + devVenPId.vendor + " and PId: " + devVenPId.product);
+					if(devVenId == devVenPId.vendor && devPId == devVenPId.product) {
+						if(DEBUG)Log.d(TAG, "Found specific device");
+						foundSpecificDevices.add(device);
+						LibUsb.refDevice(device);
+					}
 				}
 			}
+		}
+		finally
+		{
+			// Ensure the allocated device list is freed
+			LibUsb.freeDeviceList(list, true);
 		}
 
 		return foundSpecificDevices;
@@ -109,49 +142,32 @@ public class UsbHelper {
 		return mInstance;
 	}
 
-	public void startService(String deviceName, RadioServiceDab srv) {
-		if(DEBUG)Log.d(TAG, "StartService on device: " + deviceName + " : " + srv.getServiceLabel());
-		startSrv(deviceName, srv);
+	public void startService(Device device, RadioServiceDab srv) {
+		if(DEBUG)Log.d(TAG, "StartService on device: " + device.getPointer() + " : " + srv.getServiceLabel());
+		startSrv(device.getPointer(), srv);
 	}
 
 	/* EdiStream */
 
 
-	public void stopService(String deviceName) {
-		stopSrv(deviceName);
+	public void stopService(Device libUsbDevice) {
+		stopSrv(libUsbDevice.getPointer());
 	}
 
-	public void tuneFrequencyKHz(String deviceName, long frequency) {
-		tuneFreq(deviceName, frequency);
+	public void tuneFrequencyKHz(Device libUsbDevice, long frequency) {
+		tuneFreq(libUsbDevice.getPointer(), frequency);
 	}
 
-	void startEnsembleScan(String deviceName) {
-		startServiceScan(deviceName);
+	void startEnsembleScan(Device libUsbDevice) {
+		startServiceScan(libUsbDevice.getPointer());
 	}
 
-	void stopEnsembleScan(String deviceName) {
-		stopServiceScan(deviceName);
+	void stopEnsembleScan(Device libUsbDevice) {
+		stopServiceScan(libUsbDevice.getPointer());
 	}
 
 	void attachDevice(TunerUsb dev) {
-		deviceAttached(dev);
-	}
-
-	//todo remove from native
-	private void requestPermission(UsbDevice device) {
-
-	}
-
-	//todo remove from native
-	private UsbDeviceConnection openDevice(UsbDevice device) {
-		/*if(DEBUG)Log.d(TAG, "Opening device: " + device.getDeviceName());
-		try {
-			return mUsbManager.openDevice(device);
-		} catch(SecurityException secExc) {
-			secExc.printStackTrace();
-			return null;
-		}*/
-		return null;
+		deviceAttached(dev, dev.getUsbDevice().getPointer());
 	}
 
 	static void create(UsbHelperCallback cb) {
@@ -161,11 +177,12 @@ public class UsbHelper {
 		}
 	}
 
-	void removeDevice(UsbDevice remDev) {
+	void removeDevice(Device remDev) {
 		if(remDev != null) {
-			deviceDetached(remDev.getDeviceName());
+			detachDevice(remDev.getPointer());
 		}
 	}
+
 
 	//TODO move to libusb?
 	/*private final BroadcastReceiver mUsbBroadcastReceiver = new BroadcastReceiver() {
@@ -189,9 +206,9 @@ public class UsbHelper {
 
 	interface UsbHelperCallback {
 
-		void UsbTunerDeviceAttached(UsbDevice attachedDevice);
+		void UsbTunerDeviceAttached(Device attachedDevice);
 
-		void UsbTunerDeviceDetached(UsbDevice detachedDevice);
+		void UsbTunerDeviceDetached(Device detachedDevice);
 	}
 
 	public record UsbId(int vendor, int product){}

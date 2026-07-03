@@ -20,20 +20,17 @@
 
 #include <iomanip>
 #include "raontunerinput.h"
+#include "libusb-1.0/libusb.h"
 
 constexpr uint8_t RaonTunerInput::g_abAdcClkSynTbl[4][7];
 constexpr uint8_t RaonTunerInput::g_aeAdcClkTypeTbl_DAB_B3[];
 constexpr int RaonTunerInput::g_atPllNF_DAB_BAND3[];
 constexpr uint_t RaonTunerInput::AntLvlTbl[DAB_MAX_NUM_ANTENNA_LEVEL];
 
-RaonTunerInput::RaonTunerInput(JNIEnv *env, std::shared_ptr<JTunerUsbDevice> usbDevice) : m_usbDevice{usbDevice} {
-    std::cout << LOG_TAG << "Constructing...." << std::endl;
-
+RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice> usbDevice) : m_usbDevice{usbDevice} {
     m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
     m_ensembleFinishedCb = DabEnsemble::registerEnsembleCollectDoneCallback(std::bind(&RaonTunerInput::ensembleCollectFinished, this));
-
-    m_usbDevice->permissionGranted(env, true);
-
+    m_usbDevice->openDevice();//TODO: handle error
     startReadDataThread();
 }
 
@@ -336,6 +333,10 @@ std::string RaonTunerInput::getDeviceName() const {
     return m_usbDevice->getDeviceName();
 }
 
+libusb_device* RaonTunerInput::getDeviceHandle() {
+    return m_usbDevice->device_handle();
+}
+
 //
 void RaonTunerInput::threadedFicRead() {
 
@@ -420,13 +421,18 @@ bool RaonTunerInput::tunerPowerUp() {
 }
 
 void RaonTunerInput::switchPage(RaonTunerInput::REGISTER_PAGE regPage) {
-    std::vector<uint8_t> switchData{0x21, 0x00, 0x00, 0x02, 0x03, static_cast<uint8_t >(regPage)};
-    int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, switchData);
+	setRegister(0x03, regPage);
 }
 
 void RaonTunerInput::setRegister(uint8_t reg, uint8_t val) {
-    std::vector<uint8_t> setRegData{0x21, 0x00, 0x00, 0x02, reg, val};
-    int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, setRegData);
+	std::vector<uint8_t> setRegData{0x21, 0x00, 0x00, 0x02, reg, val};
+	m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, setRegData, 100);
+
+	/* We should get an 0xa1 back as acknowledge */
+	std::vector<uint8_t> inbuf(1);
+	m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, inbuf, 100);
+
+	/* FIXME We might want to check for return code */
 }
 
 uint8_t RaonTunerInput::readRegister(uint8_t reg) {

@@ -38,5 +38,6 @@ public:
     virtual void stopAllRunningServices() = 0;
 
     virtual std::string getDeviceName() const = 0;
+    virtual libusb_device* getDeviceHandle();
 };
 #endif //DABUSBTUNERINPUT_H

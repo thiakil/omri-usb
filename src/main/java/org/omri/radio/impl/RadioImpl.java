@@ -22,6 +22,7 @@ import org.omri.tuner.TunerType;
 import com.thiakil.standin.Context;
 import com.thiakil.standin.UsbDevice;
 import com.thiakil.standin.Log;
+import org.usb4java.Device;
 
 import static com.thiakil.standin.BuildConfig.DEBUG;
 
@@ -81,7 +82,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 			//Raon DAB USB sticks
 			wantedDevices.add(new UsbHelper.UsbId(0x16C0, 0x05DC));
 
-			for(UsbDevice dev : UsbHelper.getInstance().scanForSpecificDevices(wantedDevices)) {
+			for(Device dev : UsbHelper.getInstance().scanForSpecificDevices(wantedDevices)) {
 				if(DEBUG)Log.d(TAG, "Found Siano device!");
 				Tuner usbTuner = new TunerUsbImpl(dev);
 				usbTuner.subscribe(this);
@@ -349,7 +350,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	//UsbHelperCallback
 	@Override
-	public void UsbTunerDeviceAttached(UsbDevice attachedDevice) {
+	public void UsbTunerDeviceAttached(Device attachedDevice) {
 		Tuner sianoTuner = new TunerUsbImpl(attachedDevice);
 		sianoTuner.subscribe(this);
 		mTunerList.add(sianoTuner);
@@ -360,7 +361,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	@Override
-	public void UsbTunerDeviceDetached(UsbDevice detachedDevice) {
+	public void UsbTunerDeviceDetached(Device detachedDevice) {
 		for(Tuner tuner : mTunerList) {
 			if(tuner instanceof TunerUsb) {
 				if(detachedDevice.equals(((TunerUsb)tuner).getUsbDevice())) {

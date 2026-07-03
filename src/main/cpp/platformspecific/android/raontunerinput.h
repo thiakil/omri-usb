@@ -21,6 +21,7 @@
 #ifndef RAONTUNERINPUT_H
 #define RAONTUNERINPUT_H
 
+#include "libusb-1.0/libusb.h"
 #include "dabusbtunerinput.h"
 #include "jtunerusbdevice.h"
 #include "jdabservice.h"
@@ -34,7 +35,7 @@ typedef unsigned int uint_t;
 class RaonTunerInput final : public DabUsbTunerInput, DabEnsemble {
 
 public:
-    explicit RaonTunerInput(JNIEnv *env, std::shared_ptr<JTunerUsbDevice> usbDevice);
+    explicit RaonTunerInput(std::shared_ptr<JTunerUsbDevice> usbDevice);
     virtual ~RaonTunerInput();
 
     //delete copy and assignment constructors
@@ -59,6 +60,7 @@ public:
     void stopServiceScan() override;
 
     std::string getDeviceName() const override;
+    libusb_device* getDeviceHandle() override;
 
 private:
     const std::string LOG_TAG{"[RaonUsbTuner] "};

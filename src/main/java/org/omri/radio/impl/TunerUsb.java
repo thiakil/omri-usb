@@ -4,6 +4,7 @@ import com.thiakil.standin.UsbDevice;
 
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.tuner.Tuner;
+import org.usb4java.Device;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -25,7 +26,7 @@ import org.omri.tuner.Tuner;
 
 interface TunerUsb extends Tuner {
 
-	UsbDevice getUsbDevice();
+	Device getUsbDevice();
 
 	void callBack(int callbackType);
 
