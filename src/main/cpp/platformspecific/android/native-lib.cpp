@@ -140,7 +140,7 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv*
     uint16_t vendId = jusbDevice->getVendorId();
 
     if(vendId == 0x16C0 && prodId == 0x05DC) {
-        m_dabInputs.push_back(std::unique_ptr<RaonTunerInput>(new RaonTunerInput(jusbDevice)));
+        m_dabInputs.push_back(std::unique_ptr<RaonTunerInput>(new RaonTunerInput(env, jusbDevice)));
     };
 }
 

@@ -26,18 +26,15 @@ constexpr uint8_t RaonTunerInput::g_aeAdcClkTypeTbl_DAB_B3[];
 constexpr int RaonTunerInput::g_atPllNF_DAB_BAND3[];
 constexpr uint_t RaonTunerInput::AntLvlTbl[DAB_MAX_NUM_ANTENNA_LEVEL];
 
-RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice> usbDevice) : m_usbDevice{usbDevice} {
+RaonTunerInput::RaonTunerInput(JNIEnv *env, std::shared_ptr<JTunerUsbDevice> usbDevice) : m_usbDevice{usbDevice} {
     std::cout << LOG_TAG << "Constructing...." << std::endl;
 
-    m_usbDevice->requestPermission([&](bool granted) {
-        std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice.get()->getDeviceName()) : "NULL") << " PermissionCallback: " << granted << std::endl;
-        if(granted) {
-            m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
-            startReadDataThread();
-        }
-    });
-
+    m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
     m_ensembleFinishedCb = DabEnsemble::registerEnsembleCollectDoneCallback(std::bind(&RaonTunerInput::ensembleCollectFinished, this));
+
+    m_usbDevice->permissionGranted(env, true);
+
+    startReadDataThread();
 }
 
 RaonTunerInput::~RaonTunerInput() {

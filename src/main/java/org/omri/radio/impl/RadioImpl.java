@@ -4,9 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 
 import org.omri.radio.Radio;
 import org.omri.radio.RadioErrorCode;
@@ -68,12 +66,6 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 	
 	@Override
-	public RadioErrorCode initialize() {
-		if(DEBUG)Log.d(TAG, "Initializing...!");
-		return initialize(mContext);
-	}
-	
-	@Override
 	public RadioErrorCode initialize(Context appContext) {
 		if(DEBUG)Log.d(TAG, "Initializing with Context!");
 
@@ -81,7 +73,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 		if(mContext != null) {
 
-			UsbHelper.create(mContext, this);
+			UsbHelper.create(this);
 
 			//List of Pairs consisiting of first.VendorId and second.ProductId
 			ArrayList<UsbHelper.UsbId> wantedDevices = new ArrayList<>();

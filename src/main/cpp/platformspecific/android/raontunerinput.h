@@ -34,7 +34,7 @@ typedef unsigned int uint_t;
 class RaonTunerInput final : public DabUsbTunerInput, DabEnsemble {
 
 public:
-    explicit RaonTunerInput(std::shared_ptr<JTunerUsbDevice> usbDevice);
+    explicit RaonTunerInput(JNIEnv *env, std::shared_ptr<JTunerUsbDevice> usbDevice);
     virtual ~RaonTunerInput();
 
     //delete copy and assignment constructors

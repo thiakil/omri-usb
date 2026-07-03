@@ -43,12 +43,6 @@ public abstract class Radio {
     }
     
     /**
-     * Initializes the {@link Radio} instance
-     * @return the {@link RadioErrorCode} indicating the success of init.
-     */
-    public abstract RadioErrorCode initialize();
-    
-    /**
      * Initializes the {@link Radio} instance with an Android {@link Context}
      * @param appContext the App Context
      * @return the {@link RadioErrorCode} indicating the success of init.

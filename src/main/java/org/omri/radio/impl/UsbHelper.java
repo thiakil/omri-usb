@@ -10,7 +10,6 @@ import java.util.Map;
 import org.omri.radioservice.RadioServiceDab;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import static com.thiakil.standin.BuildConfig.DEBUG;
@@ -36,9 +35,6 @@ import static com.thiakil.standin.BuildConfig.DEBUG;
 public class UsbHelper {
 
 	private static final String TAG = "UsbHelper";
-	private static final String ACTION_USB_PERMISSION = "de.irt.usbhelper.USB_PERMISSION";
-
-	private final Context mContext;
 
 	private static UsbHelper mInstance = null;
 	private static UsbHelperCallback mUsbCb = null;
@@ -62,20 +58,9 @@ public class UsbHelper {
 	private native void stopServiceScan(String deviceName);
 
 
-	private UsbHelper(Context context) {
+	private UsbHelper() {
 		if(DEBUG)Log.d(TAG, "Constructing UsbHelper...");
-		mContext = context;
-
-		if(mContext != null) {
-			/*mUsbManager = (UsbManager)mContext.getSystemService(Context.USB_SERVICE);*/
-
-			/*IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
-			filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-			filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
-
-			mContext.registerReceiver(mUsbBroadcastReceiver, filter);*/
-			created();
-		}
+		created();
 	}
 
 	/*public void scanUsbDevices() {
@@ -169,9 +154,9 @@ public class UsbHelper {
 		return null;
 	}
 
-	static void create(Context context, UsbHelperCallback cb) {
+	static void create(UsbHelperCallback cb) {
 		if(mInstance == null) {
-			mInstance = new UsbHelper(context);
+			mInstance = new UsbHelper();
 			mUsbCb = cb;
 		}
 	}

@@ -28,7 +28,6 @@ JUsbDevice::JUsbDevice(JavaVM* javaVm, JNIEnv *env, jobject usbDevice) : m_env(e
     //UsbHelper class definitions
     m_usbHelperClass = static_cast<jclass>(env->NewGlobalRef(env->FindClass("org/omri/radio/impl/UsbHelper")));
     m_usbHelperGetInstanceMId = env->GetStaticMethodID(m_usbHelperClass, "getInstance", "()Lorg/omri/radio/impl/UsbHelper;");
-    m_usbHelperRequestPermissionMId = env->GetMethodID(m_usbHelperClass, "requestPermission", "(Landroid/hardware/usb/UsbDevice;)V");
     m_usbHelperOpenDeviceMId = env->GetMethodID(m_usbHelperClass, "openDevice", "(Landroid/hardware/usb/UsbDevice;)Landroid/hardware/usb/UsbDeviceConnection;");
 
     //Android UsbDevice class definitions
@@ -106,21 +105,10 @@ uint16_t JUsbDevice::getVendorId() const {
     return m_vendorId;
 }
 
-bool JUsbDevice::isPermissionGranted() const {
-    return m_permissionGranted;
-}
-
-void JUsbDevice::requestPermission(JUsbDevice::PermissionCallbackFunction permissionCallback) {
-    m_permissionCallback = permissionCallback;
-
-    m_env->CallVoidMethod(m_env->CallStaticObjectMethod(m_usbHelperClass, m_usbHelperGetInstanceMId), m_usbHelperRequestPermissionMId, m_usbDeviceObject);
-}
-
 void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
     std::cout << "Device permission granted: " << std::boolalpha << granted << std::noboolalpha << std::endl;
 
     if(granted) {
-        m_permissionGranted = true;
 
         m_usbDeviceConnectionObject = env->NewGlobalRef(env->CallObjectMethod(env->CallStaticObjectMethod(m_usbHelperClass, m_usbHelperGetInstanceMId), m_usbHelperOpenDeviceMId, m_usbDeviceObject));
 
@@ -143,8 +131,6 @@ void JUsbDevice::permissionGranted(JNIEnv *env, bool granted) {
             m_endpointsMap.insert(std::pair<uint8_t,jobject>(static_cast<uint8_t>(endpointAddress), env->NewGlobalRef(endPoint)));
         }
     }
-
-    m_permissionCallback(m_permissionGranted);
 }
 
 int JUsbDevice::writeBulkTransferData(uint8_t endPointAddress, const std::vector<uint8_t>& buffer, int timeOutMs) {

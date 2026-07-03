@@ -38,12 +38,7 @@ public:
     virtual uint16_t getProductId() const;
     virtual uint16_t getVendorId() const;
 
-    virtual bool isPermissionGranted() const;
-
     virtual void permissionGranted(JNIEnv *env, bool granted);
-
-    using PermissionCallbackFunction = std::function<void(const bool permissionGranted)>;
-    virtual void requestPermission(PermissionCallbackFunction permissionCallback);
 
     virtual int writeBulkTransferData(uint8_t endPointAddress, const std::vector<uint8_t>& buffer, int timeOutMs = 5000);
     virtual int readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t>& buffer, int timeOutMs = 5000);
@@ -57,11 +52,8 @@ private:
     std::string m_usbDeviceName;
     uint16_t m_vendorId{0xFFFF};
     uint16_t m_productId{0xFFFF};
-    bool m_permissionGranted{false};
 
     std::map<uint8_t, jobject> m_endpointsMap;
-
-    PermissionCallbackFunction m_permissionCallback;
 
     uint8_t m_interfaceNum{0};
 
