@@ -1,10 +1,7 @@
 package org.omri.radio.impl;
 
-import com.thiakil.standin.UsbDevice;
-
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.tuner.Tuner;
-import org.usb4java.Device;
 
 /**
  * Copyright (C) 2018 IRT GmbH
