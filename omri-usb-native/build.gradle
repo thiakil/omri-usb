@@ -5,7 +5,7 @@ plugins {
 def javaHome = System.getProperty("java.home")
 
 library {
-    baseName = 'libirtdab'
+    baseName = 'irtdab'
     linkage = [Linkage.SHARED]
 
     // Target your required operating systems
