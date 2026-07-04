@@ -414,7 +414,7 @@ bool RaonTunerInput::tunerPowerUp() {
         switchPage(REGISTER_PAGE_HOST);
         setRegister(0x7D, 0x06);
         uint8_t read_register = readRegister(0x7D);
-        std::cout << LOG_TAG << " read register " << static_cast<int>(read_register) << std::endl;
+        //std::cout << LOG_TAG << " read register " << static_cast<int>(read_register) << std::endl;
         if(read_register == 0x06) {
             std::cout << LOG_TAG << " PowerUp okay!" << std::endl;
             return true;
@@ -430,12 +430,15 @@ void RaonTunerInput::switchPage(RaonTunerInput::REGISTER_PAGE regPage) {
 }
 
 void RaonTunerInput::setRegister(uint8_t reg, uint8_t val) {
+    //std::cout << LOG_TAG << " set register " << static_cast<int>(reg) << std::endl;
 	std::vector<uint8_t> setRegData{0x21, 0x00, 0x00, 0x02, reg, val};
-	m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, setRegData);
+	m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, setRegData, 100);
+    //std::cout << LOG_TAG << " after write " << std::endl;
 
 	/* We should get an 0xa1 back as acknowledge */
-	/*std::vector<uint8_t> inbuf(1);
-	m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, inbuf, 100);*/
+	std::vector<uint8_t> inbuf(1);
+	int r = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, inbuf);
+    //std::cout << LOG_TAG << " after read: " << r << std::endl;
 
 	/* FIXME We might want to check for return code */
 }

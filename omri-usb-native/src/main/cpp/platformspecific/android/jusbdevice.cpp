@@ -93,7 +93,7 @@ int JUsbDevice::writeBulkTransferData(uint8_t endPointAddress, std::vector<uint8
     int transferred;
     int r=libusb_bulk_transfer(m_usbDeviceHandle, endPointAddress, buffer.data(), buffer.size(), &transferred, timeOutMs*10);
     if (r) {
-        //std::cout << "writeBulkTransferData error: " << libusb_error_name(r) << "handle: " << m_usbDeviceHandle << std::endl;
+        std::cout << "writeBulkTransferData error: " << libusb_error_name(r) << "handle: " << m_usbDeviceHandle << std::endl;
         return r;
     }
     return transferred;
@@ -104,7 +104,7 @@ int JUsbDevice::readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_
     int transferred;
     int r=libusb_bulk_transfer(m_usbDeviceHandle, endPointAddress, buffer.data(), buffer.size(), &transferred, timeOutMs*10);
     if (r) {
-        //std::cout << "readBulkTransferData error: " << libusb_error_name(r) << std::endl;
+        std::cout << "readBulkTransferData error: " << libusb_error_name(r) << std::endl;
         return r;
     }
     buffer.resize(transferred);
