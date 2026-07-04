@@ -26,7 +26,7 @@ import org.usb4java.Device;
 
 interface TunerUsb extends Tuner {
 
-	Device getUsbDevice();
+	long getUsbDevice();
 
 	void callBack(int callbackType);
 

@@ -23,16 +23,18 @@
 #include "iostream"
 
 JUsbDevice::JUsbDevice(libusb_device* device) : m_usbDevice(device) {
-
+std::cout << "JUsbDevice::JUsbDevice" << std::endl;
     if(device != nullptr) {
 
         libusb_device_descriptor desc;
 
         libusb_get_device_descriptor(device, &desc);
+        std::cout << "JUsbDevice::JUsbDevice got descriptor" << std::endl;
 
         unsigned char product_name[256] = "Unknown Product";
         libusb_device_handle		*handle;
         int r = libusb_open(device, &handle);
+        std::cout << "JUsbDevice::JUsbDevice after open" << std::endl;
         if(r == 0) {
             // Get the Product Name if an index exists
             if (desc.iProduct > 0) {
@@ -65,6 +67,7 @@ JUsbDevice::JUsbDevice(libusb_device* device) : m_usbDevice(device) {
 
 JUsbDevice::~JUsbDevice() {
     if (m_usbDeviceHandle) {
+        libusb_release_interface(m_usbDeviceHandle, 0);
         libusb_close(m_usbDeviceHandle);
     }
     libusb_unref_device(m_usbDevice);
@@ -89,8 +92,10 @@ libusb_device* JUsbDevice::device_handle() const {
 int JUsbDevice::writeBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t> &buffer, int timeOutMs) {
     int transferred;
     int r=libusb_bulk_transfer(m_usbDeviceHandle, endPointAddress, buffer.data(), buffer.size(), &transferred, timeOutMs*10);
-    if (r)
+    if (r) {
+        //std::cout << "writeBulkTransferData error: " << libusb_error_name(r) << "handle: " << m_usbDeviceHandle << std::endl;
         return r;
+    }
     return transferred;
 
 }
@@ -98,13 +103,23 @@ int JUsbDevice::writeBulkTransferData(uint8_t endPointAddress, std::vector<uint8
 int JUsbDevice::readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t> &buffer, int timeOutMs) {
     int transferred;
     int r=libusb_bulk_transfer(m_usbDeviceHandle, endPointAddress, buffer.data(), buffer.size(), &transferred, timeOutMs*10);
-    if (r)
+    if (r) {
+        //std::cout << "readBulkTransferData error: " << libusb_error_name(r) << std::endl;
         return r;
+    }
     buffer.resize(transferred);
     return transferred;
 }
 
 bool JUsbDevice::openDevice() {
     int r = libusb_open(m_usbDevice, &m_usbDeviceHandle);
+    if (r) {
+        std::cout << "openDevice error: " << libusb_error_name(r) << std::endl;
+        return false;
+    }
+    r = libusb_claim_interface(m_usbDeviceHandle, 0);
+    if (r) {
+        std::cout << "claim_interface error: " << libusb_error_name(r) << std::endl;
+    }
     return r == 0;
 }

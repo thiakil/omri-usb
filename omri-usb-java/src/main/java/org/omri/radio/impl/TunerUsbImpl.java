@@ -19,7 +19,6 @@ import org.omri.tuner.TunerType;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.usb4java.Device;
 
 import static com.thiakil.standin.BuildConfig.DEBUG;
 
@@ -53,9 +52,9 @@ public class TunerUsbImpl implements TunerUsb {
 	private List<TunerListener> mTunerlisteners = new ArrayList<>();
 	private RadioServiceDab mCurrentlyRunningService = null;
 
-	private final Device mUsbDevice;
+	private final long mUsbDevice;
 
-	TunerUsbImpl(Device device) {
+	TunerUsbImpl(long device) {
 		mUsbDevice = device;
 	}
 
@@ -77,7 +76,7 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
-	public Device getUsbDevice() {
+	public long getUsbDevice() {
 		return mUsbDevice;
 	}
 
@@ -230,7 +229,7 @@ public class TunerUsbImpl implements TunerUsb {
 			}
 		} else {
 			TunerUsbCallbackTypes type = TunerUsbCallbackTypes.getTypeByValue(callbackType);
-			if(DEBUG)Log.d(TAG, "Native callback for device: " + mUsbDevice.getPointer() + " with CallbackType: " + type.toString());
+			if(DEBUG)Log.d(TAG, "Native callback for device: " + mUsbDevice + " with CallbackType: " + type.toString());
 			switch(type) {
 				case TUNER_READY: {
 					if (!mIsScanning) {

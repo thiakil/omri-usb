@@ -28,10 +28,13 @@ constexpr int RaonTunerInput::g_atPllNF_DAB_BAND3[];
 constexpr uint_t RaonTunerInput::AntLvlTbl[DAB_MAX_NUM_ANTENNA_LEVEL];
 
 RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice> usbDevice) : m_usbDevice{usbDevice} {
-    m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
-    m_ensembleFinishedCb = DabEnsemble::registerEnsembleCollectDoneCallback(std::bind(&RaonTunerInput::ensembleCollectFinished, this));
-    m_usbDevice->openDevice();//TODO: handle error
-    startReadDataThread();
+    if (m_usbDevice->openDevice()) {
+        m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
+        m_ensembleFinishedCb = DabEnsemble::registerEnsembleCollectDoneCallback(std::bind(&RaonTunerInput::ensembleCollectFinished, this));
+        startReadDataThread();
+    } else {
+        std::cout << LOG_TAG << "Failed to openDevice" << std::endl;
+    }
 }
 
 RaonTunerInput::~RaonTunerInput() {
@@ -410,7 +413,9 @@ bool RaonTunerInput::tunerPowerUp() {
     for(int i = 0; i < 100; i++) {
         switchPage(REGISTER_PAGE_HOST);
         setRegister(0x7D, 0x06);
-        if(readRegister(0x7D) == 0x06) {
+        uint8_t read_register = readRegister(0x7D);
+        std::cout << LOG_TAG << " read register " << static_cast<int>(read_register) << std::endl;
+        if(read_register == 0x06) {
             std::cout << LOG_TAG << " PowerUp okay!" << std::endl;
             return true;
         }
@@ -426,11 +431,11 @@ void RaonTunerInput::switchPage(RaonTunerInput::REGISTER_PAGE regPage) {
 
 void RaonTunerInput::setRegister(uint8_t reg, uint8_t val) {
 	std::vector<uint8_t> setRegData{0x21, 0x00, 0x00, 0x02, reg, val};
-	m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, setRegData, 100);
+	m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, setRegData);
 
 	/* We should get an 0xa1 back as acknowledge */
-	std::vector<uint8_t> inbuf(1);
-	m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, inbuf, 100);
+	/*std::vector<uint8_t> inbuf(1);
+	m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, inbuf, 100);*/
 
 	/* FIXME We might want to check for return code */
 }

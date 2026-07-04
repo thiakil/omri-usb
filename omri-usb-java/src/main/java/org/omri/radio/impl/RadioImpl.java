@@ -22,7 +22,6 @@ import org.omri.tuner.TunerType;
 import com.thiakil.standin.Context;
 import com.thiakil.standin.UsbDevice;
 import com.thiakil.standin.Log;
-import org.usb4java.Device;
 
 import static com.thiakil.standin.BuildConfig.DEBUG;
 
@@ -77,19 +76,19 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 			UsbHelper.create(this);
 
 			//List of Pairs consisiting of first.VendorId and second.ProductId
-			ArrayList<UsbHelper.UsbId> wantedDevices = new ArrayList<>();
+			//ArrayList<UsbHelper.UsbId> wantedDevices = new ArrayList<>();
 
 			//Raon DAB USB sticks
-			wantedDevices.add(new UsbHelper.UsbId(0x16C0, 0x05DC));
+			//wantedDevices.add(new UsbHelper.UsbId(0x16C0, 0x05DC));
 
-			for(Device dev : UsbHelper.getInstance().scanForSpecificDevices(wantedDevices)) {
+			for(long dev : UsbHelper.getInstance().scanDevices()) {
 				if(DEBUG)Log.d(TAG, "Found Siano device!");
 				Tuner usbTuner = new TunerUsbImpl(dev);
 				usbTuner.subscribe(this);
 				mTunerList.add(usbTuner);
 			}
 
-			if(DEBUG)Log.d(TAG, "Initialized with " + mTunerList + " tuners");
+			if(DEBUG)Log.d(TAG, "Initialized with " + mTunerList.size() + " tuners");
 		} else {
 			if(DEBUG)Log.d(TAG, "Context is null!");
 		}
@@ -350,7 +349,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	//UsbHelperCallback
 	@Override
-	public void UsbTunerDeviceAttached(Device attachedDevice) {
+	public void UsbTunerDeviceAttached(long attachedDevice) {
 		Tuner sianoTuner = new TunerUsbImpl(attachedDevice);
 		sianoTuner.subscribe(this);
 		mTunerList.add(sianoTuner);
@@ -361,10 +360,10 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	@Override
-	public void UsbTunerDeviceDetached(Device detachedDevice) {
+	public void UsbTunerDeviceDetached(long detachedDevice) {
 		for(Tuner tuner : mTunerList) {
 			if(tuner instanceof TunerUsb) {
-				if(detachedDevice.equals(((TunerUsb)tuner).getUsbDevice())) {
+				if(detachedDevice == (((TunerUsb)tuner).getUsbDevice())) {
 
 					for(RadioStatusListener cb : mRadioStatusListeners) {
 						cb.tunerDetached(tuner);

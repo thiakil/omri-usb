@@ -43,7 +43,6 @@ public:
     virtual libusb_device* device_handle() const;
 
     virtual bool openDevice();
-    //TODO virtual void closeDevice();
 
     virtual int writeBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t> &buffer, int timeOutMs = 5000);
     virtual int readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t>& buffer, int timeOutMs = 5000);
