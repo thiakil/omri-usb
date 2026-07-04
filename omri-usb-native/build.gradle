@@ -2,12 +2,35 @@ plugins {
     id 'cpp-library'
 }
 
+def javaHome = System.getProperty("java.home")
+
 library {
+    baseName = 'libirtdab'
     linkage = [Linkage.SHARED]
+
+    // Target your required operating systems
+    //targetMachines.add(machines.linux.x86_64)
+    //targetMachines.add(machines.windows.x86_64)
+    //targetMachines.add(machines.macOS.x86_64)
+
+    binaries.configureEach {
+
+        // Pass system-specific include directories to the C++ compiler
+        compileTask.get().compilerArgs.addAll([
+                "-I${javaHome}/include",
+                "-I${javaHome}/include/linux",
+                "-I${javaHome}/include/win32",
+                "-I${javaHome}/include/darwin"
+        ])
+    }
+}
+
+tasks.withType(LinkSharedLibrary).configureEach {
+    linkerArgs.addAll("-lusb-1.0", "-L${javaHome}/lib", '-ljvm')
 }
 
 toolChains {
     gcc(Gcc) {
-        path 'D:\\msys64\\ucrt64\\bin'
+        path 'D:\\msys64\\mingw64\\bin'
     }
 }
