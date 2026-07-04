@@ -48,8 +48,10 @@ public class UsbHelper {
 	private Map<String, UsbDevice> mUsbDeviceList;
 
 	static {
-		System.loadLibrary("c++_shared");
-		System.loadLibrary("fec");
+		System.loadLibrary("libwinpthread-1");
+		System.loadLibrary("libgcc_s_seh-1");
+		System.loadLibrary("libstdc++-6");
+		System.loadLibrary("libusb-1.0");
 		System.loadLibrary("irtdab");
 	}
 
@@ -64,7 +66,7 @@ public class UsbHelper {
 
 
 	private UsbHelper() {
-		int result = LibUsb.init(usbContext);
+		int result = LibUsb.init(null);
 		if (result < 0)
 		{
 			throw new LibUsbException("Unable to initialize libusb", result);
