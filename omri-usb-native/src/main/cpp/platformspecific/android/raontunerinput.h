@@ -60,7 +60,7 @@ public:
     void stopServiceScan() override;
 
     std::string getDeviceName() const override;
-    libusb_device* getDeviceHandle() override;
+    libusb_device* getDeviceHandle() const override;
 
 private:
     const std::string LOG_TAG{"[RaonUsbTuner] "};

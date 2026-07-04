@@ -82,7 +82,7 @@ uint16_t JUsbDevice::getVendorId() const {
     return m_vendorId;
 }
 
-libusb_device* JUsbDevice::device_handle() {
+libusb_device* JUsbDevice::device_handle() const {
     return m_usbDevice;
 }
 

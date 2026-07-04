@@ -40,10 +40,10 @@ public:
     virtual std::string getDeviceName() const;
     virtual uint16_t getProductId() const;
     virtual uint16_t getVendorId() const;
-    virtual libusb_device* device_handle();
+    virtual libusb_device* device_handle() const;
 
     virtual bool openDevice();
-    virtual void closeDevice();
+    //TODO virtual void closeDevice();
 
     virtual int writeBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t> &buffer, int timeOutMs = 5000);
     virtual int readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t>& buffer, int timeOutMs = 5000);

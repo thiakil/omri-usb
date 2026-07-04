@@ -26,6 +26,7 @@
 
 #include <memory>
 #include <string>
+#include "libusb-1.0/libusb.h"
 
 class DabUsbTunerInput : public DabInput {
 
@@ -38,6 +39,6 @@ public:
     virtual void stopAllRunningServices() = 0;
 
     virtual std::string getDeviceName() const = 0;
-    virtual libusb_device* getDeviceHandle();
+    virtual libusb_device* getDeviceHandle() const = 0;
 };
 #endif //DABUSBTUNERINPUT_H

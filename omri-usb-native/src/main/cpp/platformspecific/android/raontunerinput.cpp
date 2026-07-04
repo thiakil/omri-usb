@@ -333,7 +333,7 @@ std::string RaonTunerInput::getDeviceName() const {
     return m_usbDevice->getDeviceName();
 }
 
-libusb_device* RaonTunerInput::getDeviceHandle() {
+libusb_device* RaonTunerInput::getDeviceHandle() const{
     return m_usbDevice->device_handle();
 }
 
