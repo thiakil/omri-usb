@@ -71,9 +71,9 @@ check_function_exists("memmove"          HAVE_MEMMOVE)
 ########################################################################
 
 set(libfec_sources
-    encode_rs_char.c
-    decode_rs_char.c
-    init_rs_char.c
+    encode_rs_char.cpp
+    decode_rs_char.cpp
+    init_rs_char.cpp
 )
 
 
