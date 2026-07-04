@@ -4,12 +4,15 @@
 # Sets the minimum version of CMake required to build the native library.
 cmake_minimum_required(VERSION 3.5)
 project(irtdab)
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules
+        CACHE STRING "CMake module path")
 
 find_package (Java REQUIRED)
 find_package (JNI REQUIRED)
 include (UseJava)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBUSB libusb-1.0 REQUIRED)
+find_package(LIBUSB REQUIRED)
+#find_package(PkgConfig REQUIRED)
+#pkg_check_modules(LIBUSB libusb-1.0 REQUIRED)
 
 include_directories(src/main/cpp/thirdparty/fec)
 add_subdirectory(src/main/cpp/thirdparty/fec)
