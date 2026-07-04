@@ -1,0 +1,13 @@
+plugins {
+    id 'cpp-library'
+}
+
+library {
+    linkage = [Linkage.SHARED]
+}
+
+toolChains {
+    gcc(Gcc) {
+        path 'D:\\msys64\\ucrt64\\bin'
+    }
+}

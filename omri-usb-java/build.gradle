@@ -1,12 +1,8 @@
 import org.gradle.internal.jvm.Jvm
 
 plugins {
-    id 'java'
-    id 'application'
-    id 'c'
+    id 'java-library'
 }
-
-//mainClassName = 'HelloWorld'//todo
 
 repositories {
     mavenCentral()
@@ -28,11 +24,11 @@ dependencies {
     //testImplementation 'junit:junit:4.12'
 }
 
-application {
+/*application {
     applicationDefaultJvmArgs = ["-Djava.library.path=" + file("${buildDir}/libs/irtdab/shared").absolutePath]
-}
+}*/
 
-model {
+/*model {
     platforms {
         x64 {
             architecture "x86_64"
@@ -65,7 +61,7 @@ model {
     }
 }
 
-classes.dependsOn 'irtdabSharedLibrary'
+classes.dependsOn 'irtdabSharedLibrary'*/
 
 
 /*
