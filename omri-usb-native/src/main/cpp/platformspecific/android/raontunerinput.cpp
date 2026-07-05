@@ -1270,9 +1270,14 @@ void RaonTunerInput::stopReadDataThread() {
     std::cout << LOG_TAG << "Stopping Data thread..." << std::endl;
     if(m_commandThreadRunning) {
         m_commandThreadRunning = false;
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
         if(m_commandThread.joinable()) {
             std::cout << LOG_TAG << "Joining Data thread..." << std::endl;
-            m_commandThread.join();
+            try {
+                m_commandThread.join();
+            } catch (const std::exception& e) {
+                std::cerr << "Native thread exception: " << e.what() << std::endl;
+            }
             std::cout << LOG_TAG << "Joining Data thread done" << std::endl;
         }
     }

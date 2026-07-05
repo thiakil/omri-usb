@@ -26,7 +26,7 @@ library {
 }
 
 tasks.withType(LinkSharedLibrary).configureEach {
-    linkerArgs.addAll("-lusb-1.0", "-L${javaHome}/lib", '-ljvm')
+    linkerArgs.addAll("-pthread", "-lusb-1.0", "-L${javaHome}/lib", '-ljvm')
 }
 
 toolChains {

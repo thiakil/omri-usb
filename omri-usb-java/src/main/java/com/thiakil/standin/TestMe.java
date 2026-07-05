@@ -17,9 +17,16 @@ public class TestMe {
         System.out.println("Found "+availableTuners.size()+" tuners");
         for (Tuner tuner : availableTuners) {
             tuner.subscribe(new TunerListener() {
+
                 @Override
                 public void tunerStatusChanged(Tuner tuner, TunerStatus newStatus) {
                     System.out.println("Tuner status changed: "+newStatus.getStatusDescription());
+                    if (newStatus == TunerStatus.TUNER_STATUS_INITIALIZED) {
+                        if (tuner.getRadioServices().isEmpty()) {
+                            System.out.println("No services found, scanning");
+                            tuner.startRadioServiceScan();
+                        }
+                    }
                 }
 
                 @Override

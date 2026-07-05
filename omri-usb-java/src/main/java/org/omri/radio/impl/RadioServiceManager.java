@@ -385,8 +385,8 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 				uapp.setDSCTy(uappObj.getInt("dscty"));
 				uapp.setUserApplicationType(uappObj.getInt("uappType"));
 
-				String uappDataString = uappObj.getString("uappData");
 				//todo app data?
+				//String uappDataString = uappObj.getString("uappData");
 				/*if (!uappDataString.isEmpty()) {
 					uapp.setUappdata(Base64.decode(uappDataString, Base64.NO_WRAP));
 				}*/
