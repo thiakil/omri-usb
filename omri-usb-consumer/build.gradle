@@ -15,4 +15,5 @@ dependencies {
 }
 
 def nativeProject = project(":omri-usb-native")
-classes.dependsOn(nativeProject.defaultTasks.collect { nativeProject.tasks.named(it) })
+//classes.dependsOn(nativeProject.defaultTasks.collect { nativeProject.tasks.named(it) })
+classes.dependsOn(nativeProject.tasks.withType(LinkSharedLibrary))
