@@ -21,13 +21,18 @@
   -->
   <Appenders>
     <Console name="CONSOLE">
-      <PatternLayout pattern="%d [%t] %5p %c{1.} - %m%n"/>
+      <PatternLayout pattern="%d [%t] %5p [%c{1.}] - %m%n"/>
     </Console>
   </Appenders>
 
   <Loggers>
-    <Logger name="com.mycompany" level="DEBUG"/>
-    <Root level="INFO">
+    <Logger name="NativeDebug" level="INFO"/>
+    <Logger name="DabService" level="INFO"/>
+    <Logger name="TunerUsb" level="INFO"/>
+    <Logger name="RadioServiceManager" level="INFO"/>
+    <Logger name="RadioImpl" level="INFO"/>
+    <Logger name="UsbHelper" level="INFO"/>
+    <Root level="DEBUG">
       <AppenderRef ref="CONSOLE"/>
     </Root>
   </Loggers>

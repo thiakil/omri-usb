@@ -30,10 +30,12 @@
 #include "jusbdevice.h"
 #include "raontunerinput.h"
 #include "ediinput.h"
+#include "log4jbridge.h"
+#include "stdoutbridge.h"
 
 extern "C" {
 
-const std::string LOG_TAG{"UsbHelperNative"};
+const char* LOG_TAG = "UsbHelperNative";
 
 std::vector<std::shared_ptr<JUsbDevice>> m_usbDevices;
 
@@ -77,28 +79,25 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     //sets the redirect stream for logcat logging...should be deleted at cleanup with
     //delete std::cout.rdbuf(0);
 
-    //TODO set to enable debug output
-#ifdef DEBUGOUTPUT
-//    std::cout.rdbuf(new androidlogbuf);
-#endif
+    std::cout.rdbuf(new LogRedirector);
 
     JNIEnv* env;
     vm->GetEnv((void **)&env, JNI_VERSION_1_6);
     env->GetJavaVM(&m_javaVm);
 
     cacheClassDefinitions(m_javaVm);
+    Log4JLogger::getInstance().init(vm, env);
 
     return JNI_VERSION_1_6;
 }
 
 
 JNIEXPORT jboolean JNICALL Java_org_omri_radio_impl_UsbHelper_created(JNIEnv* env, jobject thiz) {
-    std::cout << LOG_TAG << " created!" << std::endl;
     int r = libusb_init(nullptr);
     if (r == 0) {
         return JNI_TRUE;
     }
-    std::cout << LOG_TAG << " error in libusb init! " << r << std::endl;
+    LOG_ERROR(LOG_TAG, std::string("error in libusb init! ") + libusb_error_name(r));
     return JNI_FALSE;
 }
 
@@ -107,7 +106,7 @@ JNIEXPORT jboolean JNICALL Java_org_omri_radio_impl_UsbHelper_created(JNIEnv* en
     libusb_config_descriptor *config;
     int r = libusb_get_config_descriptor(dev, 0, &config); // Index 0 = default config
     if (r < 0) {
-        std::cerr << "Failed to get config descriptor" << std::endl;
+        LOG_ERROR(LOG_TAG, std::string("Failed to get config descriptor") + libusb_error_name(r));
         return;
     }
 
@@ -156,10 +155,9 @@ JNIEXPORT jboolean JNICALL Java_org_omri_radio_impl_UsbHelper_created(JNIEnv* en
 
 JNIEXPORT jlongArray JNICALL Java_org_omri_radio_impl_UsbHelper_scanDevices(JNIEnv * env, jobject thiz) {
     libusb_device **devices;
-    int numdevices = libusb_get_device_list(NULL, &devices);
-    std::cout << "found " << numdevices << " devices" << std::endl;
+    ssize_t numdevices = libusb_get_device_list(NULL, &devices);
     std::vector<jlong> javaPointers;
-    libusb_device_descriptor desc;
+    libusb_device_descriptor desc{};
     for (int i = 0; i < numdevices; ++i) {
 
         libusb_device *dev = devices[i];
@@ -178,7 +176,7 @@ JNIEXPORT jlongArray JNICALL Java_org_omri_radio_impl_UsbHelper_scanDevices(JNIE
     if (javaArray == NULL) {
         return NULL; // Out of memory exception thrown automatically
     }
-    if (javaPointers.size()) {
+    if (!javaPointers.empty()) {
         env->SetLongArrayRegion(javaArray, 0, javaPointers.size(), javaPointers.data());
     }
     libusb_free_device_list(devices, 1);
@@ -191,7 +189,7 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_detachDevice(JNIEnv* e
     auto bla = m_dabInputs.begin();
     while(bla < m_dabInputs.end()) {
         if(bla->get()->getDeviceHandle() == device_handle) {
-            std::cout << LOG_TAG << " Removing UsbTunerInput: " << " : " << bla->get()->getDeviceName() << std::endl;
+            LOG_DEBUG(LOG_TAG,  std::format("Removing UsbTunerInput: {}", bla->get()->getDeviceName()));
             m_dabInputs.erase(bla);
             break;
         }
@@ -201,7 +199,7 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_detachDevice(JNIEnv* e
     auto devIter = m_usbDevices.cbegin();
     while(devIter != m_usbDevices.cend()) {
         if(devIter->get()->device_handle() == device_handle) {
-            std::cout << LOG_TAG << " Removing device: " << devIter->get()->getDeviceName() << std::endl;
+            LOG_DEBUG(LOG_TAG,  std::format("Removing device: {}", devIter->get()->getDeviceName()));
             m_usbDevices.erase(devIter);
             break;
         }
@@ -210,13 +208,8 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_detachDevice(JNIEnv* e
 }
 
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv* env, jobject thiz, jobject usbDevice, jlong libusbDevice) {
-    std::cout << LOG_TAG << " Device attached!" << std::endl;
-
     auto device = reinterpret_cast<libusb_device *>(libusbDevice);
-    std::cout << LOG_TAG << " after reinterpret" << std::endl;
-
     std::shared_ptr<JTunerUsbDevice> jusbDevice = std::make_shared<JTunerUsbDevice>(m_javaVm, env, usbDevice, device);
-    std::cout << LOG_TAG << " made JTunerUsbDevice" << std::endl;
 
     jusbDevice->setJavaClassUsbTuner(env, m_usbTunerClass);
     jusbDevice->setJavaClassDabService(env, m_dabServiceClass);
@@ -236,7 +229,7 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv*
 
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startSrv(JNIEnv* env, jobject thiz, jlong libusbDevice, jobject dabService) {
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
-    std::cout << LOG_TAG << " UsbHelper starting service for Device: " << libusbDevice << std::endl;
+    LOG_DEBUG(LOG_TAG,  std::format("UsbHelper starting service for Device: {}", libusbDevice));
 
     auto devIter = m_dabInputs.cbegin();
     while(devIter != m_dabInputs.cend()) {
@@ -250,9 +243,8 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startSrv(JNIEnv* env, 
 
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopSrv(JNIEnv* env, jobject thiz, jlong libusbDevice) {
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
-    std::cout << LOG_TAG << " UsbHelper stopping service!" << std::endl;
 
-    std::cout << LOG_TAG << " UsbHelper stopping service on device: " << libusbDevice << std::endl;
+    LOG_DEBUG(LOG_TAG,  std::format("UsbHelper stopping service on device: {}", libusbDevice));
 
     auto devIter = m_dabInputs.cbegin();
     while(devIter != m_dabInputs.cend()) {
@@ -273,7 +265,7 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_tuneFreq(JNIEnv* env, 
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startServiceScan(JNIEnv* env, jobject thiz, jlong libusbDevice) {
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
-    std::cout << LOG_TAG << " UsbHelper starting serviceScan on device: " << libusbDevice << std::endl;
+    LOG_DEBUG(LOG_TAG,  std::format("UsbHelper starting serviceScan on device: {}", libusbDevice));
 
     auto devIter = m_dabInputs.cbegin();
     while(devIter != m_dabInputs.cend()) {
@@ -288,7 +280,7 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startServiceScan(JNIEn
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopServiceScan(JNIEnv* env, jobject thiz, jlong libusbDevice) {
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
-    std::cout << LOG_TAG << " UsbHelper stopping serviceScan on device: " << libusbDevice << std::endl;
+    LOG_DEBUG(LOG_TAG,  std::format("UsbHelper stopping serviceScan on device: {}", libusbDevice));
 
     auto devIter = m_dabInputs.cbegin();
     while(devIter != m_dabInputs.cend()) {

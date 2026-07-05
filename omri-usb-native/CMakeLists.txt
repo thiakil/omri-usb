@@ -80,7 +80,9 @@ add_library( # Sets the name of the library.
              src/main/cpp/platformspecific/android/jtunerusbdevice.cpp
              src/main/cpp/platformspecific/android/jdabservice.cpp
              src/main/cpp/platformspecific/android/ediinput.cpp
-             )
+        src/main/cpp/platformspecific/android/log4jbridge.cpp
+        src/main/cpp/platformspecific/android/stdoutbridge.h
+)
 
 # Searches for a specified prebuilt library and stores the path as a
 # variable. Because CMake includes system libraries in the search path by
