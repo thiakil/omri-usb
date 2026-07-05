@@ -127,7 +127,7 @@ public class UsbHelper {
 	}
 
 	public void startService(long device, RadioServiceDab srv) {
-		LOGGER.debug("StartService on device: " + device + " : " + srv.getServiceLabel());
+        LOGGER.debug("StartService on device: {} : {}", device, srv.getServiceLabel());
 		startSrv(device, srv);
 	}
 

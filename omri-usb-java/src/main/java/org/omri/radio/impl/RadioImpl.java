@@ -82,7 +82,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 				mTunerList.add(usbTuner);
 			}
 
-			LOGGER.debug("Initialized with " + mTunerList.size() + " tuners");
+            LOGGER.debug("Initialized with {} tuners", mTunerList.size());
 		} else {
 			LOGGER.debug("Context is null!");
 		}
@@ -158,7 +158,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 					if (!aggServiceList.contains(srv)) {
 						aggServiceList.add(srv);
 					} else {
-						LOGGER.debug("ServiceList already contains: '" + srv.getServiceLabel() + "' Type: " + srv.getRadioServiceType().toString() + (srv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB ? (" EId: " + ((RadioServiceDab) srv).getEnsembleId()) : ""));
+                        LOGGER.debug("ServiceList already contains: '{}' Type: {}{}", srv.getServiceLabel(), srv.getRadioServiceType(), srv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB ? (" EId: " + ((RadioServiceDab) srv).getEnsembleId()) : "");
 					}
 				}
 			}
@@ -204,7 +204,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	@Override
 	public void stopRadioService(RadioService radioService) {
 		if (radioService != null) {
-			LOGGER.debug("Stopping Service: " + radioService + " : " + radioService.getRadioServiceType().toString());
+            LOGGER.debug("Stopping Service: {} : {}", radioService, radioService.getRadioServiceType().toString());
 			for (Tuner tuner : mTunerList) {
 				RadioService curRunningSrv = tuner.getCurrentRunningRadioService();
 				if (curRunningSrv != null) {
@@ -404,7 +404,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	public boolean deleteRadioService(RadioService delService) {
 		for (Tuner chkTun : mTunerList) {
 			if (chkTun.getCurrentRunningRadioService() == delService) {
-				LOGGER.debug("Service to delete is currently running on " + chkTun + ", stopping it");
+                LOGGER.debug("Service to delete is currently running on {}, stopping it", chkTun);
 				chkTun.stopRadioService();
 			}
 		}
@@ -430,7 +430,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	private void dabTime(DabTime dabTime) {
-		LOGGER.debug("DabTime: " + dabTime.getPosixMillis());
+        LOGGER.debug("DabTime: {}", dabTime.getPosixMillis());
 	}
 
 	public final static String SERVICE_SEARCH_OPT_DELETE_SERVICES = "delete_services";

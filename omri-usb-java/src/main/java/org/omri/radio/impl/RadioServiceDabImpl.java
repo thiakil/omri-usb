@@ -64,7 +64,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	
 	void setEnsembleEcc(int ensembleEcc) {
 		this.mEnsembleEcc = ensembleEcc;
-		LOGGER.debug("Ensemble ECC: " + mEnsembleEcc);
+        LOGGER.debug("Ensemble ECC: {}", mEnsembleEcc);
 	}
 
 	@Override
@@ -74,7 +74,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	
 	void setEnsembleId(int ensembleId) {
 		this.mEnsembleId = ensembleId;
-		LOGGER.debug("Ensemble ID: " + mEnsembleId);
+        LOGGER.debug("Ensemble ID: {}", mEnsembleId);
 	}
 
 	@Override

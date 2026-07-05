@@ -69,7 +69,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		File servicesDir = new File(SERVICES_DIR);
 		if (!servicesDir.exists()) {
 			boolean dirCreated = servicesDir.mkdirs();
-			LOGGER.debug("Services dir created: " + dirCreated);
+            LOGGER.debug("Services dir created: {}", dirCreated);
 		}
 
 		mServicesMap.put(RadioServiceType.RADIOSERVICE_TYPE_DAB, new CopyOnWriteArrayList<RadioService>());
@@ -103,14 +103,14 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 			//TODO remove service and add new one for update?
 			boolean oldSrvRemoved = addList.remove(addSrv);
 			if (oldSrvRemoved) {
-				LOGGER.debug("Removed old version of service: " + addSrv.getServiceLabel() + " : " + addSrv.getRadioServiceType().toString());
+                LOGGER.debug("Removed old version of service: {} : {}", addSrv.getServiceLabel(), addSrv.getRadioServiceType().toString());
 			}
 			boolean addedSrv = addList.add(addSrv);
 			if (addedSrv) {
-				LOGGER.debug("Added new service: " + addSrv.getServiceLabel() + " : " + addSrv.getRadioServiceType().toString());
+                LOGGER.debug("Added new service: {} : {}", addSrv.getServiceLabel(), addSrv.getRadioServiceType().toString());
 			}
 		} else {
-			LOGGER.debug("Adding unknown ServiceType: " + addSrv.getRadioServiceType().toString());
+            LOGGER.debug("Adding unknown ServiceType: {}", addSrv.getRadioServiceType().toString());
 		}
 	}
 
@@ -120,11 +120,10 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 			//TODO remove service and add new one for update?
 			boolean oldSrvRemoved = addList.remove(addSrv);
 			if (oldSrvRemoved) {
-				LOGGER.debug("Removed old version of service: " + addSrv.getServiceLabel() + " : " + addSrv.getRadioServiceType().toString());
+                LOGGER.debug("Removed old version of service: {} : {}", addSrv.getServiceLabel(), addSrv.getRadioServiceType().toString());
 			}
 
-
-			LOGGER.debug("Added new service: " + addSrv.getServiceLabel() + " : " + addSrv.getRadioServiceType().toString());
+            LOGGER.debug("Added new service: {} : {}", addSrv.getServiceLabel(), addSrv.getRadioServiceType().toString());
 
 			return addList.add(addSrv);
 		}
@@ -153,7 +152,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		BufferedWriter srvListWriter = null;
 		try {
 			//save to file
-			LOGGER.debug("Serializing SrvListJson writing to file: " + fileNamePath);
+            LOGGER.debug("Serializing SrvListJson writing to file: {}", fileNamePath);
 
 			File srvListFile = new File(fileNamePath);
 			srvListWriter = new BufferedWriter(new FileWriter(srvListFile));
@@ -446,7 +445,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 					ArrayList<RadioService> tempAddList = new ArrayList<>();
 
 					JSONArray srvListArr = new JSONArray(savedSrvFileString);
-					LOGGER.debug("Read DABSrvListJson length: " + srvListArr.length());
+                    LOGGER.debug("Read DABSrvListJson length: {}", srvListArr.length());
 					for (int i = 0; i < srvListArr.length(); i++) {
 						JSONObject srvObj = srvListArr.getJSONObject(i);
 
@@ -466,7 +465,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
                 LOGGER.debug("Unlocking list for: {}", RadioServiceType.RADIOSERVICE_TYPE_DAB.toString());
 				mServicesDeSerializingInProgress.put(RadioServiceType.RADIOSERVICE_TYPE_DAB, false);
 
-				LOGGER.debug("DAB List unlocked: " + mServicesDeSerializingInProgress.get(RadioServiceType.RADIOSERVICE_TYPE_DAB));
+                LOGGER.debug("DAB List unlocked: {}", mServicesDeSerializingInProgress.get(RadioServiceType.RADIOSERVICE_TYPE_DAB));
 			}
 		} else {
 			LOGGER.debug("Restoring DabSrvListJson does not exist");
@@ -477,14 +476,14 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 
 	/* experimental and dangerous */
 	boolean deleteService(RadioService delSrv) {
-		LOGGER.debug("Trying to delete: " + delSrv.getServiceLabel() + " : " + delSrv.getRadioServiceType());
+        LOGGER.debug("Trying to delete: {} : {}", delSrv.getServiceLabel(), delSrv.getRadioServiceType());
 
 		boolean delSuccess = false;
 		CopyOnWriteArrayList<RadioService> delList = mServicesMap.get(delSrv.getRadioServiceType());
 		if (delList != null) {
 			delSuccess = delList.remove(delSrv);
 
-			LOGGER.debug("Delete service success: " + delSuccess);
+            LOGGER.debug("Delete service success: {}", delSuccess);
 			if (delSuccess) {
 				scheduleSaveServices(delSrv.getRadioServiceType());
 			}
@@ -500,7 +499,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 
 		Timer delSaveTimer = mSaveDelServicesMap.get(type);
 		if (delSaveTimer != null) {
-			LOGGER.debug("Canceling previous " + type.toString() + " DelSaveServices task");
+            LOGGER.debug("Canceling previous {} DelSaveServices task", type.toString());
 			delSaveTimer.cancel();
 		}
 
@@ -509,7 +508,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		delTimer.schedule(new TimerTask() {
 			@Override
 			public void run() {
-				LOGGER.debug("Executing DelSaveServices task for: " + type.toString());
+                LOGGER.debug("Executing DelSaveServices task for: {}", type.toString());
 
 				if (type == RadioServiceType.RADIOSERVICE_TYPE_DAB) {
 					serializeDabServices();
@@ -529,7 +528,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 					return retList;
 				}
 			} else {
-				LOGGER.warn("ServiceList for " + type.toString() + " is not ready yet");
+                LOGGER.warn("ServiceList for {} is not ready yet", type.toString());
 			}
 		}
 
@@ -539,7 +538,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 	@Override
 	public boolean removeRadioService(RadioService service) {
 		if (service != null) {
-			LOGGER.debug("Removing service: " + service.getServiceLabel() + " : " + service.getRadioServiceType().toString());
+            LOGGER.debug("Removing service: {} : {}", service.getServiceLabel(), service.getRadioServiceType().toString());
 			return deleteService(service);
 		}
 
@@ -549,7 +548,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 	@Override
 	public void addRadioService(RadioService addSrv) {
 		if (addSrv != null) {
-			LOGGER.debug("Adding service: " + addSrv.getServiceLabel() + " : " + addSrv.getRadioServiceType().toString());
+            LOGGER.debug("Adding service: {} : {}", addSrv.getServiceLabel(), addSrv.getRadioServiceType().toString());
 			addService(addSrv);
 			scheduleSaveServices(addSrv.getRadioServiceType());
 		}

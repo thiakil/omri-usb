@@ -38,7 +38,7 @@ class DabAudioDecoderFactory implements DabAudioDecoder.DabAudioDecoderStateCall
 		if (retDec.configure(dabCodec, samplingRate, channelCnt, sbr, ps)) {
 			retDec.registerDabAudioDecoderStateCallBack(this);
 			mDecoderInstances.add(retDec);
-			LOGGER.debug("Current DabAudioDecoder instances: " + mDecoderInstances.size());
+            LOGGER.debug("Current DabAudioDecoder instances: {}", mDecoderInstances.size());
 			return retDec;
 		}
 

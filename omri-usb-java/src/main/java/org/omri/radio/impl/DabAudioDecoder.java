@@ -65,7 +65,7 @@ class DabAudioDecoder {
 
 		if (!mHasBuiltInMpegDec) {
 			mHasMpegDecPlug = mpegDecPluginInstalled2();
-			LOGGER.debug("MPEG DEcoder service bound: " + mHasMpegDecPlug);
+            LOGGER.debug("MPEG DEcoder service bound: {}", mHasMpegDecPlug);
 		}
 	}
 
@@ -288,7 +288,7 @@ class DabAudioDecoder {
 	}
 
 	boolean configure(int dabCodec, int samplingRate, int channelCnt, boolean sbr, boolean ps) {
-		LOGGER.debug("Configuring Codec: " + dabCodec + " with: " + samplingRate + " kHz, " + channelCnt + " Channels and SBR: " + sbr);
+        LOGGER.debug("Configuring Codec: {} with: {} kHz, {} Channels and SBR: {}", dabCodec, samplingRate, channelCnt, sbr);
 		if (dabCodec == DAB_CODEC_MP2) {
 			mOutputChannels = channelCnt;
 			mOutputSampling = samplingRate;

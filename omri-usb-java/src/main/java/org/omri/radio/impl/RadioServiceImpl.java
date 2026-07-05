@@ -227,32 +227,32 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		if (radioServiceListener != null) {
 			if (radioServiceListener instanceof TextualMetadataListener) {
 				if (!mLabelListeners.contains(radioServiceListener)) {
-					LOGGER.debug("Subscribing TextualMetadataListener: " + radioServiceListener);
+                    LOGGER.debug("Subscribing TextualMetadataListener: {}", radioServiceListener);
 					this.mLabelListeners.add((TextualMetadataListener) radioServiceListener);
 				}
 			}
 			if (radioServiceListener instanceof VisualMetadataListener) {
 				if (!mSlideshowListeners.contains(radioServiceListener)) {
-					LOGGER.debug("Subscribing VisualMetadataListener: " + radioServiceListener);
+                    LOGGER.debug("Subscribing VisualMetadataListener: {}", radioServiceListener);
 					this.mSlideshowListeners.add((VisualMetadataListener) radioServiceListener);
 				}
 			}
 			if (radioServiceListener instanceof RadioServiceAudiodataListener) {
 				if (!mAudiodataListeners.contains(radioServiceListener)) {
-					LOGGER.debug("Subscribing RadioServiceAudiodataListener: " + radioServiceListener);
+                    LOGGER.debug("Subscribing RadioServiceAudiodataListener: {}", radioServiceListener);
 					mDecodeAudio = true;
 					this.mAudiodataListeners.add((RadioServiceAudiodataListener) radioServiceListener);
 				}
 			}
 			if (radioServiceListener instanceof RadioServiceRawAudiodataListener) {
 				if (!mRawAudiodataListeners.contains(radioServiceListener)) {
-					LOGGER.debug("Subscribing RadioServiceRawAudiodataListener: " + radioServiceListener);
+                    LOGGER.debug("Subscribing RadioServiceRawAudiodataListener: {}", radioServiceListener);
 					this.mRawAudiodataListeners.add((RadioServiceRawAudiodataListener) radioServiceListener);
 				}
 			}
 			if (radioServiceListener instanceof ProgrammeServiceMetadataListener) {
 				if (!mSpiListeners.contains(radioServiceListener)) {
-					LOGGER.debug("Subscribing ProgrammeServiceMetadataListener: " + radioServiceListener);
+                    LOGGER.debug("Subscribing ProgrammeServiceMetadataListener: {}", radioServiceListener);
 					this.mSpiListeners.add((ProgrammeServiceMetadataListener) radioServiceListener);
 				}
 			}
@@ -265,15 +265,15 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	public void unsubscribe(RadioServiceListener radioServiceListener) {
 		if (radioServiceListener != null) {
 			if (radioServiceListener instanceof TextualMetadataListener) {
-				LOGGER.debug("UnSubscribing TextualMetadataListener: " + radioServiceListener);
+                LOGGER.debug("UnSubscribing TextualMetadataListener: {}", radioServiceListener);
 				this.mLabelListeners.remove(radioServiceListener);
 			}
 			if (radioServiceListener instanceof VisualMetadataListener) {
-				LOGGER.debug("UnSubscribing VisualMetadataListener: " + radioServiceListener);
+                LOGGER.debug("UnSubscribing VisualMetadataListener: {}", radioServiceListener);
 				this.mSlideshowListeners.remove(radioServiceListener);
 			}
 			if (radioServiceListener instanceof RadioServiceAudiodataListener) {
-				LOGGER.debug("UnSubscribing RadioServiceAudiodataListener: " + radioServiceListener);
+                LOGGER.debug("UnSubscribing RadioServiceAudiodataListener: {}", radioServiceListener);
 				this.mAudiodataListeners.remove(radioServiceListener);
 
 				if (mAudiodataListeners.isEmpty()) {
@@ -281,11 +281,11 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 				}
 			}
 			if (radioServiceListener instanceof RadioServiceRawAudiodataListener) {
-				LOGGER.debug("UnSubscribing RadioServiceRawAudiodataListener: " + radioServiceListener);
+                LOGGER.debug("UnSubscribing RadioServiceRawAudiodataListener: {}", radioServiceListener);
 				this.mRawAudiodataListeners.remove(radioServiceListener);
 			}
 			if (radioServiceListener instanceof ProgrammeServiceMetadataListener) {
-				LOGGER.debug("UnSubscribing ProgrammeServiceMetadataListener: " + radioServiceListener);
+                LOGGER.debug("UnSubscribing ProgrammeServiceMetadataListener: {}", radioServiceListener);
 				this.mSpiListeners.remove(radioServiceListener);
 			}
 		} else {
@@ -320,7 +320,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	private RadioServiceMimeType mMimeType = RadioServiceMimeType.UNKNOWN;
 
 	void audioFormatChanged(final int ascty, final int channelCount, final int samplingRate, final boolean sbrUsed, final boolean psUsed) {
-		LOGGER.debug("audioFormatChanged: ASCTY:" + ascty + ", SBR: " + sbrUsed + ", PS: " + psUsed);
+        LOGGER.debug("audioFormatChanged: ASCTY:{}, SBR: {}, PS: {}", ascty, sbrUsed, psUsed);
 		mMimeType = RadioServiceMimeType.UNKNOWN;
 		mAscty = ascty;
 		mSbrUsed = sbrUsed;
@@ -362,7 +362,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 				@Override
 				public void outputFormatChanged(int sampleRate, int chanCnt) {
-					LOGGER.debug("outputFormatChanged: " + sampleRate + " : " + chanCnt);
+                    LOGGER.debug("outputFormatChanged: {} : {}", sampleRate, chanCnt);
 					mSamplingRate = sampleRate;
 					mChannelConfig = chanCnt;
 				}
@@ -373,7 +373,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	void serviceStopped() {
-		LOGGER.debug("Service '" + getServiceLabel() + "' stopped");
+        LOGGER.debug("Service '{}' stopped", getServiceLabel());
 
 		if (mAudioDec != null) {
 			LOGGER.debug("Stopping DabAudioDecoder...");
