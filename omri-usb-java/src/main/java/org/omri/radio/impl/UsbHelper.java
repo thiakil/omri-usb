@@ -1,8 +1,5 @@
 package org.omri.radio.impl;
 
-import com.thiakil.standin.UsbDevice;
-
-import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.omri.radioservice.RadioServiceDab;
@@ -27,8 +24,6 @@ public class UsbHelper {
 
 	private static UsbHelper mInstance = null;
 	private static UsbHelperCallback mUsbCb = null;
-
-	private Map<String, UsbDevice> mUsbDeviceList;
 
 	static {
 		System.loadLibrary("libwinpthread-1");
