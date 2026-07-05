@@ -148,7 +148,7 @@ const JavaVM* JTunerUsbDevice::getJavaVM() const {
 }
 
 void JTunerUsbDevice::scanProgress(int percentDone) {
-    std::cout << m_logTag << "Calling tuner scanprogress: " << +percentDone << std::endl;
+    //std::cout << m_logTag << "Calling tuner scanprogress: " << +percentDone << std::endl;
 
     bool wasDetached = false;
     JNIEnv* enve;
@@ -158,7 +158,7 @@ void JTunerUsbDevice::scanProgress(int percentDone) {
         if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
-            std::cout << "jniEnv thread failed to attach!" << std::endl;
+            std::cerr << "jniEnv thread failed to attach!" << std::endl;
             return;
         }
     }
