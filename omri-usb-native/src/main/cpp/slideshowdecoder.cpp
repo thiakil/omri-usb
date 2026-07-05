@@ -20,9 +20,11 @@
 
 #include "slideshowdecoder.h"
 
+#include <format>
 #include <iostream>
 
 #include "datatypes.h"
+#include "platformspecific/android/log4jbridge.h"
 
 SlideshowDecoder::SlideshowDecoder() {
 
@@ -46,8 +48,10 @@ void SlideshowDecoder::motApplicationDataInput(const MOT_Data& motData) {
     auto slidePtr = std::make_shared<DabSlideshow>();
 
     for(const auto& param : motData.motHeaderParams) {
-        std::cout << m_logTag << " Slideshow Header ParamID: " << std::hex << +param.first << std::dec << ", length: " << +param.second.size() << std::endl;
+        LOG_DEBUG(m_logTag.c_str(), std::format("Slideshow Header ParamID: {}, length: {}", param.first, param.second.size()));
         switch(param.first) {
+            //2 - CreationTime
+            //3 - StartValidity
             case 0x04: {
                 //ExpireTime
                 //TODO expiretime parameters parsing and set slide param
@@ -62,6 +66,11 @@ void SlideshowDecoder::motApplicationDataInput(const MOT_Data& motData) {
                 std::cout << m_logTag << " Slideshow Header TriggerTime: " << +validityFlag << std::endl;
                 break;
             }
+            //6 - VersionNumber
+            //7 - Re-transmission Distance
+            //8 - GroupReference
+            //A - Priority
+            //B - Label
             case 0x0C: {
                 //Contentname
                 uint8_t characterSetIndicator = static_cast<uint8_t>((param.second[0] & 0xF0) >> 4);
