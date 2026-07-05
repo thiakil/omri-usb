@@ -23,18 +23,15 @@
 #include "iostream"
 
 JUsbDevice::JUsbDevice(libusb_device* device) : m_usbDevice(device) {
-std::cout << "JUsbDevice::JUsbDevice" << std::endl;
     if(device != nullptr) {
 
         libusb_device_descriptor desc;
 
         libusb_get_device_descriptor(device, &desc);
-        std::cout << "JUsbDevice::JUsbDevice got descriptor" << std::endl;
 
         unsigned char product_name[256] = "Unknown Product";
         libusb_device_handle		*handle;
         int r = libusb_open(device, &handle);
-        std::cout << "JUsbDevice::JUsbDevice after open" << std::endl;
         if(r == 0) {
             // Get the Product Name if an index exists
             if (desc.iProduct > 0) {
@@ -61,7 +58,7 @@ std::cout << "JUsbDevice::JUsbDevice" << std::endl;
             m_interfaceNum = 1;
         };
 
-        std::cout << "ProductID: " << std::hex << +m_productId << " VendorID: " << +m_vendorId << std::dec << std::endl;
+        //std::cout << "ProductID: " << std::hex << +m_productId << " VendorID: " << +m_vendorId << std::dec << std::endl;
     }
 }
 

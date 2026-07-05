@@ -169,7 +169,7 @@ JNIEXPORT jlongArray JNICALL Java_org_omri_radio_impl_UsbHelper_scanDevices(JNIE
             javaPointers.push_back(reinterpret_cast<jlong>(dev));
             libusb_ref_device(dev);
 
-            print_device_endpoints(dev);
+            //print_device_endpoints(dev);
         }
     }
     jlongArray javaArray = env->NewLongArray(javaPointers.size());
