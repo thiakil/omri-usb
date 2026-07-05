@@ -1,2 +1,2 @@
 rootProject.name = 'omri-usb'
-include('omri-usb-java', 'omri-usb-native')
+include('omri-usb-java', 'omri-usb-native', 'omri-usb-consumer')
