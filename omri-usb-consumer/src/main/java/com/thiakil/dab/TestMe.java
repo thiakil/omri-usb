@@ -2,57 +2,77 @@ package com.thiakil.dab;
 
 import com.thiakil.standin.Context;
 import java.util.List;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
+import org.omri.radioservice.RadioServiceDab;
+import org.omri.radioservice.RadioServiceListener;
+import org.omri.radioservice.metadata.Textual;
+import org.omri.radioservice.metadata.TextualDabDynamicLabel;
+import org.omri.radioservice.metadata.TextualDabDynamicLabelPlusItem;
+import org.omri.radioservice.metadata.TextualMetadataListener;
+import org.omri.radioservice.metadata.Visual;
+import org.omri.radioservice.metadata.VisualDabSlideShow;
+import org.omri.radioservice.metadata.VisualMetadataListener;
 import org.omri.tuner.ReceptionQuality;
 import org.omri.tuner.Tuner;
 import org.omri.tuner.TunerListener;
 import org.omri.tuner.TunerStatus;
 
 public class TestMe {
+    private static final Logger LOGGER = LogManager.getLogger();
 
     public static void main(String[] args) {
         Radio instance = Radio.getInstance();
         instance.initialize(new Context());
         List<Tuner> availableTuners = instance.getAvailableTuners();
-        System.out.println("Found "+availableTuners.size()+" tuners");
+        Runtime.getRuntime().addShutdownHook(new ShutdownHandler());
+        LOGGER.info("Found {} tuners", availableTuners.size());
         for (Tuner tuner : availableTuners) {
             tuner.subscribe(new TunerListener() {
 
                 @Override
                 public void tunerStatusChanged(Tuner tuner, TunerStatus newStatus) {
-                    System.out.println("Tuner status changed: "+newStatus.getStatusDescription());
+                    LOGGER.info("Tuner status changed: {}", newStatus.getStatusDescription());
                     if (newStatus == TunerStatus.TUNER_STATUS_INITIALIZED) {
                         if (tuner.getRadioServices().isEmpty()) {
-                            System.out.println("No services found, scanning");
+                            LOGGER.info("No services found, scanning");
                             tuner.startRadioServiceScan();
+                        } else {
+                            RadioService radioService = tuner.getRadioServices().stream()
+                                  //Nova
+                                  .filter(it -> it instanceof RadioServiceDab dab && dab.getServiceId() == 4146)
+                                  .findFirst().orElseThrow();
+                            radioService.subscribe(new LoggingRadioServiceListener());
+                            tuner.startRadioService(radioService);
                         }
                     }
                 }
 
                 @Override
                 public void tunerScanStarted(Tuner tuner) {
-                    System.out.println("Scan started");
+                    LOGGER.info("Scan started");
                 }
 
                 @Override
                 public void tunerScanProgress(Tuner tuner, int percentScanned) {
-                    System.out.println("Scan progress: "+percentScanned);
+                    LOGGER.info("Scan progress: {}", percentScanned);
                 }
 
                 @Override
                 public void tunerScanFinished(Tuner tuner) {
-                    System.out.println("Scan finished");
+                    LOGGER.info("Scan finished");
                 }
 
                 @Override
                 public void tunerScanServiceFound(Tuner tuner, RadioService foundService) {
-                    System.out.println("found service "+foundService.getServiceLabel());
+                    LOGGER.info("found service {}", foundService.getServiceLabel());
                 }
 
                 @Override
                 public void radioServiceStarted(Tuner tuner, RadioService startedRadioService) {
-
+                    LOGGER.info("Service stated: {}", startedRadioService.getServiceLabel());
                 }
 
                 @Override
@@ -60,9 +80,16 @@ public class TestMe {
 
                 }
 
+                private boolean lastLock = false;
+                private ReceptionQuality lastQuality = null;
+
                 @Override
                 public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality) {
-
+                    if (rfLock != lastLock || quality != lastQuality) {
+                        lastLock = rfLock;
+                        lastQuality = quality;
+                        LOGGER.info("Reception stats - Lock: {}, quality: {}", rfLock, quality);
+                    }
                 }
 
                 @Override
@@ -71,14 +98,53 @@ public class TestMe {
                 }
             });
             tuner.initializeTuner();
-            System.out.println("After init");
+            LOGGER.info("After init");
         }
         while (true) {
             try {
-                System.out.println("waiting");
+                LOGGER.info("waiting");
                 Thread.sleep(10000);
             } catch (InterruptedException e) {
 
+            }
+        }
+    }
+
+    private static class LoggingRadioServiceListener implements RadioServiceListener, TextualMetadataListener, VisualMetadataListener {
+
+        @Override
+        public void newTextualMetadata(Textual textualMetadata) {
+            LOGGER.info("new text info: {}", textualMetadata.getText());
+            if (textualMetadata instanceof TextualDabDynamicLabel dabLabel) {
+                LOGGER.info("tags: {}, itemRunning: {}, itemToggled: {}", dabLabel.getTagCount(), dabLabel.itemRunning(), dabLabel.itemToggled());
+                if (dabLabel.hasTags()) {
+                    for (TextualDabDynamicLabelPlusItem dlPlusItem : dabLabel.getDlPlusItems()) {
+                        LOGGER.info("DL+ item - {}: {}", dlPlusItem.getDlPlusContentTypeDescription(), dlPlusItem.getDlPlusContentText());
+                    }
+                }
+            }
+            LOGGER.info("-------");
+        }
+
+        @Override
+        public void newVisualMetadata(Visual visualMetadata) {
+            LOGGER.info("new visual info: {} {}x{}", visualMetadata.getVisualMimeType(), visualMetadata.getVisualWidth(), visualMetadata.getVisualHeight());
+            if (visualMetadata instanceof VisualDabSlideShow dabSlideShow) {
+                LOGGER.info("isCategorised: {}, name: {}, id: {}", dabSlideShow.isCategorized(), dabSlideShow.getContentName(), dabSlideShow.getSlideId());
+                if (dabSlideShow.isCategorized()) {
+                    LOGGER.info("Category: {}, link: {}", dabSlideShow.getCategoryText(), dabSlideShow.getLink());
+                }
+            }
+            LOGGER.info("-------");
+        }
+    }
+
+    private static class ShutdownHandler extends Thread {
+
+        @Override
+        public void run() {
+            for (Tuner tuner : Radio.getInstance().getAvailableTuners()) {
+                tuner.deInitializeTuner();
             }
         }
     }
