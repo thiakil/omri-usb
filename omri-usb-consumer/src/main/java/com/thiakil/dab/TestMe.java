@@ -1,6 +1,9 @@
 package com.thiakil.dab;
 
 import com.thiakil.standin.Context;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,7 +30,6 @@ public class TestMe {
         Radio instance = Radio.getInstance();
         instance.initialize(new Context());
         List<Tuner> availableTuners = instance.getAvailableTuners();
-        Runtime.getRuntime().addShutdownHook(new ShutdownHandler());
         LOGGER.info("Found {} tuners", availableTuners.size());
         for (Tuner tuner : availableTuners) {
             tuner.subscribe(new TunerListener() {
@@ -100,14 +102,20 @@ public class TestMe {
             tuner.initializeTuner();
             LOGGER.info("After init");
         }
-        while (true) {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        boolean cont = true;
+        while (cont) {
             try {
-                LOGGER.info("waiting");
-                Thread.sleep(10000);
-            } catch (InterruptedException e) {
-
+                String s = reader.readLine();
+                if ("quit".equals(s)) {
+                    cont = false;
+                    LOGGER.info("quitting");
+                }
+            } catch (IOException e) {
+                LOGGER.error(e);
             }
         }
+        instance.deInitialize();
     }
 
     private static class LoggingRadioServiceListener implements RadioServiceListener, TextualMetadataListener, VisualMetadataListener {
@@ -130,22 +138,12 @@ public class TestMe {
         public void newVisualMetadata(Visual visualMetadata) {
             LOGGER.info("new visual info: {} {}x{}", visualMetadata.getVisualMimeType(), visualMetadata.getVisualWidth(), visualMetadata.getVisualHeight());
             if (visualMetadata instanceof VisualDabSlideShow dabSlideShow) {
-                LOGGER.info("isCategorised: {}, name: {}, id: {}", dabSlideShow.isCategorized(), dabSlideShow.getContentName(), dabSlideShow.getSlideId());
+                LOGGER.info("isCategorised: {}, catText: {}, name: {}, id: {}, contentType: {}, contentSub: {}", dabSlideShow.isCategorized(), dabSlideShow.getCategoryText(), dabSlideShow.getContentName(), dabSlideShow.getSlideId(), dabSlideShow.getContentType(), dabSlideShow.getContentSubType());
                 if (dabSlideShow.isCategorized()) {
                     LOGGER.info("Category: {}, link: {}", dabSlideShow.getCategoryText(), dabSlideShow.getLink());
                 }
             }
             LOGGER.info("-------");
-        }
-    }
-
-    private static class ShutdownHandler extends Thread {
-
-        @Override
-        public void run() {
-            for (Tuner tuner : Radio.getInstance().getAvailableTuners()) {
-                tuner.deInitializeTuner();
-            }
         }
     }
 }
