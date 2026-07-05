@@ -1,31 +1,25 @@
 package org.omri.radio.impl;
 
-import com.thiakil.standin.Log;
-
 import java.util.Vector;
-
-import static com.thiakil.standin.BuildConfig.DEBUG;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Copyright (C) 2018 IRT GmbH
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
+ * at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
  *
  * @author Fabian Sattler, IRT GmbH
  */
 class DabAudioDecoderFactory implements DabAudioDecoder.DabAudioDecoderStateCallBack {
 
-	private final static String TAG = "DabAudioDecoderFactory";
+	private static final Logger LOGGER = LogManager.getLogger("DabAudioDecoderFactory");
 
 	private static final DabAudioDecoderFactory mFactoryInstance = new DabAudioDecoderFactory();
 
@@ -41,20 +35,20 @@ class DabAudioDecoderFactory implements DabAudioDecoder.DabAudioDecoderStateCall
 
 	DabAudioDecoder getDecoder(int dabCodec, int samplingRate, int channelCnt, boolean sbr, boolean ps) {
 		DabAudioDecoder retDec = new DabAudioDecoder();
-		if(retDec.configure(dabCodec, samplingRate, channelCnt, sbr, ps)) {
+		if (retDec.configure(dabCodec, samplingRate, channelCnt, sbr, ps)) {
 			retDec.registerDabAudioDecoderStateCallBack(this);
 			mDecoderInstances.add(retDec);
-			if(DEBUG)Log.d(TAG, "Current DabAudioDecoder instances: " + mDecoderInstances.size());
+			LOGGER.debug("Current DabAudioDecoder instances: " + mDecoderInstances.size());
 			return retDec;
 		}
 
-		if(DEBUG) Log.e(TAG, "Codec creation failed");
+		LOGGER.error("Codec creation failed");
 		return null;
 	}
 
 	void stopAll() {
-		if(DEBUG)Log.d(TAG, "Stopping all running DabAudioDecoder instances...");
-		for(DabAudioDecoder dec : mDecoderInstances) {
+		LOGGER.debug("Stopping all running DabAudioDecoder instances...");
+		for (DabAudioDecoder dec : mDecoderInstances) {
 			dec.stopCodec();
 		}
 	}
@@ -62,7 +56,7 @@ class DabAudioDecoderFactory implements DabAudioDecoder.DabAudioDecoderStateCall
 	/**/
 	@Override
 	public void codecStopped(DabAudioDecoder decoder) {
-		if(DEBUG)Log.d(TAG, "Removing stopped DabAudioDecoder");
+		LOGGER.debug("Removing stopped DabAudioDecoder");
 		mDecoderInstances.remove(decoder);
 	}
 }

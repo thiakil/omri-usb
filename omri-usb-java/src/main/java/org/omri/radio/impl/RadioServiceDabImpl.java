@@ -1,18 +1,16 @@
 package org.omri.radio.impl;
 
-import com.thiakil.standin.Log;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
 import org.omri.radioservice.RadioServiceType;
-
-import static com.thiakil.standin.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -36,6 +34,8 @@ import static com.thiakil.standin.BuildConfig.DEBUG;
 public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServiceDab, Serializable {
 
 	private static final long serialVersionUID = 6561664196086864931L;
+
+	private static final Logger LOGGER = LogManager.getLogger("DabService");
 	
 	private int mEnsembleEcc;
 	private int mEnsembleId;
@@ -64,7 +64,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	
 	void setEnsembleEcc(int ensembleEcc) {
 		this.mEnsembleEcc = ensembleEcc;
-		if(DEBUG)Log.d("DabService", " Ensemble ECC: " + mEnsembleEcc);
+		LOGGER.debug("Ensemble ECC: " + mEnsembleEcc);
 	}
 
 	@Override
@@ -74,7 +74,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	
 	void setEnsembleId(int ensembleId) {
 		this.mEnsembleId = ensembleId;
-		if(DEBUG)Log.d("DabService", " Ensemble ID: " + mEnsembleId);
+		LOGGER.debug("Ensemble ID: " + mEnsembleId);
 	}
 
 	@Override

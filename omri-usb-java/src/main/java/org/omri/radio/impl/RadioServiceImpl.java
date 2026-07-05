@@ -1,13 +1,15 @@
 package org.omri.radio.impl;
 
-import com.thiakil.standin.Log;
-
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceAudiodataListener;
@@ -24,23 +26,17 @@ import org.omri.radioservice.metadata.Visual;
 import org.omri.radioservice.metadata.VisualDabSlideShow;
 import org.omri.radioservice.metadata.VisualMetadataListener;
 
-import static com.thiakil.standin.BuildConfig.DEBUG;
-
 /**
  * Copyright (C) 2018 IRT GmbH
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
+ * at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ *
  * @author Fabian Sattler, IRT GmbH
  */
 
@@ -48,7 +44,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 	private static final long serialVersionUID = 1823267026268112744L;
 
-	private final String TAG = "RadioServiceImpl";
+	private static final Logger LOGGER = LogManager.getLogger("RadioServiceImpl");
 
 	private String mShortDescription = "";
 	private String mLongDescription = "";
@@ -58,7 +54,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	private List<Location> mLocationList = new ArrayList<Location>();
 	private List<String> mKeywordsList = new ArrayList<String>();
 	private List<Group> mGroupsList = new ArrayList<Group>();
-	
+
 	transient List<VisualMetadataListener> mSlideshowListeners = new ArrayList<>();
 	transient List<TextualMetadataListener> mLabelListeners = new ArrayList<>();
 	transient List<ProgrammeServiceMetadataListener> mSpiListeners = new ArrayList<>();
@@ -80,7 +76,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	private String mHradioSearchSource = "";
 
 	void setHradioSearchSource(String source) {
-		if(source != null) {
+		if (source != null) {
 			mHradioSearchSource = source;
 		}
 	}
@@ -90,7 +86,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	//Serialization
-	private void writeObject(java.io.ObjectOutputStream stream) throws IOException {
+	private void writeObject(ObjectOutputStream stream) throws IOException {
 		stream.writeObject(mShortDescription);
 		stream.writeObject(mLongDescription);
 		stream.writeObject(mGenreList);
@@ -100,16 +96,16 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		stream.writeObject(mGroupsList);
 	}
 
-	private void readObject(java.io.ObjectInputStream stream) throws IOException, ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
-		mShortDescription = (String)stream.readObject();
-		mLongDescription  = (String)stream.readObject();
+	private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
+		mShortDescription = (String) stream.readObject();
+		mLongDescription = (String) stream.readObject();
 		mLogoVisuals = new ArrayList<>();
 
-		mGenreList = (ArrayList<TermId>)stream.readObject();
-		mLinksList = (ArrayList<String>)stream.readObject();
-		mLocationList = (ArrayList<Location>)stream.readObject();
-		mKeywordsList = (ArrayList<String>)stream.readObject();
-		mGroupsList = (ArrayList<Group>)stream.readObject();
+		mGenreList = (ArrayList<TermId>) stream.readObject();
+		mLinksList = (ArrayList<String>) stream.readObject();
+		mLocationList = (ArrayList<Location>) stream.readObject();
+		mKeywordsList = (ArrayList<String>) stream.readObject();
+		mGroupsList = (ArrayList<Group>) stream.readObject();
 
 		mSlideshowListeners = new ArrayList<>();
 		mLabelListeners = new ArrayList<>();
@@ -147,7 +143,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	void setLongDescription(String longDesc) {
 		this.mLongDescription = longDesc;
 	}
-	
+
 	@Override
 	public List<Visual> getLogos() {
 		return mLogoVisuals;
@@ -228,102 +224,103 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 	@Override
 	public void subscribe(RadioServiceListener radioServiceListener) {
-		if(radioServiceListener != null) {
-			if(radioServiceListener instanceof TextualMetadataListener) {
-				if(!mLabelListeners.contains(radioServiceListener)) {
-					if(DEBUG)Log.d(TAG, "Subscribing TextualMetadataListener: " + radioServiceListener);
+		if (radioServiceListener != null) {
+			if (radioServiceListener instanceof TextualMetadataListener) {
+				if (!mLabelListeners.contains(radioServiceListener)) {
+					LOGGER.debug("Subscribing TextualMetadataListener: " + radioServiceListener);
 					this.mLabelListeners.add((TextualMetadataListener) radioServiceListener);
 				}
 			}
-			if(radioServiceListener instanceof VisualMetadataListener) {
-				if(!mSlideshowListeners.contains(radioServiceListener)) {
-					if(DEBUG)Log.d(TAG, "Subscribing VisualMetadataListener: " + radioServiceListener);
+			if (radioServiceListener instanceof VisualMetadataListener) {
+				if (!mSlideshowListeners.contains(radioServiceListener)) {
+					LOGGER.debug("Subscribing VisualMetadataListener: " + radioServiceListener);
 					this.mSlideshowListeners.add((VisualMetadataListener) radioServiceListener);
 				}
 			}
-			if(radioServiceListener instanceof RadioServiceAudiodataListener) {
-				if(!mAudiodataListeners.contains(radioServiceListener)) {
-					if(DEBUG)Log.d(TAG, "Subscribing RadioServiceAudiodataListener: " + radioServiceListener);
+			if (radioServiceListener instanceof RadioServiceAudiodataListener) {
+				if (!mAudiodataListeners.contains(radioServiceListener)) {
+					LOGGER.debug("Subscribing RadioServiceAudiodataListener: " + radioServiceListener);
 					mDecodeAudio = true;
 					this.mAudiodataListeners.add((RadioServiceAudiodataListener) radioServiceListener);
 				}
 			}
-			if(radioServiceListener instanceof RadioServiceRawAudiodataListener) {
-				if(!mRawAudiodataListeners.contains(radioServiceListener)) {
-					if(DEBUG)Log.d(TAG, "Subscribing RadioServiceRawAudiodataListener: " + radioServiceListener);
+			if (radioServiceListener instanceof RadioServiceRawAudiodataListener) {
+				if (!mRawAudiodataListeners.contains(radioServiceListener)) {
+					LOGGER.debug("Subscribing RadioServiceRawAudiodataListener: " + radioServiceListener);
 					this.mRawAudiodataListeners.add((RadioServiceRawAudiodataListener) radioServiceListener);
 				}
 			}
-			if(radioServiceListener instanceof ProgrammeServiceMetadataListener) {
-				if(!mSpiListeners.contains(radioServiceListener)) {
-					if(DEBUG)Log.d(TAG, "Subscribing ProgrammeServiceMetadataListener: " + radioServiceListener);
+			if (radioServiceListener instanceof ProgrammeServiceMetadataListener) {
+				if (!mSpiListeners.contains(radioServiceListener)) {
+					LOGGER.debug("Subscribing ProgrammeServiceMetadataListener: " + radioServiceListener);
 					this.mSpiListeners.add((ProgrammeServiceMetadataListener) radioServiceListener);
 				}
 			}
 		} else {
-			if(DEBUG)Log.d(TAG, "Subscribing RadioServiceListener is null");
+			LOGGER.debug("Subscribing RadioServiceListener is null");
 		}
 	}
 
 	@Override
 	public void unsubscribe(RadioServiceListener radioServiceListener) {
-		if(radioServiceListener != null) {
-			if(radioServiceListener instanceof TextualMetadataListener) {
-				if(DEBUG)Log.d(TAG, "UnSubscribing TextualMetadataListener: " + radioServiceListener);
+		if (radioServiceListener != null) {
+			if (radioServiceListener instanceof TextualMetadataListener) {
+				LOGGER.debug("UnSubscribing TextualMetadataListener: " + radioServiceListener);
 				this.mLabelListeners.remove(radioServiceListener);
 			}
-			if(radioServiceListener instanceof VisualMetadataListener) {
-				if(DEBUG)Log.d(TAG, "UnSubscribing VisualMetadataListener: " + radioServiceListener);
+			if (radioServiceListener instanceof VisualMetadataListener) {
+				LOGGER.debug("UnSubscribing VisualMetadataListener: " + radioServiceListener);
 				this.mSlideshowListeners.remove(radioServiceListener);
 			}
-			if(radioServiceListener instanceof RadioServiceAudiodataListener) {
-				if(DEBUG)Log.d(TAG, "UnSubscribing RadioServiceAudiodataListener: " + radioServiceListener);
+			if (radioServiceListener instanceof RadioServiceAudiodataListener) {
+				LOGGER.debug("UnSubscribing RadioServiceAudiodataListener: " + radioServiceListener);
 				this.mAudiodataListeners.remove(radioServiceListener);
 
-				if(mAudiodataListeners.isEmpty()) {
+				if (mAudiodataListeners.isEmpty()) {
 					mDecodeAudio = false;
 				}
 			}
-			if(radioServiceListener instanceof RadioServiceRawAudiodataListener) {
-				if(DEBUG)Log.d(TAG, "UnSubscribing RadioServiceRawAudiodataListener: " + radioServiceListener);
+			if (radioServiceListener instanceof RadioServiceRawAudiodataListener) {
+				LOGGER.debug("UnSubscribing RadioServiceRawAudiodataListener: " + radioServiceListener);
 				this.mRawAudiodataListeners.remove(radioServiceListener);
 			}
-			if(radioServiceListener instanceof ProgrammeServiceMetadataListener) {
-				if(DEBUG)Log.d(TAG, "UnSubscribing ProgrammeServiceMetadataListener: " + radioServiceListener);
+			if (radioServiceListener instanceof ProgrammeServiceMetadataListener) {
+				LOGGER.debug("UnSubscribing ProgrammeServiceMetadataListener: " + radioServiceListener);
 				this.mSpiListeners.remove(radioServiceListener);
 			}
 		} else {
-			if(DEBUG)Log.d(TAG, "UnSubscribing RadioServiceListener is null");
+			LOGGER.debug("UnSubscribing RadioServiceListener is null");
 		}
 	}
 
 	//callbacks from the tuner
 	void slideshowReceived(VisualDabSlideShow slideShow) {
-		for(VisualMetadataListener slsListener : mSlideshowListeners) {
+		for (VisualMetadataListener slsListener : mSlideshowListeners) {
 			slsListener.newVisualMetadata(slideShow);
 		}
 	}
 
 	void labeReceived(Textual label) {
-		for(TextualMetadataListener dlsListener : mLabelListeners) {
+		for (TextualMetadataListener dlsListener : mLabelListeners) {
 			dlsListener.newTextualMetadata(label);
 		}
 	}
 
 	void audioData(final byte[] pcmData, final int channelCount, final int samplingRate) {
-		if(mDecodeAudio && mAudioDec != null) {
+		if (mDecodeAudio && mAudioDec != null) {
 			mAudioDec.feedData(pcmData);
 		}
 
-		for(RadioServiceRawAudiodataListener rawListener : mRawAudiodataListeners) {
+		for (RadioServiceRawAudiodataListener rawListener : mRawAudiodataListeners) {
 			rawListener.rawAudioData(pcmData, mSbrUsed, mPsUsed, mMimeType, channelCount, samplingRate);
 		}
 	}
 
 	private transient DabAudioDecoder mAudioDec = null;
 	private RadioServiceMimeType mMimeType = RadioServiceMimeType.UNKNOWN;
+
 	void audioFormatChanged(final int ascty, final int channelCount, final int samplingRate, final boolean sbrUsed, final boolean psUsed) {
-		if(DEBUG)Log.d(TAG, "audioFormatChanged: ASCTY:" + ascty +", SBR: " + sbrUsed + ", PS: " + psUsed);
+		LOGGER.debug("audioFormatChanged: ASCTY:" + ascty + ", SBR: " + sbrUsed + ", PS: " + psUsed);
 		mMimeType = RadioServiceMimeType.UNKNOWN;
 		mAscty = ascty;
 		mSbrUsed = sbrUsed;
@@ -331,22 +328,22 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		mConfigChans = channelCount;
 		mConfigSampling = samplingRate;
 
-		if(mAscty == 0) {
+		if (mAscty == 0) {
 			mMimeType = RadioServiceMimeType.AUDIO_MPEG;
 		}
-		if(mAscty == 63) {
+		if (mAscty == 63) {
 			mMimeType = RadioServiceMimeType.AUDIO_AAC_DAB_AU;
 		}
 
-		if(mAudioDec == null) {
+		if (mAudioDec == null) {
 			mAudioDec = DabAudioDecoderFactory.getInstance().getDecoder(ascty, samplingRate, channelCount, sbrUsed, psUsed);
 		} else {
-			if(mAudioDec.getConfCodec() != ascty ||
-			    mAudioDec.getConfSampling() != samplingRate ||
-			    mAudioDec.getConfChans() != channelCount ||
+			if (mAudioDec.getConfCodec() != ascty ||
+				mAudioDec.getConfSampling() != samplingRate ||
+				mAudioDec.getConfChans() != channelCount ||
 				mAudioDec.getConfSbr() != sbrUsed ||
 				mAudioDec.getConfPs() != psUsed) {
-				if(DEBUG)Log.d(TAG, "Reconfiguring codec");
+				LOGGER.debug("Reconfiguring codec");
 
 				mAudioDec.stopCodec();
 
@@ -354,7 +351,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 			}
 		}
 
-		if(mAudioDec != null) {
+		if (mAudioDec != null) {
 			mAudioDec.setCodecCallback(new DabAudioDecoder.DabDecoderCallback() {
 				@Override
 				public void decodedAudioData(byte[] pcmData, final int samplerate, final int channels) {
@@ -365,7 +362,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 				@Override
 				public void outputFormatChanged(int sampleRate, int chanCnt) {
-					Log.d(TAG, "outputFormatChanged: " + sampleRate + " : " + chanCnt);
+					LOGGER.debug("outputFormatChanged: " + sampleRate + " : " + chanCnt);
 					mSamplingRate = sampleRate;
 					mChannelConfig = chanCnt;
 				}
@@ -376,10 +373,10 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	void serviceStopped() {
-		if(DEBUG)Log.d(TAG, "Service '" + getServiceLabel() + "' stopped");
+		LOGGER.debug("Service '" + getServiceLabel() + "' stopped");
 
-		if(mAudioDec != null) {
-			if(DEBUG)Log.d(TAG, "Stopping DabAudioDecoder...");
+		if (mAudioDec != null) {
+			LOGGER.debug("Stopping DabAudioDecoder...");
 			mAudioDec.stopCodec();
 		}
 
