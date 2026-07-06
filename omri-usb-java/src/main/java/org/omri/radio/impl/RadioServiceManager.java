@@ -1,5 +1,6 @@
 package org.omri.radio.impl;
 
+import java.util.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -249,8 +250,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 				uappObj.put("caOrg", uapp.getCaOrganization());
 				uappObj.put("dscty", uapp.getDataServiceComponentType().getType());
 				uappObj.put("uappType", uapp.getType().getType());
-				//todo app data?
-				//uappObj.put("uappData", uapp.getUserApplicationData() != null ? new String(Base64.encode(uapp.getUserApplicationData(), Base64.NO_WRAP)) : "");
+				uappObj.put("uappData", uapp.getUserApplicationData() != null ? Base64.getEncoder().encodeToString(uapp.getUserApplicationData()) : "");
 				uappObj.put("xpadAppType", uapp.getXpadAppType());
 				uappObj.put("caProtected", uapp.isCaProtected());
 				uappObj.put("dgUsed", uapp.isDatagroupTransportUsed());
@@ -381,10 +381,10 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 				uapp.setUserApplicationType(uappObj.getInt("uappType"));
 
 				//todo app data?
-				//String uappDataString = uappObj.getString("uappData");
-				/*if (!uappDataString.isEmpty()) {
-					uapp.setUappdata(Base64.decode(uappDataString, Base64.NO_WRAP));
-				}*/
+				String uappDataString = uappObj.has("uappData") ? uappObj.getString("uappData") : "";
+				if (!uappDataString.isEmpty()) {
+					uapp.setUappdata(Base64.getDecoder().decode(uappDataString));
+				}
 
 				uapp.setXpadApptype(uappObj.getInt("xpadAppType"));
 				uapp.setIsCaProtected(uappObj.getBoolean("caProtected"));
