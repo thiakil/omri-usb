@@ -6,3 +6,4 @@ ktor:
       - com.thiakil.SerializationKt.configureSerialization
       - com.thiakil.ShutdownUrlKt.configureShutdownUrl
       - com.thiakil.RoutingKt.configureRouting
+      - com.thiakil.TunerApiKt.tunerApi
