@@ -4,6 +4,9 @@ import com.thiakil.standin.AsyncTask ;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
@@ -133,17 +136,17 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
-	public TunerType getTunerType() {
+	public @NonNull TunerType getTunerType() {
 		return mTunertype;
 	}
 
 	@Override
-	public TunerStatus getTunerStatus() {
+	public @NotNull TunerStatus getTunerStatus() {
 		return mTunerStatus;
 	}
 
 	@Override
-	public List<RadioService> getRadioServices() {
+	public @NotNull List<RadioService> getRadioServices() {
         LOGGER.debug("getting Services at TunerStatus: {}", mTunerStatus.toString());
 		if (mTunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED) {
 			return RadioServiceManager.getInstance().getRadioServices(RadioServiceType.RADIOSERVICE_TYPE_DAB);
@@ -180,7 +183,7 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
-	public void startRadioService(RadioService radioService) {
+	public void startRadioService(@NotNull RadioService radioService) {
         LOGGER.debug("Starting Service: {}", radioService.getServiceLabel());
 
 		if (radioService.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB) {
@@ -194,7 +197,7 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
-	public RadioService getCurrentRunningRadioService() {
+	public @Nullable RadioService getCurrentRunningRadioService() {
 		return mCurrentlyRunningService;
 	}
 

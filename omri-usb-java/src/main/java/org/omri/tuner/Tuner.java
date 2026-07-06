@@ -2,6 +2,8 @@ package org.omri.tuner;
 
 import java.util.List;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.omri.radioservice.RadioService;
 
 /**
@@ -49,19 +51,24 @@ public interface Tuner {
 	 * Indicates the type of tuner
 	 * @return the {@link TunerType} of this {@link Tuner}
 	 */
+	@NotNull
 	public TunerType getTunerType();
 	
 	/**
 	 * Indicates the current status of the {@link Tuner} device
+	 *
 	 * @return the current {@link TunerStatus}
 	 */
+	@NotNull
 	public TunerStatus getTunerStatus();
 	
 	/**
 	 * Retrieve the currently known {@link RadioService}s of this {@link Tuner}
+	 *
 	 * @return a list of {@link RadioService}s or an empty list
 	 */
-	public List<RadioService> getRadioServices();
+	@NotNull
+	public List<@NotNull RadioService> getRadioServices();
 	
 	/**
 	 * Start a scan for available {@link RadioService}s
@@ -83,7 +90,7 @@ public interface Tuner {
 	 * Start a {@link RadioService} on this tuner
 	 * @param radioService the {@link RadioService} to start
 	 */
-	public void startRadioService(RadioService radioService);
+	public void startRadioService(@NotNull RadioService radioService);
 	
 	/**
 	 * Stop the currently running {@link RadioService} on this tuner
@@ -92,8 +99,10 @@ public interface Tuner {
 
 	/**
 	 * Retrieve the currently running {@link RadioService}
+	 *
 	 * @return the currently running {@link RadioService} or {@code null} if no {@link RadioService} is running
 	 */
+	@Nullable
 	public RadioService getCurrentRunningRadioService();
 	
 	/**
