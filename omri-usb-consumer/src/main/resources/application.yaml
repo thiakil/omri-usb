@@ -1,0 +1,9 @@
+ktor:
+  deployment:
+    port: 8080
+  application:
+    modules:
+      - com.thaikil.HttpKt.configureHttp
+      - com.thaikil.SerializationKt.configureSerialization
+      - com.thaikil.ShutdownUrlKt.configureShutdownUrl
+      - com.thaikil.RoutingKt.configureRouting

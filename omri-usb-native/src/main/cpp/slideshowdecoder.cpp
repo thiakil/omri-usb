@@ -63,7 +63,7 @@ void SlideshowDecoder::motApplicationDataInput(const MOT_Data& motData) {
                 //Triggertime
                 //TODO triggertime parameters parsing and set slide param
                 bool validityFlag = (param.second[0] & 0x80) >> 7 != 0;
-                std::cout << m_logTag << " Slideshow Header TriggerTime: " << +validityFlag << std::endl;
+                LOG_DEBUG(m_logTag.c_str(), std::format("Slideshow Header TriggerTime: {} ({})", param.second[0], validityFlag? "UTC" : "NOW"));
                 break;
             }
             //6 - VersionNumber

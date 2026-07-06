@@ -23,6 +23,12 @@ dependencies {
     //testImplementation 'junit:junit:4.12'
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
 /*application {
     applicationDefaultJvmArgs = ["-Djava.library.path=" + file("${buildDir}/libs/irtdab/shared").absolutePath]
 }*/

@@ -1,0 +1,15 @@
+[versions]
+kotlin = "2.4.0"
+#logback = "1.5.35"
+log4j2 = "2.26.1"
+
+[libraries]
+#logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+log4j-api = { group = "org.apache.logging.log4j", name = "log4j-api", version.ref = "log4j2" }
+log4j-core = { group = "org.apache.logging.log4j", name = "log4j-core", version.ref = "log4j2" }
+log4j-slf4j-impl = { group = "org.apache.logging.log4j", name = "log4j-slf4j-impl", version.ref = "log4j2" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

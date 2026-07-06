@@ -1,8 +1,16 @@
+import org.gradle.internal.jvm.Jvm
 plugins {
     id 'cpp-library'
 }
 
-def javaHome = System.getProperty("java.home")
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.newDataInputStream())
+}
+
+def javaHome = Jvm.current().javaHome
 
 library {
     baseName = 'irtdab'
@@ -29,8 +37,10 @@ tasks.withType(LinkSharedLibrary).configureEach {
     linkerArgs.addAll("-pthread", "-lusb-1.0", "-L${javaHome}/lib", '-ljvm')
 }
 
-toolChains {
-    gcc(Gcc) {
-        path 'D:\\msys64\\mingw64\\bin'
+if (localProperties.containsKey("custom_gcc")) {
+    toolChains {
+        register("gcc", Gcc) {
+            path localProperties.getProperty("custom_gcc")
+        }
     }
 }
