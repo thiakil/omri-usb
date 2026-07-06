@@ -34,7 +34,7 @@
     <Logger name="RadioImpl" level="INFO"/>
     <Logger name="UsbHelper" level="INFO"/>
     <Logger name="UsbHelperNative" level="INFO"/>
-    <Logger name="[SlideshowDecoder]" level="DEBUG"/>
+    <Logger name="SlideshowDecoder" level="DEBUG"/>
     <Root level="DEBUG">
       <AppenderRef ref="CONSOLE"/>
     </Root>

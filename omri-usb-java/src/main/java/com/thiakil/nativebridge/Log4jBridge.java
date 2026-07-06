@@ -10,7 +10,14 @@ public class Log4jBridge {
     private static final Map<String, Logger> loggers = new HashMap<>();
 
     private static Logger getLogger(String tag) {
-        return loggers.computeIfAbsent(tag, LogManager::getLogger);
+        return loggers.computeIfAbsent(tag, Log4jBridge::trimTag);
+    }
+
+    private static Logger trimTag(String raw) {
+        if (raw.startsWith("[") && raw.endsWith("]")) {
+            raw = raw.substring(1, raw.length()-1);
+        }
+        return LogManager.getLogger(raw);
     }
 
     // Methods used in native
