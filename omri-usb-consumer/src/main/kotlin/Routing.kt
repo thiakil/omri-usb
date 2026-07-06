@@ -1,4 +1,4 @@
-package com.thaikil
+package com.thiakil
 
 import io.ktor.server.application.*
 import io.ktor.server.response.*

@@ -1,8 +1,7 @@
-package com.thaikil
+package com.thiakil
 
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
-import io.ktor.server.response.*
 
 fun Application.configureShutdownUrl() {
     install(ShutDownUrl.ApplicationCallPlugin) {
