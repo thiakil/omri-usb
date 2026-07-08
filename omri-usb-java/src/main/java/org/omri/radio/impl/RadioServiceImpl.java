@@ -73,18 +73,6 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	private int mConfigChans = 0;
 	private int mConfigSampling = 0;
 
-	private String mHradioSearchSource = "";
-
-	void setHradioSearchSource(String source) {
-		if (source != null) {
-			mHradioSearchSource = source;
-		}
-	}
-
-	public String getHradioSearchSource() {
-		return mHradioSearchSource;
-	}
-
 	//Serialization
 	private void writeObject(ObjectOutputStream stream) throws IOException {
 		stream.writeObject(mShortDescription);
@@ -294,20 +282,23 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	//callbacks from the tuner
+	@SuppressWarnings("unused")//native callback
 	void slideshowReceived(VisualDabSlideShow slideShow) {
 		for (VisualMetadataListener slsListener : mSlideshowListeners) {
 			slsListener.newVisualMetadata(slideShow);
 		}
 	}
 
+	@SuppressWarnings("unused")//native callback
 	void labeReceived(Textual label) {
 		for (TextualMetadataListener dlsListener : mLabelListeners) {
 			dlsListener.newTextualMetadata(label);
 		}
 	}
 
+	@SuppressWarnings("unused")//native callback
 	void audioData(final byte[] pcmData, final int channelCount, final int samplingRate) {
-		if (mDecodeAudio && mAudioDec != null) {
+		if (/*mDecodeAudio && */mAudioDec != null) {
 			mAudioDec.feedData(pcmData);
 		}
 
@@ -319,6 +310,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	private transient DabAudioDecoder mAudioDec = null;
 	private RadioServiceMimeType mMimeType = RadioServiceMimeType.UNKNOWN;
 
+	@SuppressWarnings("unused")//native callback
 	void audioFormatChanged(final int ascty, final int channelCount, final int samplingRate, final boolean sbrUsed, final boolean psUsed) {
         LOGGER.debug("audioFormatChanged: ASCTY:{}, SBR: {}, PS: {}", ascty, sbrUsed, psUsed);
 		mMimeType = RadioServiceMimeType.UNKNOWN;
@@ -351,26 +343,11 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 			}
 		}
 
-		if (mAudioDec != null) {
-			mAudioDec.setCodecCallback(new DabAudioDecoder.DabDecoderCallback() {
-				@Override
-				public void decodedAudioData(byte[] pcmData, final int samplerate, final int channels) {
-					for (final RadioServiceAudiodataListener audiolistener : mAudiodataListeners) {
-						audiolistener.pcmAudioData(pcmData, channels, samplingRate);
-					}
-				}
-
-				@Override
-				public void outputFormatChanged(int sampleRate, int chanCnt) {
-                    LOGGER.debug("outputFormatChanged: {} : {}", sampleRate, chanCnt);
-					mSamplingRate = sampleRate;
-					mChannelConfig = chanCnt;
-				}
-			});
-		} else {
-			Radio.getInstance().stopRadioService(this);
-		}
-	}
+        if (mAudioDec == null) {
+			LOGGER.error("Decoder is null, force stopping service '{}'", getServiceLabel());
+            Radio.getInstance().stopRadioService(this);
+        }
+    }
 
 	void serviceStopped() {
         LOGGER.debug("Service '{}' stopped", getServiceLabel());
@@ -381,13 +358,6 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		}
 
 		mAudioDec = null;
-	}
-
-	/* PCM data from a Shoutcast IP service */
-	void decodedAudioData(final byte[] pcmAudioData, final int channelCount, final int samplingRate) {
-		for (final RadioServiceAudiodataListener audiolistener : mAudiodataListeners) {
-			audiolistener.pcmAudioData(pcmAudioData, channelCount, samplingRate);
-		}
 	}
 
 }

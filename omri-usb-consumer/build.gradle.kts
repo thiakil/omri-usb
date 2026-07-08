@@ -12,7 +12,12 @@ application {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(25)
+}
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(25))
+    }
 }
 dependencies {
     implementation(ktorLibs.serialization.kotlinx.json)
@@ -20,6 +25,7 @@ dependencies {
     implementation(ktorLibs.server.contentNegotiation)
     implementation(ktorLibs.server.core)
     implementation(ktorLibs.server.netty)
+    implementation(ktorLibs.server.websockets)
     //implementation(ktorLibs.server.openapi)
     //implementation(ktorLibs.server.routingOpenapi)
     implementation(libs.log4j.api)
@@ -28,6 +34,7 @@ dependencies {
 
 
     implementation(project(":omri-usb-java"))
+    implementation("org.freedesktop.gstreamer:gst1-java-core:1.4.0")
 
     testImplementation(kotlin("test"))
     testImplementation(ktorLibs.server.testHost)
