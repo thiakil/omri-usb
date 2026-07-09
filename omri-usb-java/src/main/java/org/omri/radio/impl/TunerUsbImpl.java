@@ -2,6 +2,7 @@ package org.omri.radio.impl;
 
 import com.thiakil.standin.AsyncTask ;
 
+import java.util.Collections;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -45,7 +46,7 @@ public class TunerUsbImpl implements TunerUsb {
 	private List<RadioService> mServices = new ArrayList<>();
 	private List<RadioService> mScannedServices = new ArrayList<>();
 	private boolean mIsScanning = false;
-	private List<TunerListener> mTunerlisteners = new ArrayList<>();
+	private List<TunerListener> mTunerlisteners = Collections.synchronizedList(new ArrayList<>());
 	private RadioServiceDab mCurrentlyRunningService = null;
 
 	private final long mUsbDevice;
