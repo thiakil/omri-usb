@@ -170,7 +170,9 @@ void RaonTunerInput::startServiceSync(std::shared_ptr<JDabService> serviceLink) 
     if(m_startServiceLink != nullptr) {
         m_startServiceLink->decodeAudio(false);
         if(m_startServiceLink->getJavaDabServiceObject() != nullptr) {
-            m_usbDevice->serviceStopped(m_startServiceLink->getJavaDabServiceObject());
+            if (m_usbDevice != nullptr) {
+                m_usbDevice->serviceStopped(m_startServiceLink->getJavaDabServiceObject());
+            }
         }
     }
 
