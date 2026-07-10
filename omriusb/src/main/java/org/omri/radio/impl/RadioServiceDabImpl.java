@@ -1,19 +1,16 @@
 package org.omri.radio.impl;
 
-import android.os.Build;
-import android.util.Log;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
 import org.omri.radioservice.RadioServiceType;
-
-import static org.omri.BuildConfig.DEBUG;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -33,9 +30,12 @@ import static org.omri.BuildConfig.DEBUG;
  * @author Fabian Sattler, IRT GmbH
  */
 
+//used from C
 public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServiceDab, Serializable {
 
 	private static final long serialVersionUID = 6561664196086864931L;
+
+	private static final Logger LOGGER = LogManager.getLogger("DabService");
 	
 	private int mEnsembleEcc;
 	private int mEnsembleId;
@@ -64,7 +64,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	
 	void setEnsembleEcc(int ensembleEcc) {
 		this.mEnsembleEcc = ensembleEcc;
-		if(DEBUG)Log.d("DabService", " Ensemble ECC: " + mEnsembleEcc);
+        LOGGER.debug("Ensemble ECC: {}", mEnsembleEcc);
 	}
 
 	@Override
@@ -74,7 +74,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	
 	void setEnsembleId(int ensembleId) {
 		this.mEnsembleId = ensembleId;
-		if(DEBUG)Log.d("DabService", " Ensemble ID: " + mEnsembleId);
+        LOGGER.debug("Ensemble ID: {}", mEnsembleId);
 	}
 
 	@Override
@@ -186,17 +186,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 
 	@Override
 	public int hashCode() {
-		if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			return Objects.hash(mEnsembleId, mEnsembleFrequency, mServiceId, mEnsembleEcc);
-		} else {
-			int hash = 5;
-			hash = 67 * hash + (int)(this.mEnsembleId ^ (this.mEnsembleId >>> 32));
-			hash = 67 * hash + (int)(this.mEnsembleFrequency ^ (this.mEnsembleFrequency >>> 32));
-			hash = 67 * hash + (int)(this.mServiceId ^ (this.mServiceId >>> 32));
-			hash = 67 * hash + (int)(this.mEnsembleEcc ^ (this.mEnsembleEcc >>> 32));
-
-			return hash;
-		}
+		return Objects.hash(mEnsembleId, mEnsembleFrequency, mServiceId, mEnsembleEcc);
 	}
 
 	@Override
@@ -206,16 +196,6 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 				//A DAB service is uniquely identified by its Service Identifier (SId) and in conjunction with the Extended Country Code unique world-wide
 				RadioServiceDab compSrv = (RadioServiceDab) otherSrv;
 				return (compSrv.getServiceId() == this.mServiceId) && (compSrv.getEnsembleEcc() == this.mEnsembleEcc);
-			} else if(otherSrv instanceof RadioServiceIpImpl) {
-				RadioServiceIpImpl ipSrv = (RadioServiceIpImpl) otherSrv;
-				for(RadioDnsEpgBearer bearer : ipSrv.getBearers()) {
-					if(bearer.getBearerType() == RadioDnsEpgBearerType.DAB) {
-						RadioDnsEpgBearerDab dabBearer = (RadioDnsEpgBearerDab)bearer;
-						if(dabBearer.getServiceId() == this.mServiceId && dabBearer.getEnsembleEcc() == this.mEnsembleEcc) {
-							return true;
-						}
-					}
-				}
 			}
 		}
 

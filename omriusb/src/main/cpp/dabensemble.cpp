@@ -25,6 +25,7 @@
 
 #include "callbackhandle.h"
 #include "timer.h"
+#include "platformspecific/android/log4jbridge.h"
 
 DabEnsemble::DabEnsemble() {
     m_ficPtr = std::unique_ptr<FicParser>(new FicParser);
@@ -36,7 +37,7 @@ DabEnsemble::~DabEnsemble() {
 }
 
 void DabEnsemble::reset() {
-    std::cout << m_logTag << " Reseting Ensemble informations" << std::endl;
+    //std::cout << m_logTag << " Reseting Ensemble informations" << std::endl;
 
     m_reseting = true;
     m_ensembleCollectFinished = false;
@@ -204,20 +205,20 @@ void DabEnsemble::fig00_00_input(const Fig_00_Ext_00& fig00) {
     m_cifCntLow = fig00.getCifCountLow();
 
     if((m_cifCntHigh != m_cifCntHighNext || m_cifCntLow != m_cifCntLowNext) && !m_isInitializing) {
-        std::cout << m_logTag << " CIF Counter interrupted" << std::endl;
-        std::cout << m_logTag << " FIG 00 Ext 00 CifCnt    : " << +m_cifCntHigh << ":" << +m_cifCntLow << std::endl;
-        std::cout << m_logTag << " FIG 00 Ext 00 CifCntNext: " << +m_cifCntHighNext << ":" << +m_cifCntLowNext << std::endl;
+        LOG_ERROR(m_logTag.c_str(), "CIF Counter interrupted");
+        LOG_ERROR(m_logTag.c_str(), std::format("FIG 00 Ext 00 CifCnt    : {}:{}" , m_cifCntHigh, m_cifCntLow));
+        LOG_ERROR(m_logTag.c_str(), std::format("FIG 00 Ext 00 CifCntNext: {}:{}", m_cifCntHighNext , m_cifCntLowNext));
     }
 
     m_cifCntHighNext = static_cast<uint8_t>((m_cifCntLowNext >= 246) ? ((m_cifCntHigh+1) % 20) : m_cifCntHigh);
     m_cifCntLowNext = static_cast<uint8_t>((m_cifCntLow + 4) % 250);
 
-    if(fig00.getChangeFlag() != Fig_00_Ext_00::NO_CHANGE) {
+    /*if(fig00.getChangeFlag() != Fig_00_Ext_00::NO_CHANGE) {
         std::cout << m_logTag << " Fig_00_Ext_00 ChangeFlag: " << +fig00.getChangeFlag() << " OccChange: " << +fig00.getOccurenceChange() << std::endl;
     }
     if(fig00.isNextConfiguration()) {
         std::cout << m_logTag << " Fig_00_Ext_00 nextConfiguration" << std::endl;
-    }
+    }*/
 
     m_isInitializing = false;
 }
@@ -336,7 +337,7 @@ void DabEnsemble::fig00_03_input(const Fig_00_Ext_03& fig03) {
     for(const auto& packetDesc : fig03.getPacketModeServiceDescriptions()) {
         auto compIter = m_packetComponentsMap.find(packetDesc.serviceComponentId);
         if(compIter != m_packetComponentsMap.cend()) {
-            std::cout << m_logTag << " PacketComponent: " << std::hex << packetDesc.serviceComponentId << " setting SubchannelId: " << +packetDesc.subchannelId << std::dec << " PacketAddress: " << +packetDesc.packetAddress << " updating" << std::endl;
+            //std::cout << m_logTag << " PacketComponent: " << std::hex << packetDesc.serviceComponentId << " setting SubchannelId: " << +packetDesc.subchannelId << std::dec << " PacketAddress: " << +packetDesc.packetAddress << " updating" << std::endl;
             compIter->second->setSubchannelId(packetDesc.subchannelId);
             compIter->second->setDataServiceComponentType(packetDesc.dataServiceComponentType);
             compIter->second->setCaOrganization(packetDesc.caOrganization);
@@ -439,7 +440,7 @@ void DabEnsemble::fig00_24_input(const Fig_00_Ext_24& fig24) {
 
 void DabEnsemble::fig00_08_input(const Fig_00_Ext_08& fig08) {
     if(m_streamComponentsMap.empty()) {
-        std::cout << m_logTag << " FIG 00 Ext 08 Maps still empty" << std::endl;
+        //std::cout << m_logTag << " FIG 00 Ext 08 Maps still empty" << std::endl;
         return;
     }
 
@@ -452,7 +453,7 @@ void DabEnsemble::fig00_08_input(const Fig_00_Ext_08& fig08) {
         } else {
             auto packCompIter = m_packetComponentsMap.find(srvGlobalDef.serviceComponentId);
             if(packCompIter != m_packetComponentsMap.cend()) {
-                std::cout << m_logTag << " FIG 00 Ext 08 setting ScIdS for SId: " << std::hex << +srvGlobalDef.serviceId << ", ScId: " << +srvGlobalDef.serviceComponentId << ", SubChanId: " << +packCompIter->second->getSubChannelId() << " to: " << +srvGlobalDef.scIdS << std::dec << std::endl;
+                //std::cout << m_logTag << " FIG 00 Ext 08 setting ScIdS for SId: " << std::hex << +srvGlobalDef.serviceId << ", ScId: " << +srvGlobalDef.serviceComponentId << ", SubChanId: " << +packCompIter->second->getSubChannelId() << " to: " << +srvGlobalDef.scIdS << std::dec << std::endl;
                 packCompIter->second->setServiceComponentIdWithinService(srvGlobalDef.scIdS);
             }
         }
@@ -460,12 +461,12 @@ void DabEnsemble::fig00_08_input(const Fig_00_Ext_08& fig08) {
 }
 
 void DabEnsemble::fig00_09_input(const Fig_00_Ext_09& fig09) {
-    std::cout << m_logTag << " Ensemble ECC: " << std::hex << +fig09.getEnsembleEcc() << std::dec << std::endl;
+   // std::cout << m_logTag << " Ensemble ECC: " << std::hex << +fig09.getEnsembleEcc() << std::dec << std::endl;
     m_ensembleEcc = fig09.getEnsembleEcc();
 }
 
 void DabEnsemble::fig00_10_input(const Fig_00_Ext_10& fig10) {
-    std::cout << m_logTag << " DateAndTime: " << +fig10.getDabTime().unixTimestampSeconds << std::endl;
+    //std::cout << m_logTag << " DateAndTime: " << +fig10.getDabTime().unixTimestampSeconds << std::endl;
 
     m_dateAndTimeDispatcher.invoke(fig10.getDabTime());
 }
@@ -477,7 +478,7 @@ void DabEnsemble::fig00_13_input(const Fig_00_Ext_13& fig13) {
             for(const auto& component : (*serviceIter).second.getServiceComponents()) {
                 if(component->getServiceComponentIdWithinService() == uAppInfo.scIdS) {
                     for(const auto& uApp : uAppInfo.userApplications) {
-                        std::cout << m_logTag << " FIG 00 Ext 13 Adding UserApplication: " << uApp.userAppType << std::endl;
+                        //std::cout << m_logTag << " FIG 00 Ext 13 Adding UserApplication: " << uApp.userAppType << std::endl;
                         DabUserApplication userApp;
                         userApp.setCaOrganization(uApp.caOrganization);
                         userApp.setDataServiceComonentType(uApp.dataServiceComponentType);
@@ -493,7 +494,7 @@ void DabEnsemble::fig00_13_input(const Fig_00_Ext_13& fig13) {
                 }
             }
         } else {
-            std::cout << m_logTag << " SCIDS UserApplication not found" << std::endl;
+            LOG_ERROR(m_logTag.c_str(), std::format("SCIDS UserApplication not found: {}", uAppInfo.serviceID));
         }
     }
 }
@@ -544,27 +545,27 @@ void DabEnsemble::fig00_18_input(const Fig_00_Ext_18& fig18) {
 
 void DabEnsemble::fig00_19_input(const Fig_00_Ext_19& fig19) {
     for(const auto& aSwitched : fig19.getSwitchedAnnouncements()) {
-        if(aSwitched.isNewlyIntroduced) {
+        /*if(aSwitched.isNewlyIntroduced) {
             std::cout << "[Fig_00_Ext_19]" << " Announcement for ClusterId: 0x" << std::hex << +aSwitched.clusterId << std::dec << " received. SwitchSize: " << +aSwitched.announcementsSwitched.size() << std::endl;
-        }
+        }*/
         auto switchedIter = m_activeAnnouncements.find(aSwitched.clusterId);
         if(switchedIter != m_activeAnnouncements.cend()) {
-            std::cout << "[Fig_00_Ext_19]" << " Announcement for ClusterId: 0x" << std::hex << +aSwitched.clusterId << std::dec << " already in map, newly: " <<
-            std::boolalpha << aSwitched.isNewlyIntroduced << std::noboolalpha << ", AnnounceSize: " << +aSwitched.announcementsSwitched.size() << std::endl;
+            //std::cout << "[Fig_00_Ext_19]" << " Announcement for ClusterId: 0x" << std::hex << +aSwitched.clusterId << std::dec << " already in map, newly: " <<
+            //std::boolalpha << aSwitched.isNewlyIntroduced << std::noboolalpha << ", AnnounceSize: " << +aSwitched.announcementsSwitched.size() << std::endl;
             //if(!aSwitched.isNewlyIntroduced) {
             //Announcement in list, switched-list is empty....announcement ended
             if(aSwitched.announcementsSwitched.empty()) {
-                std::cout << "[Fig_00_Ext_19]" << " Announcement for ClusterId: 0x" << std::hex << +(*switchedIter).second.clusterId << std::dec << " ended, removing from map" << std::endl;
+                //std::cout << "[Fig_00_Ext_19]" << " Announcement for ClusterId: 0x" << std::hex << +(*switchedIter).second.clusterId << std::dec << " ended, removing from map" << std::endl;
                 m_activeAnnouncements.erase(switchedIter);
             }
             //}
         } else {
             if(aSwitched.isNewlyIntroduced) {
                 if(!aSwitched.announcementsSwitched.empty()) {
-                    std::cout << "[Fig_00_Ext_19]" << " Adding newlyIntroduced Announcement with ClusterId: 0x" << std::hex << +aSwitched.clusterId  << std::dec << std::endl;
+                    //std::cout << "[Fig_00_Ext_19]" << " Adding newlyIntroduced Announcement with ClusterId: 0x" << std::hex << +aSwitched.clusterId  << std::dec << std::endl;
                     m_activeAnnouncements.insert(std::make_pair(aSwitched.clusterId, aSwitched));
                 } else {
-                    std::cout << "[Fig_00_Ext_19]" << " Not adding newlyIntroduced Announcement with ClusterId: 0x" << std::hex << +aSwitched.clusterId  << std::dec << " , switched is empty" << std::endl;
+                    //std::cout << "[Fig_00_Ext_19]" << " Not adding newlyIntroduced Announcement with ClusterId: 0x" << std::hex << +aSwitched.clusterId  << std::dec << " , switched is empty" << std::endl;
                 }
             }
         }
@@ -584,7 +585,7 @@ void DabEnsemble::fig01_00_input(const Fig_01_Ext_00& fig10) {
 }
 
 void DabEnsemble::fig01_01_input(const Fig_01_Ext_01& fig11) {
-    std::cout << m_logTag << " ServiceSanity FIC 01_01: " << std::hex << +fig11.getProgrammeServiceId() << std::dec << " : " << fig11.getProgrammeServiceLabel() << std::endl;
+    //std::cout << m_logTag << " ServiceSanity FIC 01_01: " << std::hex << +fig11.getProgrammeServiceId() << std::dec << " : " << fig11.getProgrammeServiceLabel() << std::endl;
     auto serviceIter = m_servicesMap.find(fig11.getProgrammeServiceId());
     if(serviceIter != m_servicesMap.cend()) {
         serviceIter->second.setLabelCharset(fig11.getCharset());
@@ -594,7 +595,7 @@ void DabEnsemble::fig01_01_input(const Fig_01_Ext_01& fig11) {
 }
 
 void DabEnsemble::fig01_04_input(const Fig_01_Ext_04& fig14) {
-    std::cout << m_logTag << " ServiceSanity FIC 01_04: " << std::hex << +fig14.getServiceId() << std::dec << ", SCIDs: " << +fig14.getServiceComponentIdWithinService() << " : " << fig14.getServiceComponentLabel() << std::endl;
+    //std::cout << m_logTag << " ServiceSanity FIC 01_04: " << std::hex << +fig14.getServiceId() << std::dec << ", SCIDs: " << +fig14.getServiceComponentIdWithinService() << " : " << fig14.getServiceComponentLabel() << std::endl;
     auto serviceIter = m_servicesMap.find(fig14.getServiceId());
     if(serviceIter != m_servicesMap.cend()) {
         for(auto component : serviceIter->second.getServiceComponents()) {
@@ -608,7 +609,7 @@ void DabEnsemble::fig01_04_input(const Fig_01_Ext_04& fig14) {
 }
 
 void DabEnsemble::fig01_05_input(const Fig_01_Ext_05& fig15) {
-    std::cout << m_logTag << " ServiceSanity FIC 01_05: " << std::hex << +fig15.getDataServiceId() << std::dec << " : " << fig15.getDataServiceLabel() << std::endl;
+    //std::cout << m_logTag << " ServiceSanity FIC 01_05: " << std::hex << +fig15.getDataServiceId() << std::dec << " : " << fig15.getDataServiceLabel() << std::endl;
     auto serviceIter = m_servicesMap.find(fig15.getDataServiceId());
     if(serviceIter != m_servicesMap.cend()) {
         serviceIter->second.setLabelCharset(fig15.getCharset());
@@ -623,7 +624,7 @@ void DabEnsemble::fig01_06_input(const Fig_01_Ext_06& fig16) {
 
 
 void DabEnsemble::fig_00_done_cb(Fig::FIG_00_TYPE type) {
-    std::cout << m_logTag << " FIG 00 Extension: " << +type << " done ###########" << std::endl;
+    //std::cout << m_logTag << " FIG 00 Extension: " << +type << " done ###########" << std::endl;
 
     switch (type) {
         case Fig::FIG_00_TYPE::BASIC_SUBCHANNEL_ORGANIZATION: {

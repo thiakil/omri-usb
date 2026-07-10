@@ -1,11 +1,12 @@
 package org.omri.radio.impl;
 
-import android.hardware.usb.UsbDevice;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.util.Log;
+import com.thiakil.standin.AsyncTask ;
 
-import org.omri.radio.Radio;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
@@ -21,29 +22,23 @@ import org.omri.tuner.TunerType;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.omri.BuildConfig.DEBUG;
-
 /**
  * Copyright (C) 2018 IRT GmbH
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License
+ * at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ *
  * @author Fabian Sattler, IRT GmbH
  */
 
 public class TunerUsbImpl implements TunerUsb {
 
-	private final String TAG = "TunerUsb";
+	private static final Logger LOGGER = LogManager.getLogger("TunerUsb");
 	private final TunerType mTunertype = TunerType.TUNER_TYPE_DAB;
 
 	private TunerStatus mTunerStatus = TunerStatus.TUNER_STATUS_NOT_INITIALIZED;
@@ -53,9 +48,9 @@ public class TunerUsbImpl implements TunerUsb {
 	private List<TunerListener> mTunerlisteners = new ArrayList<>();
 	private RadioServiceDab mCurrentlyRunningService = null;
 
-	private UsbDevice mUsbDevice = null;
+	private final long mUsbDevice;
 
-	TunerUsbImpl(UsbDevice device) {
+	TunerUsbImpl(long device) {
 		mUsbDevice = device;
 	}
 
@@ -63,15 +58,13 @@ public class TunerUsbImpl implements TunerUsb {
 	private boolean mRestoreInProgress = false;
 	private boolean mTunerInitDone = false;
 
-	private boolean mHybridScanEnabled = false;
-
 	@Override
 	public void initializeTuner() {
-		if(mTunerStatus == TunerStatus.TUNER_STATUS_NOT_INITIALIZED) {
-			if (DEBUG) Log.d(TAG, "Initializing Tuner");
+		if (mTunerStatus == TunerStatus.TUNER_STATUS_NOT_INITIALIZED) {
+			LOGGER.debug("Initializing Tuner");
 
 			UsbHelper.getInstance().attachDevice(this);
-			if(!mRestoreInProgress) {
+			if (!mRestoreInProgress) {
 				new RestoreServicesTask().execute();
 				mRestoreInProgress = true;
 			}
@@ -79,13 +72,13 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
-	public UsbDevice getUsbDevice() {
+	public long getUsbDevice() {
 		return mUsbDevice;
 	}
 
 	@Override
 	public void suspendTuner() {
-		UsbHelper.getInstance().stopService(mUsbDevice.getDeviceName());
+		UsbHelper.getInstance().stopService(getUsbDevice());
 
 		switch (mTunerStatus) {
 			case TUNER_STATUS_SUSPENDED:
@@ -95,7 +88,7 @@ public class TunerUsbImpl implements TunerUsb {
 				stopRadioServiceScan();
 			case TUNER_STATUS_INITIALIZED:
 			case TUNER_STATUS_ERROR: {
-				if(DEBUG)Log.d(TAG, "Suspending Tuner: " + this);
+                LOGGER.debug("Suspending Tuner: {}", this);
 				mTunerStatus = TunerStatus.TUNER_STATUS_SUSPENDED;
 
 				for (TunerListener listener : mTunerlisteners) {
@@ -109,7 +102,7 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void resumeTuner() {
-		if(mTunerStatus == TunerStatus.TUNER_STATUS_SUSPENDED) {
+		if (mTunerStatus == TunerStatus.TUNER_STATUS_SUSPENDED) {
 			mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
 
 			for (TunerListener listener : mTunerlisteners) {
@@ -129,8 +122,8 @@ public class TunerUsbImpl implements TunerUsb {
 			case TUNER_STATUS_SUSPENDED:
 			case TUNER_STATUS_ERROR:
 			case TUNER_STATUS_INITIALIZED: {
-				if(UsbHelper.getInstance() != null) {
-					UsbHelper.getInstance().stopService(mUsbDevice.getDeviceName());
+				if (UsbHelper.getInstance() != null) {
+					UsbHelper.getInstance().stopService(mUsbDevice);
 					UsbHelper.getInstance().removeDevice(mUsbDevice);
 				}
 
@@ -143,19 +136,19 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
-	public TunerType getTunerType() {
+	public @NonNull TunerType getTunerType() {
 		return mTunertype;
 	}
 
 	@Override
-	public TunerStatus getTunerStatus() {
+	public @NotNull TunerStatus getTunerStatus() {
 		return mTunerStatus;
 	}
 
 	@Override
-	public List<RadioService> getRadioServices() {
-		if(DEBUG)Log.d(TAG, "getting Services at TunerStatus: " + mTunerStatus.toString());
-		if(mTunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED) {
+	public @NotNull List<RadioService> getRadioServices() {
+        LOGGER.debug("getting Services at TunerStatus: {}", mTunerStatus.toString());
+		if (mTunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED) {
 			return RadioServiceManager.getInstance().getRadioServices(RadioServiceType.RADIOSERVICE_TYPE_DAB);
 		} else {
 			return new ArrayList<>();
@@ -164,7 +157,7 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void startRadioServiceScan() {
-		UsbHelper.getInstance().startEnsembleScan(mUsbDevice.getDeviceName());
+		UsbHelper.getInstance().startEnsembleScan(mUsbDevice);
 		//TODO scanning without deleting old services
 		//mServices.clear();
 		mScannedServices.clear();
@@ -172,14 +165,11 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void startRadioServiceScan(Object scanOptions) {
-		if(scanOptions != null) {
-			if(scanOptions instanceof Bundle) {
-				if(((Bundle)scanOptions).getBoolean(RadioImpl.SERVICE_SEARCH_OPT_DELETE_SERVICES, false)) {
-					if(DEBUG)Log.d(TAG, "Clearing existing services before new scan");
+		if (scanOptions != null) {
+			if (scanOptions instanceof SearchSettings) {
+				if (((SearchSettings) scanOptions).clearExisting()) {
+					LOGGER.debug("Clearing existing services before new scan");
 					RadioServiceManager.getInstance().clearServiceList(RadioServiceType.RADIOSERVICE_TYPE_DAB);
-				}
-				if(((Bundle)scanOptions).getBoolean(RadioImpl.SERVICE_SEARCH_OPT_HYBRID_SCAN, false)) {
-					mHybridScanEnabled = true;
 				}
 			}
 		}
@@ -189,31 +179,31 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void stopRadioServiceScan() {
-		UsbHelper.getInstance().stopEnsembleScan(mUsbDevice.getDeviceName());
+		UsbHelper.getInstance().stopEnsembleScan(mUsbDevice);
 	}
 
 	@Override
-	public void startRadioService(RadioService radioService) {
-		if(DEBUG)Log.d(TAG, "Starting Service: " + radioService.getServiceLabel());
+	public void startRadioService(@NotNull RadioService radioService) {
+        LOGGER.debug("Starting Service: {}", radioService.getServiceLabel());
 
-		if(radioService.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB) {
-			UsbHelper.getInstance().startService(mUsbDevice.getDeviceName(), (RadioServiceDab) radioService);
+		if (radioService.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB) {
+			UsbHelper.getInstance().startService(mUsbDevice, (RadioServiceDab) radioService);
 		}
 	}
 
 	@Override
 	public void stopRadioService() {
-		UsbHelper.getInstance().stopService(mUsbDevice.getDeviceName());
+		UsbHelper.getInstance().stopService(mUsbDevice);
 	}
 
 	@Override
-	public RadioService getCurrentRunningRadioService() {
+	public @Nullable RadioService getCurrentRunningRadioService() {
 		return mCurrentlyRunningService;
 	}
 
 	@Override
 	public void subscribe(TunerListener tunerListener) {
-		if(!mTunerlisteners.contains(tunerListener)) {
+		if (!mTunerlisteners.contains(tunerListener)) {
 			mTunerlisteners.add(tunerListener);
 		}
 	}
@@ -226,8 +216,8 @@ public class TunerUsbImpl implements TunerUsb {
 	@Override
 	public void callBack(int callbackType) {
 
-		if(callbackType == 5) {
-			if(mTunerStatus != TunerStatus.TUNER_STATUS_INITIALIZED) {
+		if (callbackType == 5) {
+			if (mTunerStatus != TunerStatus.TUNER_STATUS_INITIALIZED) {
 				mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
 				for (TunerListener listener : mTunerlisteners) {
 					listener.tunerStatusChanged(this, mTunerStatus);
@@ -235,12 +225,12 @@ public class TunerUsbImpl implements TunerUsb {
 			}
 		} else {
 			TunerUsbCallbackTypes type = TunerUsbCallbackTypes.getTypeByValue(callbackType);
-			if(DEBUG)Log.d(TAG, "Native callback for device: " + mUsbDevice.getDeviceName() + " with CallbackType: " + type.toString());
-			switch(type) {
+            LOGGER.debug("Native callback for device: {} with CallbackType: {}", mUsbDevice, type.toString());
+			switch (type) {
 				case TUNER_READY: {
 					if (!mIsScanning) {
 						mTunerInitDone = true;
-						if(mRestoreServicesDone) {
+						if (mRestoreServicesDone) {
 							mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
 							for (TunerListener listener : mTunerlisteners) {
 								listener.tunerStatusChanged(this, mTunerStatus);
@@ -250,7 +240,7 @@ public class TunerUsbImpl implements TunerUsb {
 						mIsScanning = false;
 						mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
 
-						new EnrichServicesData().execute();
+						new SerializeServicesTask(this).execute();
 					}
 					break;
 				}
@@ -280,7 +270,7 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void scanProgressCallback(int percentDone) {
-		if(DEBUG)Log.d(TAG, "Scan Progress: " + percentDone);
+        LOGGER.debug("Scan Progress: {}", percentDone);
 		for (TunerListener listener : mTunerlisteners) {
 			listener.tunerScanProgress(this, percentDone);
 		}
@@ -288,32 +278,32 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void serviceFound(RadioServiceDab service) {
-		if(DEBUG) {
-			Log.d(TAG, "Scan New Service found Ensemble Freq: " + service.getEnsembleFrequency());
-			Log.d(TAG, "Scan New Service found EnsembleId: " + Integer.toHexString(service.getEnsembleId()));
-			Log.d(TAG, "Scan New Service found Ensemblelabel: " + service.getEnsembleLabel() + " : " + service.getEnsembleShortLabel());
-			Log.d(TAG, "Scan New Service found EnsembleECC: " + ("0x" + Integer.toHexString(service.getEnsembleEcc()).toUpperCase()));
-			Log.d(TAG, "Scan New Service found ServiceID: " + ("0x" + Integer.toHexString(service.getServiceId())));
-			Log.d(TAG, "Scan New Service found ServiceLabel: " + service.getServiceLabel() + " : " + service.getShortLabel());
-			Log.d(TAG, "Scan New Service found isProgramme: " + service.isProgrammeService());
-			Log.d(TAG, "Scan New Service Num Components: " + service.getServiceComponents().size());
+		if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Scan New Service found Ensemble Freq: {}", service.getEnsembleFrequency());
+            LOGGER.debug("Scan New Service found EnsembleId: {}", Integer.toHexString(service.getEnsembleId()));
+            LOGGER.debug("Scan New Service found Ensemblelabel: {} : {}", service.getEnsembleLabel(), service.getEnsembleShortLabel());
+            LOGGER.debug("Scan New Service found EnsembleECC: {}", "0x" + Integer.toHexString(service.getEnsembleEcc()).toUpperCase());
+            LOGGER.debug("Scan New Service found ServiceID: {}", "0x" + Integer.toHexString(service.getServiceId()));
+            LOGGER.debug("Scan New Service found ServiceLabel: {} : {}", service.getServiceLabel(), service.getShortLabel());
+            LOGGER.debug("Scan New Service found isProgramme: {}", service.isProgrammeService());
+            LOGGER.debug("Scan New Service Num Components: {}", service.getServiceComponents().size());
 			for (RadioServiceDabComponent comp : service.getServiceComponents()) {
-				Log.d(TAG, "Scan New Service Component SubChanID: " + ("0x" + Integer.toHexString(comp.getSubchannelId())));
-				Log.d(TAG, "Scan New Service Component Type: " + comp.getServiceComponentType());
-				Log.d(TAG, "Scan New Service Component Bitrate: " + comp.getBitrate());
-				Log.d(TAG, "Scan New Service Component TMID: " + comp.getTmId());
-				Log.d(TAG, "Scan New Service Component PacketAddress: " + comp.getPacketAddress());
+                LOGGER.debug("Scan New Service Component SubChanID: {}", "0x" + Integer.toHexString(comp.getSubchannelId()));
+                LOGGER.debug("Scan New Service Component Type: {}", comp.getServiceComponentType());
+                LOGGER.debug("Scan New Service Component Bitrate: {}", comp.getBitrate());
+                LOGGER.debug("Scan New Service Component TMID: {}", comp.getTmId());
+                LOGGER.debug("Scan New Service Component PacketAddress: {}", comp.getPacketAddress());
 
 				for (RadioServiceDabUserApplication uApp : comp.getUserApplications()) {
-					Log.d(TAG, "Scan New Service Component UApp Type: " + uApp.getType().getType() + " : " + uApp.getType().getName());
-					Log.d(TAG, "Scan New Service Component UApp DSCTy: " + uApp.getDataServiceComponentType().getType() + " : " + uApp.getDataServiceComponentType().getName());
-					Log.d(TAG, "Scan New Service Component UApp isXPAD: " + uApp.isXpadApptype() + ", DGUsed: " + uApp.isDatagroupTransportUsed());
+                    LOGGER.debug("Scan New Service Component UApp Type: {} : {}", uApp.getType().getType(), uApp.getType().getName());
+                    LOGGER.debug("Scan New Service Component UApp DSCTy: {} : {}", uApp.getDataServiceComponentType().getType(), uApp.getDataServiceComponentType().getName());
+                    LOGGER.debug("Scan New Service Component UApp isXPAD: {}, DGUsed: {}", uApp.isXpadApptype(), uApp.isDatagroupTransportUsed());
 				}
 			}
 			for (TermId tid : service.getGenres()) {
-				Log.d(TAG, "Scan New Service Genre: " + tid.getText());
+                LOGGER.debug("Scan New Service Genre: {}", tid.getText());
 			}
-			Log.d(TAG, "----------------- Scan New Service found -----------------");
+			LOGGER.debug("----------------- Scan New Service found -----------------");
 		}
 
 		for (TunerListener listener : mTunerlisteners) {
@@ -325,9 +315,9 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void serviceStarted(RadioServiceDab startedService) {
-		if(DEBUG)Log.d(TAG, "DabService started: " + startedService.getServiceLabel());
+        LOGGER.debug("DabService started: {}", startedService.getServiceLabel());
 		mCurrentlyRunningService = startedService;
-		if(mCurrentlyRunningService != null) {
+		if (mCurrentlyRunningService != null) {
 			for (TunerListener listener : mTunerlisteners) {
 				listener.radioServiceStarted(this, mCurrentlyRunningService);
 			}
@@ -336,8 +326,8 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void serviceStopped(RadioServiceDab stoppedService) {
-		if(DEBUG)Log.d(TAG, "DabService stopped: " + stoppedService.getServiceLabel());
-		for(TunerListener listener : mTunerlisteners) {
+        LOGGER.debug("DabService stopped: {}", stoppedService.getServiceLabel());
+		for (TunerListener listener : mTunerlisteners) {
 			listener.radioServiceStopped(this, stoppedService);
 			((RadioServiceImpl) stoppedService).serviceStopped();
 		}
@@ -346,12 +336,12 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void receptionStatistics(boolean rfLocked, int qualLevel) {
-		//if(DEBUG)Log.d(TAG, "Reception Statistics RFLock: " + rfLocked + " Qual: " + qualLevel);
+		//if(DEBUG)LOGGER.debug("Reception Statistics RFLock: " + rfLocked + " Qual: " + qualLevel);
 
-		if(qualLevel > 5) {
+		if (qualLevel > 5) {
 			qualLevel = 5;
 		}
-		for(TunerListener cb : mTunerlisteners) {
+		for (TunerListener cb : mTunerlisteners) {
 			cb.tunerReceptionStatistics(this, rfLocked, ReceptionQuality.values()[qualLevel]);
 		}
 	}
@@ -365,26 +355,15 @@ public class TunerUsbImpl implements TunerUsb {
 		}
 
 		@Override
-		protected void onPreExecute() {
-			super.onPreExecute();
-		}
-
-		@Override
-		protected Void doInBackground(Void... voids) {
+		protected Void doInBackground(Void voids) {
 			RadioServiceManager.getInstance().serializeServices(RadioServiceType.RADIOSERVICE_TYPE_DAB);
 
-			if(mHybridScanEnabled) {
-				if(DEBUG)Log.d(TAG, "Enrich Services");
-				IpServiceScanner.getInstance().enrichServices(RadioServiceManager.getInstance().getRadioServices(RadioServiceType.RADIOSERVICE_TYPE_DAB));
-			}
-
-			mHybridScanEnabled = false;
 			return null;
 		}
 
 		@Override
 		protected void onPostExecute(Void aVoid) {
-			if(mInstance != null) {
+			if (mInstance != null) {
 				for (TunerListener listener : mTunerlisteners) {
 					mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
 					listener.tunerStatusChanged(mInstance, mTunerStatus);
@@ -397,19 +376,14 @@ public class TunerUsbImpl implements TunerUsb {
 	private class RestoreServicesTask extends AsyncTask<Void, Void, Void> {
 
 		@Override
-		protected void onPreExecute() {
-			super.onPreExecute();
-		}
-
-		@Override
-		protected Void doInBackground(Void... params) {
-			if(DEBUG)Log.d(TAG, "Restoring services....");
-			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB) || !VisualLogoManager.getInstance().isReady()) {
+		protected Void doInBackground(Void params) {
+			LOGGER.debug("Restoring services....");
+			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB)) {
 				try {
-					Thread.sleep(10);
-					if(DEBUG)Log.d(TAG, "Waiting for servicelist or VisualLogoManager to be ready");
-				} catch(InterruptedException interExc) {
-					if(DEBUG)interExc.printStackTrace();
+					Thread.sleep(100);
+					LOGGER.debug("Waiting for servicelist to be ready");
+				} catch (InterruptedException interExc) {
+					LOGGER.error("Interrupted waiting for service list", interExc);
 				}
 			}
 
@@ -419,12 +393,11 @@ public class TunerUsbImpl implements TunerUsb {
 
 		@Override
 		protected void onPostExecute(Void aVoid) {
-			super.onPostExecute(aVoid);
-			if(DEBUG)Log.d(TAG, "Restore services finished");
+			LOGGER.debug("Restore services finished");
 
 			mRestoreServicesDone = true;
 			mRestoreInProgress = false;
-			if(mTunerInitDone) {
+			if (mTunerInitDone) {
 				callBack(5);
 			}
 		}
@@ -434,35 +407,5 @@ public class TunerUsbImpl implements TunerUsb {
 		new SerializeServicesTask(this).execute();
 	}
 
-	private class EnrichServicesData extends AsyncTask<Void, Void, Void> {
-
-		@Override
-		protected Void doInBackground(Void... voids) {
-			for(Tuner ipTuner : Radio.getInstance().getAvailableTuners()) {
-				if(ipTuner.getTunerType() == TunerType.TUNER_TYPE_IP_SHOUTCAST) {
-					for(RadioService ipSrv : ipTuner.getRadioServices()) {
-						for (RadioService dabSrv : mServices) {
-							if (ipSrv.equals(dabSrv)) {
-								if (!ipSrv.getLogos().isEmpty()) {
-									((RadioServiceDabImpl) dabSrv).addLogo(ipSrv.getLogos());
-								}
-							}
-						}
-					}
-
-					break;
-				}
-			}
-			return null;
-		}
-
-		@Override
-		protected void onPostExecute(Void aVoid) {
-			afterEnrich();
-		}
-	}
-
-	private void afterEnrich() {
-		new SerializeServicesTask(this).execute();
-	}
+	public record SearchSettings(boolean clearExisting) {}
 }

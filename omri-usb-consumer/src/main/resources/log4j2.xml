@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="https://logging.apache.org/xml/ns"
+  xsi:schemaLocation="
+                       https://logging.apache.org/xml/ns
+                       https://logging.apache.org/xml/ns/log4j-config-2.xsd">
+
+  <!-- prod recommended
+  <Appenders>
+    <Console name="CONSOLE">
+      <JsonTemplateLayout/>
+    </Console>
+  </Appenders>
+
+  <Loggers>
+    <Logger name="com.mycompany" level="INFO"/>
+    <Root level="WARN">
+      <AppenderRef ref="CONSOLE"/>
+    </Root>
+  </Loggers>
+  -->
+  <Appenders>
+    <Console name="CONSOLE">
+      <PatternLayout pattern="%d [%t] %5p [%c{1.}] - %m%n"/>
+    </Console>
+  </Appenders>
+
+  <Loggers>
+    <Logger name="NativeDebug" level="INFO"/>
+    <Logger name="DabService" level="INFO"/>
+    <Logger name="TunerUsb" level="INFO"/>
+    <Logger name="RadioServiceManager" level="INFO"/>
+    <Logger name="RadioServiceImpl" level="INFO"/>
+    <Logger name="RadioImpl" level="INFO"/>
+    <Logger name="UsbHelper" level="INFO"/>
+    <Logger name="UsbHelperNative" level="INFO"/>
+    <Logger name="SlideshowDecoder" level="DEBUG"/>
+    <Root level="DEBUG">
+      <AppenderRef ref="CONSOLE"/>
+    </Root>
+  </Loggers>
+
+</Configuration>

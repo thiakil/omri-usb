@@ -24,14 +24,4 @@ public enum RadioServiceType {
 	RADIOSERVICE_TYPE_UNKNOWN,
 	/** RadioService type DAB **/
 	RADIOSERVICE_TYPE_DAB,
-	/** RadioService type IP **/
-	RADIOSERVICE_TYPE_IP,
-	/** RadioService type FM **/
-	RADIOSERVICE_TYPE_FM,
-	/** RadioService type Sirius XM **/
-	RADIOSERVICE_TYPE_SIRIUS,
-	/** RadioService type iBiquity HD Radio **/
-	RADIOSERVICE_TYPE_HDRADIO,
-	/** RadioService type EDI (DAB over IP) *Experimental* **/
-	RADIOSERVICE_TYPE_EDI
 }

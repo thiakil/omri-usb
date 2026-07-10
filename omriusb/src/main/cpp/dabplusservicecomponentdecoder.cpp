@@ -20,9 +20,9 @@
 
 #include "dabplusservicecomponentdecoder.h"
 
-extern "C" {
-    #include "thirdparty/fec/fec.h"
-}
+
+#include "thirdparty/fec/fec.h"
+
 
 #include <iostream>
 #include <iomanip>

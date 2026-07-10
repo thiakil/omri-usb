@@ -1,7 +1,5 @@
 package org.omri.radio.impl;
 
-import android.hardware.usb.UsbDevice;
-
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.tuner.Tuner;
 
@@ -25,7 +23,7 @@ import org.omri.tuner.Tuner;
 
 interface TunerUsb extends Tuner {
 
-	UsbDevice getUsbDevice();
+	long getUsbDevice();
 
 	void callBack(int callbackType);
 

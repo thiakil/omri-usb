@@ -2,13 +2,14 @@ package org.omri.radio;
 
 import java.util.List;
 
+import org.jetbrains.annotations.NotNull;
 import org.omri.radio.impl.RadioImpl;
 import org.omri.radioservice.RadioService;
 import org.omri.tuner.Tuner;
 import org.omri.tuner.TunerListener;
 import org.omri.tuner.TunerType;
 
-import android.content.Context;
+import com.thiakil.standin.Context;
 
 /**
  * Copyright (C) 2016 Open Mobile Radio Interface (OMRI) Group
@@ -32,7 +33,7 @@ import android.content.Context;
 public abstract class Radio {
 
 	/** the singleton instance of OMRI Radio */
-    private static Radio INSTANCE = new RadioImpl();
+    private static final Radio INSTANCE = new RadioImpl();
     
     /**
      * Returns the {@link Radio} instance or {@code null} if no implemented {@link Radio} instance is set
@@ -43,35 +44,33 @@ public abstract class Radio {
     }
     
     /**
-     * Initializes the {@link Radio} instance
-     * @return the {@link RadioErrorCode} indicating the success of init.
-     */
-    public abstract RadioErrorCode initialize();
-    
-    /**
      * Initializes the {@link Radio} instance with an Android {@link Context}
      * @param appContext the App Context
      * @return the {@link RadioErrorCode} indicating the success of init.
      */
+	@NotNull
     public abstract RadioErrorCode initialize(Context appContext);
         
     /**
      * Suspends the {@link Radio} and with it all {@link Tuner}s
      * @return a {@link RadioErrorCode} indicating the success of the suspend.
      */
-    public abstract RadioErrorCode suspend();
+	@NotNull
+	public abstract RadioErrorCode suspend();
     
     /**
      * Resumes the {@link Radio} to the previous state before it was suspended.  
      * @return a {@link RadioErrorCode} indicating the success of the resume
      */
-    public abstract RadioErrorCode resume();
+	@NotNull
+	public abstract RadioErrorCode resume();
     
     /**
      * Indicates the current status of the {@link Radio}
      * @return the current {@link RadioStatus} 
      */
-    public abstract RadioStatus getRadioStatus();
+	@NotNull
+	public abstract RadioStatus getRadioStatus();
     
     /**
      * Deinitializes the Radio and all {@link Tuner}s
@@ -82,20 +81,23 @@ public abstract class Radio {
      * Returns the available {@link Tuner} devices or an empty list
      * @return the available {@link Tuner} devices or an empty list
      */
-    public abstract List<Tuner> getAvailableTuners();
+	@NotNull
+	public abstract List<Tuner> getAvailableTuners();
     
     /**
      * Returns the available {@link Tuner} devices for a specific {@link TunerType} or an empty list
      * @return the available {@link Tuner} devices for a specific {@link TunerType} or an empty list
      */
-    public abstract List<Tuner> getAvailableTuners(TunerType tunerType);
+	@NotNull
+	public abstract List<Tuner> getAvailableTuners(TunerType tunerType);
     
 	/**
 	 * Retrieve the currently known {@link RadioService}s of this {@link Radio} device
 	 * The method here is for the convenience of the application developer. 
 	 * @return a list of {@link RadioService}s or an empty list
 	 */
-    public abstract List<RadioService> getRadioServices();
+	@NotNull
+	public abstract List<RadioService> getRadioServices();
     
 	/**
 	 * Start a {@link RadioService} on an available tuner
@@ -153,6 +155,7 @@ public abstract class Radio {
 	 */
 	public abstract void unregisterRadioStatusListener(RadioStatusListener listener);
 
+	@NotNull
 	public abstract RadioServiceManager getRadioServiceManager();
 
 	public abstract boolean addRadioService(RadioService addSrv);

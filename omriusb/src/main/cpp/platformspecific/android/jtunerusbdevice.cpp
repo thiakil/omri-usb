@@ -22,7 +22,7 @@
 
 #include <iostream>
 
-JTunerUsbDevice::JTunerUsbDevice(JavaVM* javaVm, JNIEnv* env, jobject tunerUsbDevice) : JUsbDevice(javaVm, env, env->CallObjectMethod(tunerUsbDevice, env->GetMethodID(env->FindClass("org/omri/radio/impl/TunerUsb"), "getUsbDevice", "()Landroid/hardware/usb/UsbDevice;"))) {
+JTunerUsbDevice::JTunerUsbDevice(JavaVM* javaVm, JNIEnv* env, jobject tunerUsbDevice, libusb_device* device) : JUsbDevice(device) {
     std::cout << m_logTag << "Creating JTuner" << std::endl;
 
     m_javaVm = javaVm;
@@ -128,7 +128,7 @@ void JTunerUsbDevice::callCallback(TUNER_CALLBACK_TYPE callbackType) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -148,17 +148,17 @@ const JavaVM* JTunerUsbDevice::getJavaVM() const {
 }
 
 void JTunerUsbDevice::scanProgress(int percentDone) {
-    std::cout << m_logTag << "Calling tuner scanprogress: " << +percentDone << std::endl;
+    //std::cout << m_logTag << "Calling tuner scanprogress: " << +percentDone << std::endl;
 
     bool wasDetached = false;
     JNIEnv* enve;
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
-            std::cout << "jniEnv thread failed to attach!" << std::endl;
+            std::cerr << "jniEnv thread failed to attach!" << std::endl;
             return;
         }
     }
@@ -179,7 +179,7 @@ void JTunerUsbDevice::ensembleReady(const DabEnsemble& ensemble) {
 
     int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
     if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
+        if (m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -413,7 +413,7 @@ void JTunerUsbDevice::serviceStarted(jobject dabService) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -434,7 +434,7 @@ void JTunerUsbDevice::serviceStopped(jobject dabService) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -455,7 +455,7 @@ void JTunerUsbDevice::receptionStatistics(bool rfLock, int qual) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;

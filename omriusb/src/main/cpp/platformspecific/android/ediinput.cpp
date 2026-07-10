@@ -169,7 +169,7 @@ void EdiInput::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -197,7 +197,7 @@ void EdiInput::newLiveItem(std::vector<uint8_t> liveItemData) {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
@@ -228,7 +228,7 @@ void EdiInput::ensembleCollectFinished() {
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread(&enve, NULL) == 0) {
+        if(m_javaVm->AttachCurrentThread((void**)&enve, NULL) == 0) {
             wasDetached = true;
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;

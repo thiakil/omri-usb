@@ -36,7 +36,7 @@ public:
     };
 
 public:
-    explicit JTunerUsbDevice(JavaVM* javaVm, JNIEnv* env, jobject tunerUsbDevice);
+    explicit JTunerUsbDevice(JavaVM* javaVm, JNIEnv* env, jobject tunerUsbDevice, libusb_device* device);
     virtual ~JTunerUsbDevice();
 
     virtual const JavaVM* getJavaVM() const;

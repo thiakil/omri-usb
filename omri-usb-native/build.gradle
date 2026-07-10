@@ -1,0 +1,46 @@
+import org.gradle.internal.jvm.Jvm
+plugins {
+    id 'cpp-library'
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.newDataInputStream())
+}
+
+def javaHome = Jvm.current().javaHome
+
+library {
+    baseName = 'irtdab'
+    linkage = [Linkage.SHARED]
+
+    // Target your required operating systems
+    //targetMachines.add(machines.linux.x86_64)
+    //targetMachines.add(machines.windows.x86_64)
+    //targetMachines.add(machines.macOS.x86_64)
+
+    binaries.configureEach {
+
+        // Pass system-specific include directories to the C++ compiler
+        compileTask.get().compilerArgs.addAll([
+                "-I${javaHome}/include",
+                "-I${javaHome}/include/linux",
+                "-I${javaHome}/include/win32",
+                "-I${javaHome}/include/darwin"
+        ])
+    }
+}
+
+tasks.withType(LinkSharedLibrary).configureEach {
+    linkerArgs.addAll("-pthread", "-lusb-1.0", "-L${javaHome}/lib", '-ljvm')
+}
+
+if (localProperties.containsKey("custom_gcc")) {
+    toolChains {
+        register("gcc", Gcc) {
+            path localProperties.getProperty("custom_gcc")
+        }
+    }
+}

@@ -83,12 +83,6 @@ private:
         *year = 100 * (C - 49) + Y + J;
     }
 
-    //TODO may not be portable. Works on Unix
-    inline time_t timestampGm(std::tm* tm) {
-        std::time_t locTime = std::mktime(tm);
-        return locTime + std::localtime(&locTime)->tm_gmtoff;
-    }
-
     inline time_t _mkgmtime(const struct tm *tm) {
         // Month-to-day offset for non-leap-years.
         static const int month_day[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};

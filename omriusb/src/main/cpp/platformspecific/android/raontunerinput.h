@@ -21,6 +21,7 @@
 #ifndef RAONTUNERINPUT_H
 #define RAONTUNERINPUT_H
 
+#include "libusb-1.0/libusb.h"
 #include "dabusbtunerinput.h"
 #include "jtunerusbdevice.h"
 #include "jdabservice.h"
@@ -28,6 +29,8 @@
 
 #include <memory>
 #include <array>
+
+typedef unsigned int uint_t;
 
 class RaonTunerInput final : public DabUsbTunerInput, DabEnsemble {
 
@@ -57,6 +60,7 @@ public:
     void stopServiceScan() override;
 
     std::string getDeviceName() const override;
+    libusb_device* getDeviceHandle() const override;
 
 private:
     const std::string LOG_TAG{"[RaonUsbTuner] "};

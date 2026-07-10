@@ -20,6 +20,7 @@
 
 #include <iomanip>
 #include "raontunerinput.h"
+#include "libusb-1.0/libusb.h"
 
 constexpr uint8_t RaonTunerInput::g_abAdcClkSynTbl[4][7];
 constexpr uint8_t RaonTunerInput::g_aeAdcClkTypeTbl_DAB_B3[];
@@ -27,17 +28,13 @@ constexpr int RaonTunerInput::g_atPllNF_DAB_BAND3[];
 constexpr uint_t RaonTunerInput::AntLvlTbl[DAB_MAX_NUM_ANTENNA_LEVEL];
 
 RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice> usbDevice) : m_usbDevice{usbDevice} {
-    std::cout << LOG_TAG << "Constructing...." << std::endl;
-
-    m_usbDevice->requestPermission([&](bool granted) {
-        std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice.get()->getDeviceName()) : "NULL") << " PermissionCallback: " << granted << std::endl;
-        if(granted) {
-            m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
-            startReadDataThread();
-        }
-    });
-
-    m_ensembleFinishedCb = DabEnsemble::registerEnsembleCollectDoneCallback(std::bind(&RaonTunerInput::ensembleCollectFinished, this));
+    if (m_usbDevice->openDevice()) {
+        m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
+        m_ensembleFinishedCb = DabEnsemble::registerEnsembleCollectDoneCallback(std::bind(&RaonTunerInput::ensembleCollectFinished, this));
+        startReadDataThread();
+    } else {
+        std::cout << LOG_TAG << "Failed to openDevice" << std::endl;
+    }
 }
 
 RaonTunerInput::~RaonTunerInput() {
@@ -339,6 +336,10 @@ std::string RaonTunerInput::getDeviceName() const {
     return m_usbDevice->getDeviceName();
 }
 
+libusb_device* RaonTunerInput::getDeviceHandle() const{
+    return m_usbDevice->device_handle();
+}
+
 //
 void RaonTunerInput::threadedFicRead() {
 
@@ -412,7 +413,9 @@ bool RaonTunerInput::tunerPowerUp() {
     for(int i = 0; i < 100; i++) {
         switchPage(REGISTER_PAGE_HOST);
         setRegister(0x7D, 0x06);
-        if(readRegister(0x7D) == 0x06) {
+        uint8_t read_register = readRegister(0x7D);
+        //std::cout << LOG_TAG << " read register " << static_cast<int>(read_register) << std::endl;
+        if(read_register == 0x06) {
             std::cout << LOG_TAG << " PowerUp okay!" << std::endl;
             return true;
         }
@@ -423,13 +426,21 @@ bool RaonTunerInput::tunerPowerUp() {
 }
 
 void RaonTunerInput::switchPage(RaonTunerInput::REGISTER_PAGE regPage) {
-    std::vector<uint8_t> switchData{0x21, 0x00, 0x00, 0x02, 0x03, static_cast<uint8_t >(regPage)};
-    int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, switchData);
+	setRegister(0x03, regPage);
 }
 
 void RaonTunerInput::setRegister(uint8_t reg, uint8_t val) {
-    std::vector<uint8_t> setRegData{0x21, 0x00, 0x00, 0x02, reg, val};
-    int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, setRegData);
+    //std::cout << LOG_TAG << " set register " << static_cast<int>(reg) << std::endl;
+	std::vector<uint8_t> setRegData{0x21, 0x00, 0x00, 0x02, reg, val};
+	m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, setRegData, 100);
+    //std::cout << LOG_TAG << " after write " << std::endl;
+
+	/* We should get an 0xa1 back as acknowledge */
+	std::vector<uint8_t> inbuf(1);
+	int r = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, inbuf);
+    //std::cout << LOG_TAG << " after read: " << r << std::endl;
+
+	/* FIXME We might want to check for return code */
 }
 
 uint8_t RaonTunerInput::readRegister(uint8_t reg) {
@@ -1259,9 +1270,14 @@ void RaonTunerInput::stopReadDataThread() {
     std::cout << LOG_TAG << "Stopping Data thread..." << std::endl;
     if(m_commandThreadRunning) {
         m_commandThreadRunning = false;
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
         if(m_commandThread.joinable()) {
             std::cout << LOG_TAG << "Joining Data thread..." << std::endl;
-            m_commandThread.join();
+            try {
+                m_commandThread.join();
+            } catch (const std::exception& e) {
+                std::cerr << "Native thread exception: " << e.what() << std::endl;
+            }
             std::cout << LOG_TAG << "Joining Data thread done" << std::endl;
         }
     }

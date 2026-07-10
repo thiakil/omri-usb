@@ -49,7 +49,7 @@ endif()
 # Find build dependencies
 ########################################################################
 
-find_library(M_LIB m REQUIRED)
+#find_library(M_LIB m REQUIRED)
 
 
 ########################################################################
@@ -71,9 +71,9 @@ check_function_exists("memmove"          HAVE_MEMMOVE)
 ########################################################################
 
 set(libfec_sources
-    encode_rs_char.c
-    decode_rs_char.c
-    init_rs_char.c
+    encode_rs_char.cpp
+    decode_rs_char.cpp
+    init_rs_char.cpp
 )
 
 
@@ -81,8 +81,8 @@ set(libfec_sources
 # Setup libraries
 ########################################################################
 
-#add_library(fec STATIC ${libfec_sources})
-add_library(fec SHARED ${libfec_sources})
+add_library(fec STATIC ${libfec_sources})
+#add_library(fec SHARED ${libfec_sources})
 set_target_properties(fec PROPERTIES LINKER_LANGUAGE C)
-target_link_libraries(fec ${M_LIB})
+#target_link_libraries(fec ${M_LIB})
 set(CMAKE_BUILD_TYPE MinSizeRel)

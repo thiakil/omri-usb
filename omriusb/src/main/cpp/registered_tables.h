@@ -22,6 +22,7 @@
 #define REGISTERED_TABLES
 
 #include <string>
+#include <cstdint>
 
 namespace registeredtables {
 

@@ -20,6 +20,7 @@
 
 #ifndef FIG
 #define FIG
+#include <cstdint>
 
 class Fig {
 
