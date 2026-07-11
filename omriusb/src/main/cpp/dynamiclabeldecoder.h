@@ -21,8 +21,15 @@
 #ifndef DYNAMICLABELDECODER_H
 #define DYNAMICLABELDECODER_H
 
-#include "dabuserapplicationdecoder.h"
+#include <algorithm>
+#include <functional>
+#include <cctype>
+#include <locale>
+
 #include "callbackhandle.h"
+#include "dabuserapplicationdecoder.h"
+
+struct DabDynamicLabel; // forward declaration needed
 
 class DynamiclabelDecoder : public DabUserapplicationDecoder {
 
@@ -35,6 +42,60 @@ public:
     virtual std::shared_ptr<UserapplicationDataCallback> registerUserapplicationDataCallback(UserapplicationDataCallback appSpecificDataCallback) override;
 
     virtual void reset() override;
+
+    static std::string convertToStdStringUsingCharset(const std::vector<uint8_t> & data,
+            const registeredtables::CHARACTER_SET characterSet, bool& isOk);
+    inline static std::string convertToStdStringUsingCharset(const std::vector<uint8_t> & data,
+            const registeredtables::CHARACTER_SET characterSet) {
+        bool unused;
+        return convertToStdStringUsingCharset(data, characterSet, unused);
+    }
+
+    // trim from start (in place)
+    static inline void ltrim(std::string &s) {
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+            return !(std::isspace(ch) || std::iscntrl(ch));
+        }));
+    }
+
+    // trim from end (in place)
+    static inline void rtrim(std::string &s) {
+        s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+            return !(std::isspace(ch) || std::iscntrl(ch));
+        }).base(), s.end());
+    }
+
+    // trim from both ends (in place)
+    static inline void trim(std::string &s) {
+        ltrim(s);
+        rtrim(s);
+    }
+
+    // trim from start (copying)
+    static inline std::string ltrim_copy(std::string s) {
+        ltrim(s);
+        return s;
+    }
+
+    // trim from end (copying)
+    static inline std::string rtrim_copy(std::string s) {
+        rtrim(s);
+        return s;
+    }
+
+    // trim from both ends (copying)
+    static inline std::string trim_copy(std::string s) {
+        trim(s);
+        return s;
+    }
+
+private:
+    void invokeDispatcher(const DabDynamicLabel& label);
+    static std::string convertEbuToUtf(const std::vector<uint8_t> & ebuData, bool& isOk);
+    inline static std::string convertEbuToUtf(const std::vector<uint8_t> & ebuData) {
+        bool unused;
+        return convertEbuToUtf(ebuData, unused);
+    }
 
 public:
     enum DL_PLUS_CONTENT_TYPE {
@@ -107,10 +168,13 @@ public:
         DESCRIPTOR_GET_DATA
     };
 
-    const static std::string DL_PLUS_CONTENT_TYPE_STRING[];
+    static const char* DL_PLUS_CONTENT_TYPE_STRING[];
 
 private:
-    std::string m_logTag{"[DynamiclabelDecoder]"};
+    void parseDlsData();
+
+private:
+    const std::string m_logTag{"[DynamiclabelDecoder]"};
 
     std::vector<uint8_t> m_dlsData;
     uint8_t m_dlsFullSegNum{0};
@@ -118,6 +182,7 @@ private:
     uint8_t m_currentDlsCharset{0xFF};
 
     bool m_isDynamicPlus{false};
+    bool m_isFirstDL{true};
 
     CallbackDispatcher<UserapplicationDataCallback> m_userappDataDispatcher;
 
@@ -134,6 +199,19 @@ private:
         CLEAR_DISPLAY,
         DL_PLUS_COMMAND
     };
+};
+
+struct DabDynamicLabelPlusTag {
+    DynamiclabelDecoder::DL_PLUS_CONTENT_TYPE contentType{DynamiclabelDecoder::DL_PLUS_CONTENT_TYPE::DUMMY};
+    std::string dlPlusTagText;
+};
+
+struct DabDynamicLabel {
+    std::string dynamicLabel;
+    uint8_t charset;
+    bool itemToggle{false};
+    bool itemRunning{false};
+    std::vector<DabDynamicLabelPlusTag> dlPlusTags;
 };
 
 #endif // DYNAMICLABELDECODER_H

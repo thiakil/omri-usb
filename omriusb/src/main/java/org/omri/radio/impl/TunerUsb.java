@@ -27,7 +27,7 @@ interface TunerUsb extends Tuner {
 
 	void callBack(int callbackType);
 
-	void scanProgressCallback(int percentDone);
+	void scanProgressCallback(int percentDone, int freqHz);
 
 	void serviceFound(RadioServiceDab service);
 
@@ -35,5 +35,8 @@ interface TunerUsb extends Tuner {
 
 	void serviceStopped(RadioServiceDab stoppedService);
 
-	void receptionStatistics(boolean rfLocked, int rssi);
+	void receptionStatistics(boolean rfLocked, int qualLevel, int rawValue);
+
+	void setDirectBulkTransferModeEnabled(boolean direct);
+	boolean getDirectBulkTransferModeEnabled();
 }

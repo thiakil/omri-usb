@@ -25,6 +25,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <mutex>
 
 #include "ficparser.h"
 
@@ -32,8 +33,15 @@
 #include "dabservicecomponentmscstreamaudio.h"
 #include "dabservicecomponentmscstreamdata.h"
 #include "dabservice.h"
+#include "linkedservicedab.h"
 
 class DabEnsemble {
+
+public:
+    static constexpr uint32_t FREQ_INVALID = 0;
+    static constexpr uint32_t EID_INVALID = 0x0000FFFF;
+    static constexpr uint8_t ECC_INVALID = 0xFF;
+    static constexpr uint8_t CHARSET_INVALID = 0xFF;
 
 public:
     explicit DabEnsemble();
@@ -44,7 +52,7 @@ public:
     virtual uint16_t getEnsembleId() const;
     virtual uint8_t getCurrentCifCountHigh() const;
     virtual uint8_t getCurrentCifCountLow() const;
-    virtual bool isAlarmAnnouncemnetSupported() const;
+    virtual bool isAlarmAnnouncementSupported() const;
 
     virtual uint8_t getEnsembleLabelCharset() const;
     virtual std::string getEnsembleLabel() const;
@@ -52,25 +60,41 @@ public:
 
     virtual uint8_t getEnsembleEcc() const;
 
-    virtual std::vector<std::shared_ptr<DabService>> getDabServices() const;
+    virtual std::vector<std::shared_ptr<DabService>> getDabServices();
+    virtual std::vector<std::shared_ptr<LinkedServiceDab>> getLinkedDabServices(const LinkedServiceDab & service);
 
     virtual std::shared_ptr<std::function<void()>> registerEnsembleCollectDoneCallback(std::function<void()> cb);
 
     using Date_Time_Callback = std::function<void(const Fig_00_Ext_10::DabTime&)>;
     virtual std::shared_ptr<DabEnsemble::Date_Time_Callback> registerDateTimeCallback(Date_Time_Callback cb);
 
+    using ServiceFollowingCallback = std::function<void()>;
+    virtual std::shared_ptr<DabEnsemble::ServiceFollowingCallback> registerServiceFollowingCallback(DabEnsemble::ServiceFollowingCallback cb);
+
+    virtual bool isFig00Complete(const Fig::FIG_00_TYPE fig00Type);
+    virtual bool isFig01Complete(const Fig::FIG_01_TYPE fig01Type);
 
 protected:
-    virtual void dataInput(const std::vector<uint8_t>& data, uint8_t subChId, bool synchronized);
+    virtual void dataInput(const std::vector<uint8_t>& data, uint8_t subChId, bool synchronized, bool rfLock = true);
     virtual void flushBufferedComponentData(uint8_t subChId);
     virtual void flushAllBufferedComponentData();
 
     std::unique_ptr<FicParser> m_ficPtr{nullptr};
-    uint32_t m_ensembleFrequency;
+    uint32_t m_ensembleFrequency{FREQ_INVALID};
     bool m_ensembleCollectFinished{false};
+
+    // mutex to guard read/write access to internal data
+    // use it by placing following code as (typ.) first instruction of a method:
+    //   std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
+    // by leaving the method, the mutex is automatically released
+    std::recursive_mutex m_mutex;
+
+    virtual void checkServiceSanity(const uint32_t serviceId);
 
 private:
     void registerCbs();
+    void unregisterCbsAfterEnsembleCollect();
+
     void fig00_00_input(const Fig_00_Ext_00& fig00);
     void fig00_01_input(const Fig_00_Ext_01& fig01);
     void fig00_02_input(const Fig_00_Ext_02& fig02);
@@ -80,7 +104,6 @@ private:
     void fig00_06_input(const Fig_00_Ext_06& fig06);
     void fig00_21_input(const Fig_00_Ext_21& fig21);
     void fig00_24_input(const Fig_00_Ext_24& fig24);
-    //
 
     void fig00_08_input(const Fig_00_Ext_08& fig08);
     void fig00_09_input(const Fig_00_Ext_09& fig09);
@@ -135,41 +158,66 @@ private:
     std::shared_ptr<std::function<void (const Fig_00_Ext_18&)>> m_18Ptr;
     std::shared_ptr<std::function<void (const Fig_00_Ext_19&)>> m_19Ptr;
 
+    std::shared_ptr<std::function<bool (const Fig::FIG_00_TYPE)>> m_00CompletePtr;
+    std::shared_ptr<std::function<bool (const Fig::FIG_01_TYPE)>> m_01CompletePtr;
+
 private:
     bool m_isInitializing{false};
-    std::atomic<bool> m_reseting{false};
+    std::atomic<bool> m_resetting{false};
 
-    //FIG 00-01 information
-    uint16_t m_ensembleId{0xFFFF};
+    const std::chrono::seconds ENSEMBLE_COLLECT_WARNING_THREASHOLD = std::chrono::seconds(3);
+    const std::chrono::seconds ENSEMBLE_COLLECT_TIMEOUT = std::chrono::seconds(5);
+    const std::chrono::seconds ENSEMBLE_COLLECT_FIG013_TIMEOUT = std::chrono::seconds(3);
+    std::chrono::steady_clock::time_point m_ensembleCollectStartTime = std::chrono::steady_clock::now();
+
+    
+    //FIG 0/1 information
+    uint16_t m_ensembleId{EID_INVALID};
     uint8_t m_cifCntHigh{0x00};
     uint8_t m_cifCntLow{0x00};
     uint8_t m_cifCntHighNext{0x00};
     uint8_t m_cifCntLowNext{0x00};
     bool m_announcementsSupported{false};
 
-    uint8_t m_ensembleEcc{0xFF};
+    uint8_t m_ensembleEcc{ECC_INVALID};
 
-    //FIG 01-00
-    uint8_t m_labelCharset{0x00};
+    //FIG 1/0
+    uint8_t m_labelCharset{CHARSET_INVALID};
     std::string m_ensembleLabel{""};
     std::string m_ensembleShortLabel{""};
 
     //Service information mappings
-    std::map<uint32_t, DabService> m_servicesMap;
+    std::map<uint32_t, std::shared_ptr<DabService>> m_servicesMap;
     std::map<uint8_t, std::shared_ptr<DabServiceComponent>> m_streamComponentsMap;
     std::map<uint16_t, std::shared_ptr<DabServiceComponentMscPacketData>> m_packetComponentsMap;
+
+    CallbackDispatcher<ServiceFollowingCallback> m_serviceFollowingDispatcher;
 
     CallbackDispatcher<std::function<void()>> m_ensembleCollectDoneDispatcher;
 
     CallbackDispatcher<Date_Time_Callback> m_dateAndTimeDispatcher;
 
+    bool m_fig000done{false};
     bool m_fig001done{false};
     bool m_fig002done{false};
     bool m_fig003done{false};
+    bool m_fig004done{false};
+    bool m_fig005done{false};
+    bool m_fig006done{false};
+    bool m_fig007done{false};
     bool m_fig008done{false};
+    bool m_fig009done{false};
+    bool m_fig010done{false};
     bool m_fig013done{false};
     bool m_fig014done{false};
     bool m_fig017done{false};
+    bool m_fig018done{false};
+    bool m_fig019done{false};
+    bool m_fig020done{false};
+    bool m_fig021done{false};
+    bool m_fig024done{false};
+    bool m_fig025done{false};
+    bool m_fig026done{false};
     bool m_fig0done{false};
 
     bool m_fig100done{false};
@@ -179,13 +227,38 @@ private:
     bool m_fig106done{false};
     bool m_fig1done{false};
 
-    void checkServiceSanity();
-
-private:
+protected:
     //Service Following DB
     std::map<uint16_t, Fig_00_Ext_06::ServiceLinkingInformation> m_serviceLinkDb;
     std::map<uint16_t, std::vector<Fig_00_Ext_21::FrequencyInformation>> m_frequencyInformationDb;
     std::map<uint16_t, std::vector<Fig_00_Ext_24::OtherEnsembleServiceInformation>> m_oeSrvInfoDb;
+
+private:
+    void dumpServiceLinkDb() const;
+    void dumpFrequencyDb() const;
+    void dumpOeSrvInfoDb() const;
+
+    void lookupEIdOnOtherFrequency( // Inputs
+            const uint32_t targetEId, const uint32_t targetFreqKHz,
+            const uint8_t targetECC, const uint32_t targetSId,
+            // Outputs
+            std::vector<std::shared_ptr<LinkedServiceDab>> & retAdjacentFrequencies,
+            std::vector<std::shared_ptr<LinkedServiceDab>> & retNotAdjacentFrequencies) const;
+
+    void lookupOtherEnsembleSameService(
+            // Inputs
+            const uint32_t targetEId, const uint32_t targetFreqKHz,
+            const uint8_t targetECC, const uint32_t targetSId,
+            // Outputs
+            std::vector<std::shared_ptr<LinkedServiceDab>> & sameSIdOtherEnsembles) const;
+
+    void lookupHardLinksToService(
+            // Inputs
+            const uint32_t targetEId, const uint32_t targetFreqKHz,
+            const uint8_t targetECC, const uint32_t targetSId,
+            // Outputs
+            std::vector<std::shared_ptr<LinkedServiceDab>> & hardLinksToService ) const;
+
 
 private:
     //Announcements

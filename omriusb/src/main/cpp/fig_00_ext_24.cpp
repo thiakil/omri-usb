@@ -25,6 +25,7 @@
 #include "fig_00_ext_24.h"
 
 Fig_00_Ext_24::Fig_00_Ext_24(const std::vector<uint8_t> &figData) : Fig_00(figData) {
+    //std::cout << m_logTag << Fig::toHexString(figData) << std::endl;
     parseFigData(figData);
 }
 
@@ -47,7 +48,7 @@ void Fig_00_Ext_24::parseFigData(const std::vector<uint8_t> &figData) {
         oeInfo.caId = static_cast<uint8_t>((((*figIter & 0x70) >> 4) & 0xFF));
         uint8_t numEids = static_cast<uint8_t>(((*figIter++ & 0x0F) & 0xFF));
         if(numEids == 0) {
-            oeInfo.isCei = true;
+            oeInfo.isChangeEvent = true;
         }
 
         //std::cout << m_logTag << " SId: 0x" << std::hex << +oeInfo.serviceId << " is in Ensemble with EId: ";
@@ -57,7 +58,12 @@ void Fig_00_Ext_24::parseFigData(const std::vector<uint8_t> &figData) {
             //std::cout << std::hex << "0x" << +eid << std::dec <<  ", ";
         }
 
-        std::sort(oeInfo.ensembleIds.begin(), oeInfo.ensembleIds.end());
+        /* spec says "The database key comprises the OE and P/D flags (see clause 5.2.2.1) and the SId field."
+         * my two cents: This makes no sense. The SId may be 32 bits if P/D = 1
+         * Thus: we use only SId as the database key
+         */
+        oeInfo.oeDbKey = /* static_cast<uint32_t>(isOtherEnsemble() << 31 | isDataService() << 30 | */ oeInfo.serviceId /*)*/;
+
         m_oeSrvInfos.push_back(oeInfo);
         //std::cout << " OtherEnsemble: " << std::boolalpha << isOtherEnsemble() << std::noboolalpha << " ServiceInformationVersion_SIV: " << std::boolalpha << isNextConfiguration() << std::noboolalpha << std::endl;
     }

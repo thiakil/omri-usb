@@ -21,12 +21,12 @@
 #ifndef DABMPEGSERVICECOMPONENTDECODER_H
 #define DABMPEGSERVICECOMPONENTDECODER_H
 
-#include <thread>
 #include <atomic>
-
-#include "dabservicecomponentdecoder.h"
+#include <thread>
 
 #include "concurrent_queue.h"
+#include "dabservicecomponentdecoder.h"
+#include "dabthread.h"
 
 class DabMpegServiceComponentDecoder : public DabServiceComponentDecoder {
 
@@ -48,12 +48,10 @@ private:
 
     ConcurrentQueue <std::vector<uint8_t>> m_conQueue;
     std::atomic<bool> m_processThreadRunning{false};
-    std::thread m_processThread;
+    std::unique_ptr<DabThread> m_processThread;
 
     CallbackDispatcher<std::function<void (const std::vector<uint8_t>&)>> m_padDataDispatcher;
     CallbackDispatcher<AUDIO_COMPONENT_DATA_CALLBACK> m_audioDataDispatcher;
-
-    bool m_frameSizeAdjusted{false};
 
 private:
     void processData();

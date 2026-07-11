@@ -30,6 +30,13 @@
 class DabServiceComponentMscStreamAudio : public DabServiceComponentMscStream {
 
 public:
+    enum {
+        AUDIOTYPE_MP2 = 0x00u,
+        AUDIOTYPE_AAC = 0x3Fu,
+        AUDIOTYPE_INVALID = 0xFFu
+    };
+
+public:
     explicit DabServiceComponentMscStreamAudio();
     virtual ~DabServiceComponentMscStreamAudio();
 
@@ -46,10 +53,14 @@ public:
     using AUDIO_DATA_CALLBACK = std::function<void (const std::vector<uint8_t>&, int, int, int, bool, bool)>;
     virtual std::shared_ptr<DabServiceComponentMscStreamAudio::AUDIO_DATA_CALLBACK> registerAudioDataCallback(AUDIO_DATA_CALLBACK cb);
 
+    virtual void clearCallbacks();
+
+    virtual bool checkSanity() const override;
+
 private:
     std::string m_logTag = "[DabServiceComponentMscStreamAudio]";
 
-    uint8_t m_ascTy;
+    uint8_t m_ascTy{AUDIOTYPE_INVALID};
 
     //ComponentDecoder base pointer
     std::shared_ptr<DabServiceComponentDecoder> m_componentDecoder;

@@ -21,21 +21,27 @@
 #ifndef RAONTUNERINPUT_H
 #define RAONTUNERINPUT_H
 
-#include "libusb-1.0/libusb.h"
-#include "dabusbtunerinput.h"
-#include "jtunerusbdevice.h"
-#include "jdabservice.h"
-#include "../../concurrent_queue.h"
-
-#include <memory>
 #include <array>
+#include <fstream>
+#include <memory>
+#include <mutex>
+#include <libusb-1.0/libusb.h>
+
+#include "dabusbtunerinput.h"
+#include "jdabservice.h"
+#include "jtunerusbdevice.h"
+
+#include "../../concurrent_queue.h"
+#include "../../dabthread.h"
+#include "../../linkedservicedab.h"
 
 typedef unsigned int uint_t;
 
 class RaonTunerInput final : public DabUsbTunerInput, DabEnsemble {
 
 public:
-    explicit RaonTunerInput(std::shared_ptr<JTunerUsbDevice> usbDevice);
+    explicit RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice);
+    explicit RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice, const std::string & recordPath);
     virtual ~RaonTunerInput();
 
     //delete copy and assignment constructors
@@ -43,24 +49,31 @@ public:
     void operator=(RaonTunerInput&) = delete;
 
     void initialize() override;
+    void deInitialize() override;
     bool isInitialized() const override;
-    int getCurrentTunedFrequency() const override;
-    void tuneFrequency(int frequencyKHz) override;
+    uint32_t getCurrentTunedFrequency() const override;
+    void tuneFrequency(uint32_t frequencyHz) override;
     const DabEnsemble& getEnsemble() const override;
     int getMaximumConcurrentSubChannels() const override;
 
     void addMscCallback(CallbackFunction cb, uint8_t subchanId) override;
     void addFicCallback(CallbackFunction cb) override;
 
-    void startService(std::shared_ptr<JDabService> serviceLink) override;
+    void startService(std::shared_ptr<JDabService>& serviceLink) override;
+    std::shared_ptr<JDabService>& getStartedService() override;
     void stopService(const DabService& service) override;
     void stopAllRunningServices() override;
 
     void startServiceScan() override;
     void stopServiceScan() override;
 
-    std::string getDeviceName() const override;
+    std::string getDeviceName() override;
     libusb_device* getDeviceHandle() const override;
+
+    std::string getHardwareVersion() const override ;
+    std::string getSoftwareVersion() const override ;
+
+    std::vector<std::shared_ptr<LinkedServiceDab>> getLinkedServices(const LinkedServiceDab &service) override;
 
 private:
     const std::string LOG_TAG{"[RaonUsbTuner] "};
@@ -68,7 +81,10 @@ private:
     constexpr static uint8_t RAON_ENDPOINT_OUT = 0x02;
     constexpr static uint8_t RAON_ENDPOINT_IN = 0x82;
 
-    uint32_t m_currentFrequency{0};
+    std::string m_HwVersion{""};
+    std::string m_SwVersion{""};
+
+    uint32_t m_currentFrequency{0}; // Hz
 
     std::shared_ptr<JTunerUsbDevice> m_usbDevice{nullptr};
     bool m_isInitialized{false};
@@ -76,53 +92,68 @@ private:
     bool m_isScanning{false};
 
     std::shared_ptr<JDabService> m_startServiceLink{nullptr};
-    std::shared_ptr<std::function<void()>> m_ensembleFinishedCb;
+    __attribute__((unused)) std::shared_ptr<std::function<void()>> m_ensembleFinishedCb; // it *is* used
 
     std::atomic<bool> m_readFicThreadRunning{false};
-    std::thread m_readFicThread;
-
-    std::atomic<bool> m_readMscThreadRunning{false};
-    std::thread m_readMscThread;
-
-    std::atomic<bool> m_readDataThreadRunning{false};
-    std::thread m_readDataThread;
+    std::unique_ptr<DabThread> m_readFicThread;
 
     uint8_t m_currentSubchanId{0xFF};
 
     int m_currentScanningEnsembleNum{0};
-    //TODO changed from 100
-    constexpr static int MAX_COLLECTION_LOOPS = 200;
-    int m_maxCollectionWaitLoops{MAX_COLLECTION_LOOPS}; //5 seconds
-    int m_ficCollectionWaitLoops{300};
+    // total time when not locked: MAX_COLLECTION_LOOPS * WAITLOOP_WAIT_FOR_LOCK_MS
+    constexpr static int MAX_COLLECTION_LOOPS{300}; // => ~ 3sec
+    constexpr static int MAX_FIC_COLLECTION_LOOPS{60}; // 1 loop ~150ms, 60 loops => ~ 9sec
+    int m_maxCollectionWaitLoops{MAX_COLLECTION_LOOPS};
+    const uint32_t WAITLOOP_WAIT_FOR_LOCK_MS{100u};
+    constexpr static int WAITLOOP_NOLOCK_DECREMENT{10};
+    constexpr static int WAITLOOP_LOCK_INCREMENT{8};
+    int m_ficCollectionWaitLoops{MAX_FIC_COLLECTION_LOOPS};
+    constexpr static int READ_MSC_TIMEOUT_MS{200};
+    constexpr static int READ_FIC_TIMEOUT_MS{100};
+
+    std::recursive_mutex m_classmutex;
+    std::recursive_mutex m_tunermutex;
 
     ConcurrentQueue<std::function<void(void)>> m_scanCommandQueue;
     std::atomic<bool> m_scanCommandThreadRunning{false};
-    std::thread m_scanCommandThread;
+    std::unique_ptr<DabThread> m_scanCommandThread;
 
     ConcurrentQueue<std::function<void(void)>> m_commandQueue;
     std::atomic<bool> m_commandThreadRunning{false};
-    std::thread m_commandThread;
+    std::unique_ptr<DabThread> m_commandThread;
 
-    //int m_antLvlCnt{100};
-    int m_antLvlCnt{10};
-    uint8_t m_prevAntennaLvl{0};
+    int m_antLvlCnt{1};
+    int m_prevAntennaLvl{0};
+    int m_prevAntennaRaw{-1};
+    uint8_t m_lastRfLockState{0};
+
+    // recording raw data to file
+    std::string m_recordPath{""};
+    std::recursive_mutex m_outFileWriteMutex;
+    std::ofstream m_outFileStream;
+    std::string m_recordPathFilename{""};
+    uint64_t m_lastFlushTime{0ULL};
+
+    // failures in readRegister()
+    uint32_t mUsbReadFailure{0};
+    uint32_t mUsbWriteFailure{0};
+    bool mUsbIoErrorReported{false};
 
 private:
     void commandProcessing();
 
     void initializeSync();
-    void tuneFrequencySync(int frequencyKHz);
-    void startServiceSync(std::shared_ptr<JDabService> serviceLink);
+    void tuneFrequencySync(uint32_t frequencyHz);
+    void startServiceSync(const std::shared_ptr<JDabService>& serviceLink);
+    void nop() const;
 
 private:
     void ensembleCollectFinished();
 
     void setService();
 
-    void threadedFicRead();
-    void threadedMscRead();
-
-    void threadedDataRead();
+    void threadedScanningFicRead();
+    bool hasUsbIoErrors();
 
     void scanNext();
 
@@ -130,18 +161,26 @@ private:
     void startScanCommand();
     void stopScanCommand();
 
+    void rawRecordOpen(const std::shared_ptr<JDabService>& serviceLink); // raw recording while playing a service
+    void rawRecordOpen(const int freqMhz); // raw recording while ensemble scan
+    void __rawRecordOpen(const std::string& filenameAfterDateWithoutSuffix); // Note: called from the above two, not indended to be called directly
+
+    void rawRecordFicWrite(const std::vector<uint8_t>& data);
+    void rawRecordMscWrite(const std::vector<uint8_t>& data);
+    void rawRecordClose();
+
 private:
     enum REGISTER_PAGE {
-        REGISTER_PAGE_OFDM = 0x02,  //For 1seg
-        REGISTER_PAGE_FEC =  0x03,  //For 1seg
+        REGISTER_PAGE_OFDM __attribute__((unused)) = 0x02,  //For 1seg
+        REGISTER_PAGE_FEC __attribute__((unused)) =  0x03,  //For 1seg
         REGISTER_PAGE_COMM = 0x04,
         REGISTER_PAGE_FM =   0x06,  //T-DMB OFDM/FM
         REGISTER_PAGE_HOST = 0x07,
-        REGISTER_PAGE_CAS =  0x08,
+        REGISTER_PAGE_CAS __attribute__((unused)) =  0x08,
         REGISTER_PAGE_DD =   0x09,	//FEC for T-DMB, DAB, FM
 
         REGISTER_PAGE_FIC =  0x0A,
-        REGISTER_PAGE_MSC0 = 0x0B,
+        REGISTER_PAGE_MSC0 __attribute__((unused)) = 0x0B,
         REGISTER_PAGE_MSC1 = 0x0C,
         REGISTER_PAGE_RF =   0x0F
     };
@@ -185,7 +224,7 @@ private:
             RTV_ADC_CLK_FREQ_8_MHz,		//10C: 213360,
             RTV_ADC_CLK_FREQ_8_192_MHz,	//10D: 215072,
             RTV_ADC_CLK_FREQ_9_6_MHz,	//11A: 216928,
-            RTV_ADC_CLK_FREQ_8_192_MHz,	//11N: 217008,
+            RTV_ADC_CLK_FREQ_8_192_MHz,	//11N: 217088,
             RTV_ADC_CLK_FREQ_8_192_MHz,	//11B: 218640,
             RTV_ADC_CLK_FREQ_8_192_MHz,	//11C: 220352,
             RTV_ADC_CLK_FREQ_8_MHz,		//11D: 222064,
@@ -256,13 +295,13 @@ private:
     static constexpr uint8_t MSC0_E_UNDER_FLOW = 0x04;
     static constexpr uint8_t MSC0_E_INT        = 0x02;
     static constexpr uint8_t FIC_E_INT         = 0x01;
-    static constexpr uint8_t RE_CONFIG_E_INT   = 0x04;
+    __attribute__((unused)) static constexpr uint8_t RE_CONFIG_E_INT   = 0x04;
 
-    static constexpr uint8_t MSC1_INTR_BITS = (MSC1_E_INT|MSC1_E_UNDER_FLOW|MSC1_E_OVER_FLOW);
-    static constexpr uint8_t MSC0_INTR_BITS	= (MSC0_E_INT|MSC0_E_UNDER_FLOW|MSC0_E_OVER_FLOW);
+    __attribute__((unused)) static constexpr uint8_t MSC1_INTR_BITS = (MSC1_E_INT|MSC1_E_UNDER_FLOW|MSC1_E_OVER_FLOW);
+    __attribute__((unused)) static constexpr uint8_t MSC0_INTR_BITS	= (MSC0_E_INT|MSC0_E_UNDER_FLOW|MSC0_E_OVER_FLOW);
 
     static constexpr uint8_t INT_E_UCLRL        = 0x35;  /// [2]MSC1 int clear [1]MSC0 int clear [0]FIC int clear
-    static constexpr uint8_t INT_E_UCLRH        = 0x36;  /// [6]OFDM TII done clear
+    __attribute__((unused)) static constexpr uint8_t INT_E_UCLRH        = 0x36;  /// [6]OFDM TII done clear
 
     static constexpr uint8_t INT_E_STATL        = 0x33;  /// [7]OFDM Lock status [6]MSC1 overrun [5]MSC1 underrun [4]MSC1 int [3]MSC0 overrun [2]MSC0 underrun [1]MSC0 int [0]FIC int
     static constexpr uint8_t INT_E_STATH        = 0x34;  /// [7]OFDM NIS [6]OFDM TII [5]OFDM scan [4]OFDM window position [3]OFDM unlock [2]FEC re-configuration [1]FEC CIF end [0]FEC soft reset
@@ -282,15 +321,22 @@ private:
             0
     };
 
+    // definitions of max retries, i.e. after a failed attempt, how often is a retry done
+    static constexpr uint8_t MAX_RETRY_SWITCH_PAGE   = 2u;
+    static constexpr uint8_t MAX_RETRY_READ_REGISTER = 2u;
+    static constexpr uint8_t MAX_RETRY_SET_REGISTER  = 2u;
+    // sleep time before a retry
+    static constexpr useconds_t USLEEP_BEFORE_RETRY = 2000u; // 2 millisec
+
     //TunerSpecific
-    void setRegister(uint8_t reg, uint8_t val);
-    uint8_t readRegister(uint8_t reg);
-    void switchPage(REGISTER_PAGE regPage);
+    void setRegister(const uint8_t reg, const uint8_t val, const uint8_t retryNum = 0);
+    uint8_t readRegister(const uint8_t reg, const uint8_t retryNum = 0);
+    void switchPage(const REGISTER_PAGE regPage, const uint8_t retryNum = 0);
 
     bool tunerPowerUp();
     void configurePowerType();
     void configureAddClock();
-    bool changedAdcClock(uint8_t g_aeAdcClkTypeTbl_DAB_B3);
+    bool changedAdcClock(uint8_t adcClkType);
 
     void tdmbInitTop();
     void tdmbInitComm();
@@ -302,9 +348,10 @@ private:
     void rtvStreamDisable();
     void rtvConfigureHostIF();
     void rtvRFInitilize();
-    void rtvRfSpecial();
+    void rtvEcho();
+    void rtvVersion();
 
-    void setFrequency(uint32_t frequencyKhz);
+    void setFrequency(uint32_t frequencyHz);
 
     void softReset();
     void setupMemoryFIC();
@@ -314,22 +361,19 @@ private:
     void openSubChannel(uint8_t subchanId);
     void closeSubchannel(uint8_t subchanId);
 
-    void readFic();
-    void readMsc();
+    void scanningReadFic();
 
     void readData();
 
-    /* ** */
-    void readMscData();
-    void readFicData();
-    void clearMscBuffer();
-    /* ** */
+    void readFicData(bool rfLock);
 
     void startReadFicThread();
     void stopReadFicThread();
 
     void startReadDataThread();
     void stopReadDataThread();
+
+    void stopScanCommandThread();
 
     uint8_t getLockStatus();
 

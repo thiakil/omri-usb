@@ -26,7 +26,16 @@
 
 #include "dabservicecomponent.h"
 
+// forward declaration
+class DabEnsemble;
+
 class DabService {
+
+public:
+    static constexpr uint32_t SID_INVALID = 0xFFFFFFFFu;
+    static constexpr uint8_t CAID_INVALID = 0xFFu;
+    static constexpr uint8_t CHARSET_INVALID = 0xFFu;
+    static constexpr uint8_t PTYCODE_INVALID = 0xFFu;
 
 public:
     explicit DabService();
@@ -36,7 +45,7 @@ public:
     virtual bool isCaApplied() const;
     virtual uint8_t getCaId() const;
     virtual uint8_t getNumberServiceComponents() const;
-    virtual bool isProgrammeService() const;
+    virtual bool hasAudioServiceComponent() const;
 
     virtual uint8_t getLabelCharset() const;
     virtual std::string getServiceLabel() const;
@@ -51,9 +60,9 @@ public:
     virtual std::string getProgrammeType8CharName() const;
 
     virtual uint32_t getEnsembleFrequency() const;
+    virtual DabEnsemble * getDabEnsemble() const;
 
     virtual void setServiceId(uint32_t serviceId);
-    virtual void setIsProgrammeService(bool isProgramme);
     virtual void setCaId(uint8_t caId);
     virtual void setNumberOfServiceComponents(uint8_t numSc);
 
@@ -61,34 +70,36 @@ public:
     virtual void setServiceLabel(const std::string& label);
     virtual void setServiceShortLabel(const std::string& shortLabel);
 
-    virtual void addServiceComponent(std::shared_ptr<DabServiceComponent> component);
+    virtual void addServiceComponent(const std::shared_ptr<DabServiceComponent>& component);
 
     virtual void setProgrammeTypeCode(uint8_t intPtyCode);
     virtual void setProgrammeTypeIsDynamic(bool dynamic);
     virtual void setEnsembleFrequency(uint32_t ensembleFrequency);
+    virtual void setDabEnsemble(DabEnsemble *pEnsemble);
 
+    virtual bool checkSanity() const;
 protected:
-    const std::string m_logTag = "[DabService]";
+    const std::string m_logTag = "[DabService] ";
 
-    uint32_t m_serviceId{0xFFFFFFFF};
-    bool m_isProgrammeService{false};
-    uint8_t m_caId{0x00};
+    uint32_t m_serviceId{SID_INVALID};
+    uint8_t m_caId{CAID_INVALID};
     bool m_caApplied{false};
     uint8_t m_numSrvComps{0};
 
-    uint8_t m_labelCharset{0x00};
+    uint8_t m_labelCharset{CHARSET_INVALID};
     std::string m_serviceLabel{""};
     std::string m_serviceShortLabel{""};
 
     std::vector<std::shared_ptr<DabServiceComponent>> m_components;
 
-    uint8_t m_ptyCode{0x00};
+    uint8_t m_ptyCode{PTYCODE_INVALID};
     bool m_ptyIsDynamic{false};
     std::string m_ptyNameFull{"No program type"};
     std::string m_ptyName16{"None"};
     std::string m_ptyName8{"None"};
 
-    uint32_t m_ensembleFrequency{0};
+    uint32_t m_ensembleFrequency; // initialized in constructor
+    DabEnsemble* m_ptr_dabEnsemble{nullptr};
 };
 
 #endif // DABSERVICE_H

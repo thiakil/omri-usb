@@ -18,7 +18,24 @@
  *
  */
 
+#include <chrono>
+#include <cstdio>
 #include <iomanip>
+#include <initializer_list>
+#include <iterator>
+#include <regex>
+#include <set>
+
+#include <pthread.h>
+#include <time.h>
+#include <unistd.h>
+#include <syscall.h>
+#include <sys/endian.h>
+#include <sys/stat.h>
+
+#include "../../ficparser.h"
+#include "../../global_definitions.h"
+#include "demousbtunerinput.h"
 #include "raontunerinput.h"
 #include "libusb-1.0/libusb.h"
 
@@ -27,30 +44,41 @@ constexpr uint8_t RaonTunerInput::g_aeAdcClkTypeTbl_DAB_B3[];
 constexpr int RaonTunerInput::g_atPllNF_DAB_BAND3[];
 constexpr uint_t RaonTunerInput::AntLvlTbl[DAB_MAX_NUM_ANTENNA_LEVEL];
 
-RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice> usbDevice) : m_usbDevice{usbDevice} {
+RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice) : m_usbDevice{usbDevice} {
+    std::cout << LOG_TAG << "Constructing...." << std::endl;
+
+    m_ensembleFinishedCb = DabEnsemble::registerEnsembleCollectDoneCallback(std::bind(&RaonTunerInput::ensembleCollectFinished, this));
+
     if (m_usbDevice->openDevice()) {
-        m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
-        m_ensembleFinishedCb = DabEnsemble::registerEnsembleCollectDoneCallback(std::bind(&RaonTunerInput::ensembleCollectFinished, this));
+        initialize();
         startReadDataThread();
     } else {
         std::cout << LOG_TAG << "Failed to openDevice" << std::endl;
     }
 }
 
+RaonTunerInput::RaonTunerInput(std::shared_ptr<JTunerUsbDevice>& usbDevice, const std::string & recordPath)
+    : RaonTunerInput(usbDevice)  {
+    if (recordPath.length() > 0) {
+        m_recordPath = recordPath;
+    }
+}
+
 RaonTunerInput::~RaonTunerInput() {
+    std::lock_guard<std::recursive_mutex> lockGuard(m_classmutex);
     std::cout << LOG_TAG << "destructing...." << std::endl;
 
+    stopScanCommandThread();
     stopReadFicThread();
-
-    m_scanCommandThreadRunning = false;
-    if(m_scanCommandThread.joinable()) {
-        m_scanCommandThread.join();
-    }
-
     stopReadDataThread();
+    rawRecordClose();
+
+    std::cout << LOG_TAG << "destructed" << std::endl;
 }
 
 void RaonTunerInput::initialize() {
+    mUsbIoErrorReported = false;
+    mUsbReadFailure = mUsbWriteFailure = 0;
     m_commandQueue.push(std::bind(&RaonTunerInput::initializeSync, this));
 }
 
@@ -71,14 +99,32 @@ void RaonTunerInput::initializeSync() {
             rtvStreamDisable();
             rtvConfigureHostIF();
             rtvRFInitilize();
-            rtvRfSpecial();
+            rtvEcho();
+            rtvVersion();
 
             setupMscThreshold();
             setupMemoryFIC();
 
             m_isInitialized = true;
-            m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
+            if (m_usbDevice != nullptr) {
+                m_usbDevice->callCallback(
+                        JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
+            }
+        } else {
+            if (m_usbDevice != nullptr) {
+                m_usbDevice->callCallback(
+                        JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_FAILED);
+            }
         }
+    }
+}
+
+void RaonTunerInput::deInitialize() {
+    if (m_isInitialized) {
+        stopScanCommandThread();
+        stopReadFicThread();
+        stopReadDataThread();
+        rawRecordClose();
     }
 }
 
@@ -86,48 +132,48 @@ bool RaonTunerInput::isInitialized() const {
     return m_isInitialized;
 }
 
-int RaonTunerInput::getCurrentTunedFrequency() const {
+uint32_t RaonTunerInput::getCurrentTunedFrequency() const {
     return m_currentFrequency;
 }
 
-void RaonTunerInput::tuneFrequency(int frequencyKHz) {
+void RaonTunerInput::tuneFrequency(uint32_t frequencyHz) {
     if(!m_isScanning) {
-        m_commandQueue.push(std::bind(&RaonTunerInput::tuneFrequencySync, this, frequencyKHz));
+        m_commandQueue.push(std::bind(&RaonTunerInput::tuneFrequencySync, this, frequencyHz));
     } else {
-        tuneFrequencySync(frequencyKHz);
+        tuneFrequencySync(frequencyHz);
     }
 }
 
-void RaonTunerInput::tuneFrequencySync(int frequencyKHz) {
+void RaonTunerInput::tuneFrequencySync(uint32_t frequencyHz) {
     if(!m_isInitialized) {
-        std::cout << LOG_TAG << "Device not initialized" << std::endl;
+        std::clog << LOG_TAG << "Device not initialized" << std::endl;
         return;
     }
 
-    std::cout << LOG_TAG << "Tuning Frequency: " << +frequencyKHz << std::endl;
+    std::cout << LOG_TAG << "Tuning Frequency: " << +(frequencyHz/1000) << " kHz" << std::endl;
 
     if(!m_isScanning) {
-        //stopReadDataThread();
+        stopReadDataThread();
     } else {
         stopReadFicThread();
     }
 
     reset();
 
-    m_ensembleFrequency = static_cast<uint32_t>(frequencyKHz);
-    m_currentFrequency = static_cast<uint32_t>(frequencyKHz);
+    m_ensembleFrequency = static_cast<uint32_t>(frequencyHz);
+    m_currentFrequency = static_cast<uint32_t>(frequencyHz);
 
     setFrequency(m_ensembleFrequency);
 
     softReset();
     if(!m_isScanning) {
-        //startReadDataThread();
+        startReadDataThread();
     } else {
         startReadFicThread();
     }
 }
 
-const DabEnsemble &RaonTunerInput::getEnsemble() const {
+const DabEnsemble & RaonTunerInput::getEnsemble() const {
     return *this;
 }
 
@@ -143,49 +189,62 @@ void RaonTunerInput::addFicCallback(DabInput::CallbackFunction cb) {
 
 }
 
-void RaonTunerInput::startService(std::shared_ptr<JDabService> serviceLink) {
+void RaonTunerInput::startService(std::shared_ptr<JDabService>& serviceLink) {
     //check if this service is already running
-    if(m_startServiceLink != nullptr) {
-        if(m_startServiceLink->getEnsembleFrequency() == serviceLink->getEnsembleFrequency() &&
-           m_startServiceLink->getEnsembleEcc() == serviceLink->getEnsembleEcc() &&
-           m_startServiceLink->getEnsembleId() == serviceLink->getEnsembleId() &&
-           m_startServiceLink->getServiceId() == serviceLink->getServiceId()) {
+    auto & service = m_startServiceLink;
+    if(service != nullptr) {
+        if(service->getEnsembleFrequency() == serviceLink->getEnsembleFrequency() &&
+                service->getEnsembleEcc() == serviceLink->getEnsembleEcc() &&
+                service->getEnsembleId() == serviceLink->getEnsembleId() &&
+                service->getServiceId() == serviceLink->getServiceId()) {
             std::cout << LOG_TAG << "Starting service is already running" << std::endl;
-
-            //TODO really call 'serviceStarted' if the service is already running?
-            //m_usbDevice->serviceStarted(m_startServiceLink->getJavaDabServiceObject());
             return;
         }
     }
     m_commandQueue.push(std::bind(&RaonTunerInput::startServiceSync, this, serviceLink));
 }
 
-void RaonTunerInput::startServiceSync(std::shared_ptr<JDabService> serviceLink) {
-    std::cout << LOG_TAG << "Starting service..." << std::endl;
+std::shared_ptr<JDabService>& RaonTunerInput::getStartedService() {
+    return m_startServiceLink;
+}
 
+void RaonTunerInput::startServiceSync(const std::shared_ptr<JDabService>& serviceLink) {
     if(m_isScanning) {
+        std::clog << LOG_TAG << "not while scanning: startServiceSync" << std::endl;
         return;
     }
 
-    if(m_startServiceLink != nullptr) {
-        m_startServiceLink->decodeAudio(false);
-        if(m_startServiceLink->getJavaDabServiceObject() != nullptr) {
-            m_usbDevice->serviceStopped(m_startServiceLink->getJavaDabServiceObject());
-        }
-    }
+    std::cout << LOG_TAG << "Starting service... 0x" << std::hex << serviceLink->getServiceId() << std::dec << std::endl;
 
-    if(m_currentFrequency != serviceLink.get()->getEnsembleFrequency()) {
+    // stop potential existing service
+    auto & service = m_startServiceLink;
+    if(service != nullptr) {
+        service->decodeAudio(false);
+        service->unlinkDabService();
+        if(service->getJavaDabServiceObject() != nullptr) {
+            if (m_usbDevice != nullptr) {
+                m_usbDevice->serviceStopped(service->getJavaDabServiceObject());
+            }
+        }
+        m_startServiceLink.reset();
+    }
+    // need to refer to serviceLink, otherwise it may be destroyed
+    m_startServiceLink = serviceLink;
+
+    // open raw recording file
+    rawRecordOpen(serviceLink);
+
+    if(m_currentFrequency != serviceLink->getEnsembleFrequency()) {
         m_ensembleCollectFinished = false;
-        tuneFrequency(serviceLink.get()->getEnsembleFrequency());
-        m_startServiceLink = serviceLink;
+        tuneFrequency(serviceLink->getEnsembleFrequency());
         return;
     }
 
     if(m_ensembleCollectFinished) {
-        m_startServiceLink = serviceLink;
         setService();
         return;
     }
+    std::cout << LOG_TAG << "WARN: startServiceSync() end" << std::endl;
 }
 
 void RaonTunerInput::stopService(const DabService &service) {
@@ -197,99 +256,99 @@ void RaonTunerInput::stopAllRunningServices() {
 }
 
 void RaonTunerInput::commandProcessing() {
+    pthread_setname_np(pthread_self(), "CommandQ");
+    std::cout << LOG_TAG << "CommandQ Thread starting" << std::endl;
+
     while(m_commandThreadRunning) {
-        std::function<void(void)> command;
-        if (m_commandQueue.tryPop(command, std::chrono::milliseconds(2))) {
-            command();
-        } else {
-            /*
-            --m_antLvlCnt;
-            if(!m_antLvlCnt) {
-                std::cout << LOG_TAG << "Pushing GetAntennaLevel" << std::endl;
-                m_commandQueue.push(std::bind(&RaonTunerInput::getAntennaLevel, this));
-                m_antLvlCnt = 100;
+        if (!hasUsbIoErrors()) {
+            std::function<void(void)> command;
+            if (m_commandQueue.tryPop(command, std::chrono::milliseconds(2))) {
+                command();
+            } else {
+                m_commandQueue.push(std::bind(&RaonTunerInput::readData, this));
             }
-
-            uint8_t int_type_val1 = readRegister(INT_E_STATL);
-            bool ofdmLock = static_cast<bool>((int_type_val1 & 0x80u) >> 7u);
-            bool msc1Overrun = (int_type_val1 & MSC1_E_OVER_FLOW) >> 6u;
-            bool msc1Underrun = (int_type_val1 & MSC1_E_UNDER_FLOW) >> 5u;
-            bool msc1Int = (int_type_val1 & MSC1_E_INT) >> 4u;
-            bool msc0Overrun = (int_type_val1 & MSC0_E_OVER_FLOW) >> 3u;
-            bool msc0Underrun = (int_type_val1 & MSC0_E_UNDER_FLOW) >> 2u;
-            bool msc0Int = (int_type_val1 & MSC0_E_INT) >> 1u;
-            bool ficInt = (int_type_val1 & FIC_E_INT);
-
-            if(ficInt) {
-                std::cout << LOG_TAG << "Pushing ReadFic" << std::endl;
-                m_commandQueue.push(std::bind(&RaonTunerInput::readFicData, this));
-            }
-
-            if(msc1Int) {
-                std::cout << LOG_TAG << "Pushing ReadMsc" << std::endl;
-                m_commandQueue.push(std::bind(&RaonTunerInput::readMscData, this));
-            }
-
-            if(msc1Overrun || msc1Underrun) {
-                std::cout << LOG_TAG << "Pushing ClearMsc" << std::endl;
-                m_commandQueue.push(std::bind(&RaonTunerInput::clearMscBuffer, this));
-            }
-            */
-
-            m_commandQueue.push(std::bind(&RaonTunerInput::readData, this));
         }
     }
+    m_commandThreadRunning = false;
 
-    std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice.get()->getDeviceName()) : "NULL") << " CommandQ Process Thread stopped" << std::endl;
-
+    std::cout << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " CommandQ Process Thread stopped" << std::endl;
 }
 
 void RaonTunerInput::processScanCommands() {
+    pthread_setname_np(pthread_self(), "ScanCommandQ");
     while(m_scanCommandThreadRunning) {
-        std::function<void(void)> command;
-        if (m_scanCommandQueue.tryPop(command, std::chrono::milliseconds(24))) {
-            command();
+        if (!hasUsbIoErrors()) {
+            std::function<void(void)> command;
+            if (m_scanCommandQueue.tryPop(command, std::chrono::milliseconds(24))) {
+                command();
+            }
         }
     }
 
-    std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice.get()->getDeviceName()) : "NULL") << " ScanCommandQ Process Thread stopped" << std::endl;
+    std::cout << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " ScanCommandQ Process Thread stopped" << std::endl;
 
 }
 
 void RaonTunerInput::startScanCommand() {
-    std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice.get()->getDeviceName()) : "NULL") << " Starting service scan!" << std::endl;
+    std::cout << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Starting service scan!" << std::endl;
     m_isScanning = true;
     m_currentScanningEnsembleNum = 0;
     m_maxCollectionWaitLoops = MAX_COLLECTION_LOOPS;
-    m_ficCollectionWaitLoops = 300;
-    tuneFrequency(DAB_FREQ_TABLE_MHZ[m_currentScanningEnsembleNum] * 1000);
+    m_ficCollectionWaitLoops = MAX_FIC_COLLECTION_LOOPS;
+    tuneFrequency(DAB_FREQ_TABLE_KHZ[m_currentScanningEnsembleNum] * 1000);
     m_startServiceLink = nullptr;
-    m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_SCAN_IN_PROGRESS);
-    m_usbDevice->scanProgress(0);
+    if (m_usbDevice != nullptr) {
+        m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_SCAN_IN_PROGRESS);
+        m_usbDevice->scanProgress(0, -1);
+    }
 }
 
 void RaonTunerInput::stopScanCommand() {
-    std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice.get()->getDeviceName()) : "NULL") << " Stopping service scan!" << std::endl;
+    std::cout << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Stopping service scan!" << std::endl;
 
     stopReadFicThread();
     m_isScanning = false;
     m_currentScanningEnsembleNum = 0;
-    tuneFrequency(0xFFFFFFFF);
-    m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
+    tuneFrequency(-1);
+    if (m_usbDevice != nullptr) {
+        m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
+    }
     startReadDataThread();
+}
+
+void RaonTunerInput::stopScanCommandThread() {
+    std::lock_guard<std::recursive_mutex> lockGuard(m_classmutex);
+    if (m_scanCommandThreadRunning) {
+        m_scanCommandThreadRunning = false;
+        if (m_scanCommandThread.get() == nullptr) {
+            return; // no thread, nothing to do
+        }
+        std::cout << LOG_TAG << "Stopping ScanCommand thread..." << std::endl;
+        if (m_scanCommandThread->joinable()) {
+            if (std::this_thread::get_id() != m_scanCommandThread->get_id()) {
+                std::cout << LOG_TAG << "Joining ScanCommand thread..." << std::endl;
+                m_scanCommandThread->join();
+                std::cout << LOG_TAG << "Joining ScanCommand thread done" << std::endl;
+            } else {
+                // cannot join myself
+                std::clog << LOG_TAG << "Can't join ScanCommand thread: it's me" << std::endl;
+                m_scanCommandThread->detach(); // forget about this thread
+            }
+        } else {
+            std::clog << LOG_TAG << "ScanCommand thread not joinable" << std::endl;
+        }
+    }
 }
 
 void RaonTunerInput::startServiceScan() {
     if(!m_isScanning) {
         stopReadDataThread();
 
-        m_scanCommandThreadRunning = false;
-        if(m_scanCommandThread.joinable()) {
-            m_scanCommandThread.join();
-        }
+        stopScanCommandThread(); // in case it is still running
 
         m_scanCommandThreadRunning = true;
-        m_scanCommandThread = std::thread(&RaonTunerInput::processScanCommands, this);
+        m_scanCommandThread = std::unique_ptr<DabThread>(
+                new DabThread([this]() { processScanCommands(); }));
         m_scanCommandQueue.push(std::bind(&RaonTunerInput::startScanCommand, this));
     }
 }
@@ -301,159 +360,337 @@ void RaonTunerInput::stopServiceScan() {
 }
 
 void RaonTunerInput::scanNext() {
-    std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice.get()->getDeviceName()) : "NULL") << " Scanning next Ensemble!" << std::endl;
-
     m_maxCollectionWaitLoops = MAX_COLLECTION_LOOPS;
-    m_ficCollectionWaitLoops = 300;
+    m_ficCollectionWaitLoops = MAX_FIC_COLLECTION_LOOPS;
 
     if (m_currentScanningEnsembleNum + 1 < NUM_DAB_ENSEMBLES) {
-        std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice.get()->getDeviceName()) : "NULL") << " Scan next Ensemble: " << +DAB_FREQ_TABLE_MHZ[m_currentScanningEnsembleNum + 1] << std::endl;
+        std::stringstream logStr;
+        logStr << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Scan next Ensemble: " << +DAB_FREQ_TABLE_KHZ[m_currentScanningEnsembleNum + 1];
+        std::cout << logStr.rdbuf() << std::endl;
         if(m_ensembleCollectFinished) {
-            for (int i = 0; i < NUM_DAB_N_FREQUENCIES; i++) {
-                if((m_currentScanningEnsembleNum + 1) == DAB_N_FREQUENCIES_IDX[i]) {
-                    std::cout << LOG_TAG << "Skiping NFrequency: " << +DAB_N_FREQUENCIES_IDX[i] << std::endl;
+            for (int i : DAB_N_FREQUENCIES_IDX) {
+                if((m_currentScanningEnsembleNum + 1) == i) {
+                    std::stringstream().swap(logStr); // clear state and empty the ostringstream buffer
+                    logStr << LOG_TAG << "Skipping NFrequency: " << +i;
+                    std::cout << logStr.rdbuf() << std::endl;
                     ++m_currentScanningEnsembleNum;
                     break;
                 }
             }
         }
-        tuneFrequency(DAB_FREQ_TABLE_MHZ[++m_currentScanningEnsembleNum] * 1000);
+        const int freqHz = DAB_FREQ_TABLE_KHZ[++m_currentScanningEnsembleNum] * 1000;
 
-        m_usbDevice->scanProgress(m_currentScanningEnsembleNum*100/NUM_DAB_ENSEMBLES);
+        // open raw recording file
+        rawRecordOpen(freqHz / 1000);
+
+        tuneFrequency(freqHz);
+
+        if (m_usbDevice != nullptr) {
+            m_usbDevice->scanProgress(m_currentScanningEnsembleNum * 100 / NUM_DAB_ENSEMBLES,
+                                      freqHz);
+        }
     } else {
-        std::cout << LOG_TAG << (m_usbDevice != nullptr ? (m_usbDevice.get()->getDeviceName()) : "NULL") << " Scan finished: " << +m_currentScanningEnsembleNum << std::endl;
-        m_usbDevice->scanProgress(100);
-        m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
+        std::stringstream logStr;
+        logStr << LOG_TAG << (m_usbDevice != nullptr ? getDeviceName() : "NULL") << " Scan finished: " << +m_currentScanningEnsembleNum;
+        std::cout << logStr.rdbuf() << std::endl;
+        if (m_usbDevice != nullptr) {
+            m_usbDevice->scanProgress(100, -1);
+            m_usbDevice->callCallback(JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_READY);
+        }
         m_isScanning = false;
         m_currentScanningEnsembleNum = 0;
+
+        // stop recording
+        rawRecordClose();
 
         stopReadFicThread();
         startReadDataThread();
     }
 }
 
-std::string RaonTunerInput::getDeviceName() const {
-    return m_usbDevice->getDeviceName();
+std::string RaonTunerInput::getDeviceName() {
+    if (m_usbDevice != nullptr) {
+        return m_usbDevice->getDeviceName();
+    } else {
+        return "null";
+    }
 }
 
 libusb_device* RaonTunerInput::getDeviceHandle() const{
     return m_usbDevice->device_handle();
 }
 
-//
-void RaonTunerInput::threadedFicRead() {
-
-    do {
-        readFic();
-    } while(m_readFicThreadRunning);
+std::string RaonTunerInput::getHardwareVersion() const {
+    return m_HwVersion;
 }
 
-void RaonTunerInput::threadedMscRead() {
-
-    do {
-        readMsc();
-    } while(m_readMscThreadRunning);
+std::string RaonTunerInput::getSoftwareVersion() const {
+    return m_SwVersion;
 }
 
-void RaonTunerInput::threadedDataRead() {
-    do {
-        readData();
-    } while(m_readDataThreadRunning);
+bool RaonTunerInput::hasUsbIoErrors() {
+    const int maxFailures = 10 * (std::max({MAX_RETRY_SWITCH_PAGE, MAX_RETRY_READ_REGISTER, MAX_RETRY_SET_REGISTER})
+            +1); // +1 because number attempts = 1 + number retries !
+    if (mUsbReadFailure > maxFailures || mUsbWriteFailure > maxFailures) {
+        if (!mUsbIoErrorReported) {
+            std::clog << LOG_TAG << "too many USB I/O failures" << std::endl;
+            if (m_usbDevice != nullptr) {
+                if (m_usbDevice->getDirectBulkTransferEnabled()) {
+                    // switch from direct to JNI based bulk transfer method
+                    std::clog << LOG_TAG << "trying JNI based bulk transfer method" << std::endl;
+                    m_usbDevice->setDirectBulkTransferEnabled(false);
+                    // reset attributes
+                    mUsbReadFailure = mUsbWriteFailure = 0;
+                    // had I/O error, try again
+                    return false;
+                } else {
+                    mUsbIoErrorReported = true;
+                    m_usbDevice->callCallback(
+                            JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_FAILED);
+                }
+            }
+        }
+        // slow down calling thread by 5 ms because this is called on a high frequency
+        // In the error case producing a hell lot of log output
+        usleep(5000);
+        return true;
+    }
+    return false;
 }
 
 void RaonTunerInput::setService() {
-    if(m_startServiceLink != nullptr) {
-        std::cout << LOG_TAG << "Starting service" << std::endl;
+    auto & service = m_startServiceLink;
+    if(service != nullptr) {
+        std::cout << LOG_TAG << "Starting service 0x" << std::hex
+                  << +service->getServiceId() << std::dec << std::endl;
 
-        if(m_startServiceLink->getEnsembleFrequency() != m_currentFrequency) {
-            m_commandQueue.push(std::bind(&RaonTunerInput::tuneFrequencySync, this, m_startServiceLink->getEnsembleFrequency()));
+        if(service->getEnsembleFrequency() != m_currentFrequency) {
+            m_commandQueue.push(std::bind(&RaonTunerInput::tuneFrequencySync, this,
+                                          service->getEnsembleFrequency()));
             return;
         }
 
+        bool foundSId = false, foundSrvComp = false;
+
         for(const auto& srv : getDabServices()) {
-            if(srv->getServiceId() == m_startServiceLink->getServiceId()) {
-                m_startServiceLink->setLinkDabService(srv);
+            if(srv->getServiceId() == service->getServiceId()) {
+                service->setLinkDabService(srv);
 
                 for (const auto& srvComp : srv->getServiceComponents()) {
-                    if(srvComp->isPrimary()) {
-                        std::cout << LOG_TAG << "Starting SrvComp: " << std::hex << +srvComp->getSubChannelId() << std::dec << std::endl;
+                    if((srvComp->getServiceComponentType() == DabServiceComponent::MSC_STREAM_AUDIO) &&
+                            (srvComp->isPrimary() || srv->getNumberServiceComponents() == 1)) {
+                        std::cout << LOG_TAG << "Starting SubChanId: " << +srvComp->getSubChannelId() << std::endl;
                         m_currentSubchanId = srvComp->getSubChannelId();
 
                         clearAndSetupMscMemory();
                         openSubChannel(srvComp->getSubChannelId());
+
+                        service->decodeAudio(true);
+                        if (m_usbDevice != nullptr &&
+                                service->getJavaDabServiceObject() != nullptr) {
+                            m_usbDevice->serviceStarted(service->getJavaDabServiceObject());
+                        }
+                        foundSrvComp = true;
                         break;
                     }
                 }
-
-                m_startServiceLink->decodeAudio(true);
-                m_usbDevice->serviceStarted(m_startServiceLink->getJavaDabServiceObject());
+                foundSId = true;
                 break;
             }
         }
+
+        if (!foundSId) {
+            std::clog << LOG_TAG << "setService: not found SId " << std::hex
+                      << +service->getServiceId() << std::dec << std::endl;
+        } else if (!foundSrvComp) {
+            std::clog << LOG_TAG << "setService: not found primary srv " << std::hex
+                      << +service->getServiceId() << std::dec << std::endl;
+        }
+    } else {
+        std::clog << LOG_TAG << "setService: nullptr" << std::endl;
     }
 }
 
 void RaonTunerInput::ensembleCollectFinished() {
     std::cout << LOG_TAG << "Ensemble collect finished" << std::endl;
 
+    if (m_usbDevice != nullptr) {
+        m_usbDevice->ensembleReady(const_cast<DabEnsemble &>(getEnsemble()));
+    }
     if(m_isScanning) {
-        m_usbDevice->ensembleReady(getEnsemble());
         m_scanCommandQueue.push(std::bind(&RaonTunerInput::scanNext, this));
     }
 
     setService();
-    return;
 }
-//
+
+void RaonTunerInput::nop() const {
+    std::cout << LOG_TAG << "NOP" << std::endl;
+}
 
 //TUNER METHODS START
 
 bool RaonTunerInput::tunerPowerUp() {
     //trying some time to power the chip up
-    for(int i = 0; i < 100; i++) {
+    for(int i = 0; i < 5 && m_commandThreadRunning; i++) {
         switchPage(REGISTER_PAGE_HOST);
         setRegister(0x7D, 0x06);
-        uint8_t read_register = readRegister(0x7D);
-        //std::cout << LOG_TAG << " read register " << static_cast<int>(read_register) << std::endl;
-        if(read_register == 0x06) {
-            std::cout << LOG_TAG << " PowerUp okay!" << std::endl;
+        if(readRegister(0x7D) == 0x06) {
+            std::cout << LOG_TAG << "PowerUp okay!" << std::endl;
             return true;
+        } else {
+            bool ioErrors = hasUsbIoErrors();
+            std::stringstream logStr;
+            logStr << LOG_TAG << "PowerUp attempt #" << +i << " ioErrors=" << +ioErrors;
+            std::clog << logStr.rdbuf() << std::endl;
         }
     }
 
-    std::cout << LOG_TAG << " PowerUp failed!" << std::endl;
+    std::clog << LOG_TAG << "PowerUp failed!" << std::endl;
     return false;
 }
 
-void RaonTunerInput::switchPage(RaonTunerInput::REGISTER_PAGE regPage) {
-	setRegister(0x03, regPage);
+void RaonTunerInput::switchPage(const RaonTunerInput::REGISTER_PAGE regPage, const uint8_t retryNum) {
+    std::lock_guard<std::recursive_mutex> lockGuard(m_tunermutex);
+    bool anyFailure{false};
+    std::vector<uint8_t> switchData{0x21, 0x00, 0x00, 0x02, 0x03, static_cast<uint8_t >(regPage)};
+    if (m_usbDevice != nullptr) {
+        int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, switchData);
+        if (bytesTransfered < 0 || bytesTransfered < switchData.size()) {
+            std::stringstream logStr;
+            logStr << LOG_TAG << "switchPage 0x" << std::hex << +regPage << std::dec
+                   << ": write exp:" << +switchData.size() << ", rcv:" << +bytesTransfered;
+            std::clog << logStr.rdbuf() << std::endl;
+            mUsbWriteFailure++;
+            anyFailure = true;
+        } else {
+            mUsbWriteFailure = 0;
+            auto response = std::vector<uint8_t>(1);
+            bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, response);
+            if (bytesTransfered < 0 || bytesTransfered < response.size()) {
+                std::stringstream logStr;
+                logStr << LOG_TAG << "switchPage 0x" << std::hex << +regPage << std::dec
+                          << ": read exp:" << +response.size() << ", rcv:" << +bytesTransfered;
+                std::clog << logStr.rdbuf() << std::endl;
+                mUsbReadFailure++;
+                anyFailure = true;
+            } else {
+                if (response[0] != 0xA1) {
+                    std::stringstream logStr;
+                    logStr << LOG_TAG << "switchPage 0x" << std::hex << +regPage << " : 0x"
+                              << +response[0] << std::dec;
+                    std::clog << logStr.rdbuf() << std::endl;
+                    mUsbReadFailure++;
+                    anyFailure = true;
+                } else {
+                    mUsbReadFailure = 0;
+                }
+            }
+        }
+    } else {
+        std::clog << LOG_TAG << "switchPage: no USB device" << std::endl;
+    }
+    uint8_t lRetries = retryNum + 1;
+    if (anyFailure && (lRetries <= MAX_RETRY_SWITCH_PAGE)) {
+        std::clog << LOG_TAG << "switchPage: retry #" << +lRetries << std::endl;
+        usleep(USLEEP_BEFORE_RETRY);
+        switchPage(regPage, lRetries);
+    }
 }
 
-void RaonTunerInput::setRegister(uint8_t reg, uint8_t val) {
-    //std::cout << LOG_TAG << " set register " << static_cast<int>(reg) << std::endl;
-	std::vector<uint8_t> setRegData{0x21, 0x00, 0x00, 0x02, reg, val};
-	m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, setRegData, 100);
-    //std::cout << LOG_TAG << " after write " << std::endl;
-
-	/* We should get an 0xa1 back as acknowledge */
-	std::vector<uint8_t> inbuf(1);
-	int r = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, inbuf);
-    //std::cout << LOG_TAG << " after read: " << r << std::endl;
-
-	/* FIXME We might want to check for return code */
+void RaonTunerInput::setRegister(const uint8_t reg, const uint8_t val, const uint8_t retryNum) {
+    std::lock_guard<std::recursive_mutex> lockGuard(m_tunermutex);
+    bool anyFailure{false};
+    std::vector<uint8_t> setRegData{0x21, 0x00, 0x00, 0x02, reg, val};
+    if (m_usbDevice != nullptr) {
+        int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, setRegData);
+        if (bytesTransfered < 0 || bytesTransfered < setRegData.size()) {
+            std::stringstream logStr;
+            logStr << LOG_TAG << "setRegister 0x" << std::hex << +reg << "=0x" << +val
+                   << std::dec << ": write exp:" << +setRegData.size() << ", rcv:"
+                   << +bytesTransfered;
+            std::clog << logStr.rdbuf() << std::endl;
+            mUsbWriteFailure++;
+            anyFailure = true;
+        } else {
+            mUsbWriteFailure = 0;
+            auto response = std::vector<uint8_t>(1);
+            bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, response);
+            if (bytesTransfered < 0 || bytesTransfered < response.size()) {
+                std::stringstream logStr;
+                logStr << LOG_TAG << "setRegister 0x" << std::hex << +reg << std::dec
+                       << ": read exp:" << +response.size() << ", rcv:" << +bytesTransfered;
+                std::clog << logStr.rdbuf() << std::endl;
+                mUsbReadFailure++;
+                anyFailure = true;
+            } else {
+                if (response[0] != 0xA1) {
+                    std::stringstream logStr;
+                    logStr << LOG_TAG << "setRegister 0x" << std::hex << +reg << " : 0x"
+                           << +response[0] << std::dec;
+                    std::clog << logStr.rdbuf() << std::endl;
+                    mUsbReadFailure++;
+                    anyFailure = true;
+                } else {
+                    mUsbReadFailure = 0;
+                }
+            }
+        }
+    } else {
+        std::clog << LOG_TAG << "setRegister: no USB device" << std::endl;
+    }
+    uint8_t lRetries = retryNum + 1;
+    if (anyFailure && (lRetries <= MAX_RETRY_SET_REGISTER)) {
+        std::clog << LOG_TAG << "setRegister: retry #" << +lRetries << std::endl;
+        usleep(USLEEP_BEFORE_RETRY);
+        setRegister(reg, val, lRetries);
+    }
 }
 
-uint8_t RaonTunerInput::readRegister(uint8_t reg) {
-    std::vector<uint8_t> readRegReqData{0x22, 0x00, 0x01, 0x00, reg};
-    int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, readRegReqData);
+uint8_t RaonTunerInput::readRegister(const uint8_t reg, const uint8_t retryNum) {
+    std::lock_guard<std::recursive_mutex> lockGuard(m_tunermutex);
+    bool anyFailure{false};
+    std::vector<uint8_t> xferbuff{0x22, 0x00, 0x01, 0x00, reg};
+    if (m_usbDevice != nullptr) {
+        int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, xferbuff);
+        if (bytesTransfered < 0 || bytesTransfered < xferbuff.size()) {
+            std::stringstream logStr;
+            logStr << LOG_TAG << "readRegister 0x" << std::hex << +reg << std::dec
+                   << ": write exp:" << +xferbuff.size() << ", rcv:" << +bytesTransfered;
+            std::clog << logStr.rdbuf() << std::endl;
+            mUsbWriteFailure++;
+            anyFailure = true;
+        } else {
+            mUsbWriteFailure = 0;
+        }
 
-    std::vector<uint8_t> readBuffer(5);
-    bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, readBuffer);
+        bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, xferbuff);
+        if (bytesTransfered < 0 || bytesTransfered < xferbuff.size()) {
+            std::stringstream logStr;
+            logStr << LOG_TAG << "readRegister 0x" << std::hex << +reg << std::dec
+                   << ": read exp:" << +xferbuff.size() << ", rcv:" << +bytesTransfered;
+            std::clog << logStr.rdbuf() << std::endl;
+            mUsbReadFailure++;
+            anyFailure = true;
+        } else {
+            mUsbReadFailure = 0;
+            return xferbuff[4];
+        }
+    } else {
+        std::clog << LOG_TAG << "readRegister: no USB device" << std::endl;
+    }
 
-    return readBuffer[4];
+    uint8_t lRetries = retryNum + 1;
+    if (anyFailure && (lRetries <= MAX_RETRY_READ_REGISTER)) {
+        std::clog << LOG_TAG << "readRegister: retry #" << +lRetries << std::endl;
+        usleep(USLEEP_BEFORE_RETRY);
+        return readRegister(reg, lRetries);
+    }
+    return 0;
 }
 
 void RaonTunerInput::configurePowerType() {
+    //const uint8_t LIBDAB_REG30 = 0xF4;
     uint8_t REG30 = 0xF2 & 0xF0; /*IOLDOCON__REG*/
 
     //DEFINE RTV_IO_1_8V
@@ -462,6 +699,7 @@ void RaonTunerInput::configurePowerType() {
     REG30 = (REG30 | (io_type << 1)); /*IO Type Select.*/
 
     uint8_t REG2F = 0x61; /*DCDC_OUTSEL = 0x03,*/
+    const uint8_t LIBDAB_REG2F = 0x71;
     uint8_t REG52 = 0x07; /*LDODIG_HT = 0x07;*/
     uint8_t REG54 = 0x1C;
 
@@ -472,7 +710,9 @@ void RaonTunerInput::configurePowerType() {
     setRegister(0x54, REG54);
     setRegister(0x52, REG52);
     setRegister(0x30, REG30);
+    //setRegister(0x30, LIBDAB_REG30);
     setRegister(0x2F, REG2F);
+    //setRegister(0x2F, LIBDAB_REG2F);
 }
 
 void RaonTunerInput::configureAddClock() {
@@ -506,7 +746,7 @@ void RaonTunerInput::configureAddClock() {
     }
 }
 
-bool RaonTunerInput::changedAdcClock(uint8_t g_aeAdcClkTypeTbl_DAB_B3) {
+bool RaonTunerInput::changedAdcClock(uint8_t adcClkType) {
     uint8_t RD15;
 
     //raontv_rf.c line 659
@@ -520,13 +760,13 @@ bool RaonTunerInput::changedAdcClock(uint8_t g_aeAdcClkTypeTbl_DAB_B3) {
 
     switchPage(REGISTER_PAGE_RF);
 
-    setRegister(0xE8, (REGE8 | g_abAdcClkSynTbl[g_aeAdcClkTypeTbl_DAB_B3][0]));
-    setRegister(0xE9, (REGE9 | g_abAdcClkSynTbl[g_aeAdcClkTypeTbl_DAB_B3][1]));
-    setRegister(0xEA, (REGEA | g_abAdcClkSynTbl[g_aeAdcClkTypeTbl_DAB_B3][2]));
-    setRegister(0xEB, (REGEB | g_abAdcClkSynTbl[g_aeAdcClkTypeTbl_DAB_B3][3]));
-    setRegister(0xEC, (REGEC | g_abAdcClkSynTbl[g_aeAdcClkTypeTbl_DAB_B3][4]));
-    setRegister(0xED, (REGED | g_abAdcClkSynTbl[g_aeAdcClkTypeTbl_DAB_B3][5]));
-    setRegister(0xEE, (REGEE | g_abAdcClkSynTbl[g_aeAdcClkTypeTbl_DAB_B3][6]));
+    setRegister(0xE8, (REGE8 | g_abAdcClkSynTbl[adcClkType][0]));
+    setRegister(0xE9, (REGE9 | g_abAdcClkSynTbl[adcClkType][1]));
+    setRegister(0xEA, (REGEA | g_abAdcClkSynTbl[adcClkType][2]));
+    setRegister(0xEB, (REGEB | g_abAdcClkSynTbl[adcClkType][3]));
+    setRegister(0xEC, (REGEC | g_abAdcClkSynTbl[adcClkType][4]));
+    setRegister(0xED, (REGED | g_abAdcClkSynTbl[adcClkType][5]));
+    setRegister(0xEE, (REGEE | g_abAdcClkSynTbl[adcClkType][6]));
 
     int i{0};
     bool setOk{false};
@@ -539,7 +779,7 @@ bool RaonTunerInput::changedAdcClock(uint8_t g_aeAdcClkTypeTbl_DAB_B3) {
         }
     }
 
-    switch(g_aeAdcClkTypeTbl_DAB_B3) {
+    switch(adcClkType) {
         case RTV_ADC_CLK_FREQ_8_MHz: {
             switchPage(REGISTER_PAGE_COMM);
             setRegister(0x6A, 0x01);
@@ -606,6 +846,11 @@ bool RaonTunerInput::changedAdcClock(uint8_t g_aeAdcClkTypeTbl_DAB_B3) {
             setRegister(0x41,0xCC); //PNCO
             setRegister(0x42,0xCC); //PNCO
             setRegister(0x43,0x00); //PNCO
+            break;
+        }
+        default: {
+            std::clog << LOG_TAG << "unhandled adcClkType " << +adcClkType << std::endl;
+            setOk = false;
             break;
         }
     }
@@ -930,7 +1175,7 @@ void RaonTunerInput::rtvRFInitilize() {
     setRegister(0x37, 0x3B);
     setRegister(0x39, 0x2C);
 
-    short checkVal = (short)(((readRegister(0x10) << 8) | readRegister(0x11)) & 0xFFFF);
+    auto checkVal = (short)(((readRegister(0x10) << 8) | readRegister(0x11)) & 0xFFFF);
     if(checkVal != (short)0xFFFF) {
         setRegister(0x2C, 0x48);
         setRegister(0x47, 0xE0);
@@ -953,38 +1198,68 @@ void RaonTunerInput::rtvRFInitilize() {
     setRegister(0x6B, 0xC5);
 }
 
-void RaonTunerInput::rtvRfSpecial() {
-    std::vector<uint8_t> readReq = {0x10, 0x00, 0x00, 0x01};
-    int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, readReq);
+void RaonTunerInput::rtvVersion() {
+    std::vector<uint8_t> cmdReq = {0x01, 0x00, 0x00, 0x00}; // "Version" command
+    int bytes = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, cmdReq);
 
-    std::vector<uint8_t> readReqBuf(4);
-    bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, readReqBuf);
+    std::vector<uint8_t> cmdRespBuf(4);
+    bytes = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, cmdRespBuf);
 
-    readReq = {0x00, 0x00, 0x00, 0x00};
-    bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, readReq);
-    bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, readReqBuf);
+    // answer is e.g. 0x81 00 00 01 => Hw Version:0.00; Sw Version:0.01
+    if (bytes == 4 && cmdRespBuf[0] == 0x81) {
+        std::stringstream logstr, hwversion, swversion;
+        hwversion << (((cmdRespBuf[1] & 0xF0u) >> 4u) & 0x0Fu) << "."
+                  << (cmdRespBuf[1] & 0x0Fu)
+                  << (((cmdRespBuf[2] & 0xF0u) >> 4u) & 0x0Fu);
+        m_HwVersion = hwversion.str();
 
-    readReq = {0x01, 0x00, 0x00, 0x00};
-    bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, readReq);
-    bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, readReqBuf);
+        swversion << (cmdRespBuf[2] & 0x0Fu) << "."
+                  << (((cmdRespBuf[3] & 0xF0u) >> 4u) & 0x0Fu)
+                  << (cmdRespBuf[3] & 0x0Fu);
+        m_SwVersion = swversion.str();
+
+        logstr << LOG_TAG << "HW version '" << m_HwVersion
+               << "', SW version '" << m_SwVersion << "'";
+        std::cout << logstr.rdbuf() << std::endl;
+    }
 }
 
-void RaonTunerInput::setFrequency(uint32_t frequencyKhz) {
+void RaonTunerInput::rtvEcho() {
+    if (m_usbDevice != nullptr) {
+        std::vector<uint8_t> cmdReq = {0x00, 0x00, 0x00, 0x00}; // "ECHO" command
+        int bytes = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, cmdReq);
 
+        std::vector<uint8_t> cmdRespBuf(4);
+        bytes = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, cmdRespBuf);
+        // answer is 0x80 'D' 'A' 'B'
+        if (bytes == 4 && cmdRespBuf[0] == 0x80) {
+            std::stringstream logStr;
+            logStr << LOG_TAG << "echo: '" << (char)(cmdRespBuf[1]) << (char)(cmdRespBuf[2]) << (char)(cmdRespBuf[3]) << "'";
+            std::cout << logStr.rdbuf() << std::endl;
+        }
+    }
+}
+
+void RaonTunerInput::setFrequency(uint32_t frequencyHz) {
     int nNumTblEntry = 0;
 
-    int freqMhz = frequencyKhz/1000;
-    int nIdx = (freqMhz - DAB_CH_BAND3_START_FREQ_KHz) / DAB_CH_BAND3_STEP_FREQ_KHz;
+    const uint32_t freqKhz = frequencyHz / 1000;
+    uint32_t nIdx = (freqKhz - DAB_CH_BAND3_START_FREQ_KHz) / DAB_CH_BAND3_STEP_FREQ_KHz;
 
-    if(freqMhz >= 224096) {
+    if(freqKhz >= 224096) {
         nIdx += 3;
-    }  else if(freqMhz >= 217008) {
+    }  else if(freqKhz >= 217008) {
         nIdx += 2;
-    } else if(freqMhz >= 210096) {
+    } else if(freqKhz >= 210096) {
         nIdx += 1;
     }
-
-    uint8_t adcClkFrqType = g_aeAdcClkTypeTbl_DAB_B3[nIdx];
+    uint8_t adcClkFrqType;
+    if (nIdx >= 0 && nIdx < (sizeof(g_aeAdcClkTypeTbl_DAB_B3) / sizeof(uint8_t))) {
+        adcClkFrqType = g_aeAdcClkTypeTbl_DAB_B3[nIdx];
+    } else {
+        std::clog << LOG_TAG << " freq " << +freqKhz << " MHz caused nIdx " << +nIdx << " out of bounds" << std::endl;
+        return;
+    }
 
     if(changedAdcClock(adcClkFrqType)) {
         switchPage(REGISTER_PAGE_RF);
@@ -1004,11 +1279,11 @@ void RaonTunerInput::setFrequency(uint32_t frequencyKhz) {
         uint8_t verifyByte13 = readRegister(0x13);
         uint8_t verifyByte14 = readRegister(0x14);
         
-        if( (verifyByte15 & 0x02) == 0x02) {
+        /*if( (verifyByte15 & 0x02) == 0x02) {
 
         } else {
             //setRegister(0x20, 0x00);
-        }
+        }*/
 
         switchPage(REGISTER_PAGE_FM);
         setRegister(0x10, 0x48);
@@ -1065,7 +1340,7 @@ void RaonTunerInput::clearAndSetupMscMemory() {
 }
 
 void RaonTunerInput::openSubChannel(uint8_t subchanId) {
-    std::cout << LOG_TAG << "Opening subchannel: " << std::hex << +subchanId << std::dec << std::endl;
+    std::cout << LOG_TAG << "Opening subchannel: " << +subchanId << std::endl;
 
     switchPage(REGISTER_PAGE_DD);
 
@@ -1093,31 +1368,60 @@ void RaonTunerInput::closeSubchannel(uint8_t subchanId) {
 
     m_currentSubchanId = 0xFF;
 
-    if(m_startServiceLink != nullptr) {
-        m_startServiceLink->decodeAudio(false);
-        if(m_startServiceLink->getJavaDabServiceObject() != nullptr) {
-            m_usbDevice->serviceStopped(m_startServiceLink->getJavaDabServiceObject());
+    auto & service = m_startServiceLink;
+    if(service != nullptr) {
+        service->decodeAudio(false);
+        service->unlinkDabService();
+        if(service->getJavaDabServiceObject() != nullptr) {
+            if (m_usbDevice != nullptr) {
+                m_usbDevice->serviceStopped(service->getJavaDabServiceObject());
+            }
         }
 
+        m_startServiceLink.reset();
         m_startServiceLink = nullptr;
     }
 }
 
-void RaonTunerInput::readFic() {
+void RaonTunerInput::threadedScanningFicRead() {
+    long tid = syscall(SYS_gettid);
+    char threadName[TASK_COMM_LEN];
+    snprintf(threadName, TASK_COMM_LEN-1, "FicR-%lx", tid);
+    threadName[TASK_COMM_LEN-1] = '\0';
+    pthread_setname_np(pthread_self(), threadName);
+
+    std::stringstream logMsg;
+    logMsg << LOG_TAG << "FIC thread started: " << threadName;
+    std::cout << logMsg.rdbuf() << std::endl;
+    while (m_readFicThreadRunning) {
+        if (!hasUsbIoErrors()) {
+            scanningReadFic();
+        }
+    }
+    std::stringstream().swap(logMsg); // clear state and empty the ostringstream buffer
+    logMsg << LOG_TAG << "FIC thread ended: " << threadName;
+    std::cout << logMsg.rdbuf() << std::endl;
+}
+
+void RaonTunerInput::scanningReadFic() {
     uint8_t lockStatus = getLockStatus();
 
     if(lockStatus != RTV_DAB_CHANNEL_LOCK_OK) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(RaonTunerInput::WAITLOOP_WAIT_FOR_LOCK_MS));
         if(lockStatus == RTV_DAB_OFDM_LOCK_MASK || lockStatus == RTV_DAB_FEC_LOCK_MASK) {
-            m_maxCollectionWaitLoops += 8;
+            m_maxCollectionWaitLoops += WAITLOOP_LOCK_INCREMENT;
         }
 
-        m_maxCollectionWaitLoops -= 10;
+        m_maxCollectionWaitLoops -= WAITLOOP_NOLOCK_DECREMENT;
         if(m_maxCollectionWaitLoops <= 0) {
             m_scanCommandQueue.push(std::bind(&RaonTunerInput::scanNext, this));
         }
 
-        std::cout << LOG_TAG << "ScanRetries: " << +m_maxCollectionWaitLoops << " LockStat: " << +lockStatus << std::endl;
+        std::stringstream logMsg;
+        logMsg << LOG_TAG << "ScanRetries: " << +m_maxCollectionWaitLoops
+            << " Freq: " << +(m_currentFrequency/1000) << " kHz"
+            << " LockStat: " << +lockStatus;
+        std::cout << logMsg.rdbuf() << std::endl;
         return;
     }
 
@@ -1128,224 +1432,315 @@ void RaonTunerInput::readFic() {
     bool ficInt = (demodStat & FIC_E_INT);
 
     if(ficInt) {
-        switchPage(REGISTER_PAGE_FIC);
 
-        std::vector<uint8_t> reqFic = {0x22, 0x00, 0x80, 0x01, 0x10};
-        int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, reqFic);
-
-        std::vector<uint8_t> reFicRet(400);
-        bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, reFicRet);
-
-        switchPage(REGISTER_PAGE_DD);
-        /* FIC interrupt status clear */
-        setRegister(INT_E_UCLRL, 0x01);
-
-        if(bytesTransfered >= 4) {
-            for(int i = 0; i < ((bytesTransfered - 4) / 32); i++) {
-                dataInput(std::vector<uint8_t>(reFicRet.begin()+4+i*32, reFicRet.begin()+4+i*32+32), 0x64, false);
-            }
-        }
+        readFicData(RTV_DAB_CHANNEL_LOCK_OK == lockStatus);
 
         --m_ficCollectionWaitLoops;
-        std::cout << LOG_TAG << "FicRetries: " << +m_ficCollectionWaitLoops << std::endl;
+        std::stringstream logMsg;
+        logMsg << LOG_TAG << "FicRetries: " << +m_ficCollectionWaitLoops;
+        std::cout << logMsg.rdbuf() << std::endl;
         if(m_ficCollectionWaitLoops <= 0) {
             m_scanCommandQueue.push(std::bind(&RaonTunerInput::scanNext, this));
         }
     }
 }
 
-void RaonTunerInput::readMsc() {
-    switchPage(REGISTER_PAGE_DD);
+void RaonTunerInput::rawRecordOpen(const std::shared_ptr<JDabService>& serviceLink) {
+    if (serviceLink != nullptr) {
+        std::shared_ptr<DabService> dabService = serviceLink->getLinkDabService();
 
-    uint8_t int_type_val1 = readRegister(INT_E_STATL);
-    bool ofdmLock = static_cast<bool>((int_type_val1 & 0x80) >> 7);
-    bool msc1Overrun = (int_type_val1 & MSC1_E_OVER_FLOW) >> 6;
-    bool msc1Underrun = (int_type_val1 & MSC1_E_UNDER_FLOW) >> 5;
-    bool msc1Int = (int_type_val1 & MSC1_E_INT) >> 4;
-    bool msc0Overrun = (int_type_val1 & MSC0_E_OVER_FLOW) >> 3;
-    bool msc0Underrun = (int_type_val1 & MSC0_E_UNDER_FLOW) >> 2;
-    bool msc0Int = (int_type_val1 & MSC0_E_INT) >> 1;
-    bool ficInt = (int_type_val1 & FIC_E_INT);
+        std::string labelString;
+        if (dabService != nullptr) {
+            labelString = dabService->getServiceLabel();
+        } else {
+            labelString = "labelunknown";
+        }
+        // "_" is used to find the infos from the filename, get rid of it in the label, but replace with " "
+        labelString = std::regex_replace(labelString, std::regex("_"), " ");
 
-    //std::cout << LOG_TAG << "STATL OFDM: " << std::boolalpha << ofdmLock << \
-                            " MSC1_O: " << msc1Overrun << \
-                            " MSC1_U: " << msc1Underrun << \
-                            " MSC1_I: " << msc1Int << \
-                            " MSC0_O: " << msc0Overrun << \
-                            " MSC0_U: " << msc0Underrun << \
-                            " MSC0_I: " << msc0Int << \
-                            " FIC0_I: " << ficInt << \
-                            std::noboolalpha << std::endl;
+        char serviceIdCString[11];
+        char ensembleIdCString[11];
+        snprintf(serviceIdCString, sizeof(serviceIdCString)-1, "%x", serviceLink->getServiceId());
+        serviceIdCString[sizeof(serviceIdCString)-1] = '\0';
+        snprintf(ensembleIdCString, sizeof(ensembleIdCString)-1, "%x", serviceLink->getEnsembleId());
+        ensembleIdCString[sizeof(ensembleIdCString)-1] = '\0';
+        std::string filenameAfterDateWithoutSuffix = labelString;
+        filenameAfterDateWithoutSuffix.append("_").append(ensembleIdCString);
+        filenameAfterDateWithoutSuffix.append("_").append(serviceIdCString);
 
-    uint8_t int_type_val2 = readRegister(INT_E_STATH);
-    bool ofdmNis = static_cast<bool>((int_type_val2 & 0x80) >> 7);
-    bool ofdmTii = static_cast<bool>((int_type_val2 & 0x40) >> 6);
-    bool ofdmScan = static_cast<bool>((int_type_val2 & 0x20) >> 5);
-    bool ofdmWindowPos = static_cast<bool>((int_type_val2 & 0x10) >> 4);
-    bool ofdmUnlock = static_cast<bool>((int_type_val2 & 0x08) >> 3);
-    bool fecReconfig = static_cast<bool>((int_type_val2 & 0x04) >> 2);
-    bool fecCifEnd = static_cast<bool>((int_type_val2 & 0x02) >> 1);
-    bool fecSoftreset = static_cast<bool>((int_type_val2 & 0x01));
+        __rawRecordOpen(filenameAfterDateWithoutSuffix);
+    }
+}
 
-    //std::cout << LOG_TAG << "STATH OFDMNis: " << std::boolalpha << ofdmNis << \
-              " OFDMTii: " << ofdmTii << \
-              " OFDMScan: " << ofdmScan << \
-              " OFDMWinPos: " << ofdmWindowPos << \
-              " OFDMUnlock: " << ofdmUnlock << \
-              " FECReconfig: " << fecReconfig << \
-              " FecCifEnd: " << fecCifEnd << \
-              " FecSoftReset: " << fecSoftreset << \
-              std::noboolalpha << std::endl;
+void RaonTunerInput::rawRecordOpen(const int freqMhz) {
+    std::string filenameAfterDateWithoutSuffix = "scan_";
+    filenameAfterDateWithoutSuffix.append(std::to_string(freqMhz));
 
+    __rawRecordOpen(filenameAfterDateWithoutSuffix);
+}
 
-    if(msc1Overrun || msc1Underrun) {
-        std::cout << LOG_TAG << "Clearing MSC memory for OverUnderRun" << std::endl;
-
-        //ClearAndSetupMSCMemory
-        /*
-        switchPage(REGISTER_PAGE_DD);
-        setRegister(0x48, 0x00);
-        setRegister(0x48, 0x05);
-        */
-        clearAndSetupMscMemory();
-
-        setRegister(INT_E_UCLRL, 0x04);
+void RaonTunerInput::__rawRecordOpen(const std::string& filenameAfterDateWithoutSuffix) {
+    // if path not configured, then return
+    if (m_recordPath.empty()) {
         return;
     }
+    // close any previously opened stream
+    rawRecordClose();
 
-    if(msc1Int) {
-        //std::cout << LOG_TAG << "Reading MSC memory" << std::endl;
+    // acquire lock AFTER close, otherwise risk for deadlock
+    std::lock_guard<std::recursive_mutex> lockGuard(m_outFileWriteMutex);
 
-        switchPage(REGISTER_PAGE_MSC1);
+    // open new one
+    auto now = std::chrono::system_clock::now();
+    auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
-        std::vector<uint8_t> mscReqBuf = {0x22, 0x00, 0xD8, 0x00, 0x10};
-        std::vector<uint8_t> mscRecBuff(1536);
+    char timeCstring[4+1+2+1+2+1+2+1+2+1+2 + 2]; // +2 because strftime will put also '\0' at end
+    const tm* pTm = std::localtime(&in_time_t);
+    if (0 == std::strftime(timeCstring, sizeof(timeCstring)-1, "%Y-%m-%d_%H-%M-%S", pTm)) {
+        std::clog << LOG_TAG << "rawRecordOpen strftime failed" << std::endl;
+        return;
+    }
+    timeCstring[sizeof(timeCstring)-1] = '\0';
 
-        int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, mscReqBuf);
-        bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, mscRecBuff);
+    std::cout << LOG_TAG << "rawRecordOpen construct filename from " << m_recordPath << " and "
+              << timeCstring
+              << " and " << filenameAfterDateWithoutSuffix << std::endl;
 
-        if(m_startServiceLink != nullptr) {
-            dataInput(std::vector<uint8_t>(mscRecBuff.begin()+4, mscRecBuff.begin()+bytesTransfered), m_currentSubchanId, false);
+    std::string filename = m_recordPath;
+    filename.append("/dab_")
+        .append(timeCstring)
+        .append("_")
+        .append(filenameAfterDateWithoutSuffix)
+        .append(".raw");
+
+    std::cout << LOG_TAG << "rawRecordOpen... " << filename << std::endl;
+    m_outFileStream.open(filename, std::ios::out | std::ios::binary);
+
+    if (m_outFileStream.is_open()) {
+        std::cout << LOG_TAG << "rawRecordOpen " << filename << std::endl;
+        m_recordPathFilename = filename;
+    } else {
+        std::clog << LOG_TAG << "rawRecordOpen failed to open " << filename << std::endl;
+    }
+}
+
+void RaonTunerInput::rawRecordFicWrite(const std::vector<uint8_t>& data) {
+    if (m_outFileStream.is_open()) {
+        // lock writing to file
+        std::lock_guard<std::recursive_mutex> lockGuard(m_outFileWriteMutex);
+
+        // write marker
+        const uint32_t ficMarker = htonl(DemoUsbTunerInput::FILEMARKER_FIC);
+        m_outFileStream.write(reinterpret_cast<const char*>(&ficMarker), sizeof(ficMarker));
+
+        // write timestamp: clock monotonic milliseconds
+        const auto now = std::chrono::steady_clock::now();
+        const auto since_epoch = now.time_since_epoch();
+        const uint64_t currentTimeMillis = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(since_epoch).count());
+        const uint64_t currentTimeMillisToFile = htonq(currentTimeMillis);
+        m_outFileStream.write(reinterpret_cast<const char*>(&currentTimeMillisToFile), sizeof(uint64_t));
+
+        // write vector size
+        const uint32_t size = htonl(static_cast<uint32_t>(data.size()));
+        m_outFileStream.write(reinterpret_cast<const char*>(&size), sizeof(uint32_t));
+
+        // then vector data itself
+        std::copy(data.begin(), data.end(), std::ostreambuf_iterator<char>(m_outFileStream));
+
+        // flush every 1 sec
+        if (currentTimeMillis - m_lastFlushTime >= 1000ULL) {
+            m_lastFlushTime = currentTimeMillis;
+            m_outFileStream.flush();
+            sync(); // causes all pending modifications to filesystem metadata and cached file data to be written to the underlying filesystems
+            std::cout << LOG_TAG << "rawRecordFicWrite flush " << currentTimeMillis << std::endl;
+        }
+    }
+}
+
+void RaonTunerInput::rawRecordMscWrite(const std::vector<uint8_t>& data) {
+    if (m_outFileStream.is_open()) {
+        // lock writing to file
+        std::lock_guard<std::recursive_mutex> lockGuard(m_outFileWriteMutex);
+
+        // write marker
+        const uint32_t mscMarker = htonl(DemoUsbTunerInput::FILEMARKER_MSC);
+        m_outFileStream.write(reinterpret_cast<const char*>(&mscMarker), sizeof(mscMarker));
+
+        // write timestamp: clock monotonic milliseconds
+        const auto now = std::chrono::steady_clock::now();
+        const auto since_epoch = now.time_since_epoch();
+        uint64_t currentTimeMillis = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(since_epoch).count());
+        const uint64_t currentTimeMillisToFile = htonq(currentTimeMillis);
+        m_outFileStream.write(reinterpret_cast<const char*>(&currentTimeMillisToFile), sizeof(uint64_t));
+
+        // write vector size
+        uint32_t size = htonl(static_cast<uint32_t>(data.size()));
+        m_outFileStream.write(reinterpret_cast<const char*>(&size), sizeof(uint32_t));
+
+        // then vector data itself
+        std::copy(data.begin(), data.end(), std::ostreambuf_iterator<char>(m_outFileStream));
+
+        // flush every 1 sec
+        if (currentTimeMillis - m_lastFlushTime >= 1000ULL) {
+            m_lastFlushTime = currentTimeMillis;
+            m_outFileStream.flush();
+            sync(); // causes all pending modifications to filesystem metadata and cached file data to be written to the underlying filesystems
+            std::cout << LOG_TAG << "rawRecordMscWrite flush " << currentTimeMillis << std::endl;
+        }
+    }
+}
+
+void RaonTunerInput::rawRecordClose() {
+    if (m_outFileStream.is_open()) {
+        // acquire lock
+        std::lock_guard<std::recursive_mutex> lockGuard(m_outFileWriteMutex);
+        m_outFileStream.close();
+
+        // delete a useless empty file
+        struct stat stat_buf{};
+        int rc = stat(m_recordPathFilename.c_str(), &stat_buf);
+        if (rc == 0) {
+            if (stat_buf.st_size == 0) {
+                if (std::remove(m_recordPathFilename.c_str()) != 0) {
+                    std::clog << LOG_TAG << "failed to remove empty " << m_recordPathFilename.c_str() << std::endl;
+                } else {
+                    std::cout << LOG_TAG << "removed empty file " << m_recordPathFilename.c_str() << std::endl;
+                }
+            } else {
+                std::cout << LOG_TAG << "rawRecordClose" << std::endl;
+            }
         } else {
-            std::cout << LOG_TAG << "StartServiceLink is null" << std::endl;
+            std::clog << LOG_TAG << "failed to stat " << m_recordPathFilename.c_str() << std::endl;
         }
 
-        //clear buffer
-        switchPage(REGISTER_PAGE_DD);
-        setRegister(INT_E_UCLRL, 0x04);
+        m_recordPathFilename = "";
     }
 }
 
 void RaonTunerInput::startReadFicThread() {
-    std::cout << LOG_TAG << "Starting FIC thread..." << std::endl;
-
     if(!m_readFicThreadRunning) {
+        std::cout << LOG_TAG << "Starting FIC thread..." << std::endl;
         m_readFicThreadRunning = true;
-        m_readFicThread = std::thread(&RaonTunerInput::threadedFicRead, this);
+        m_readFicThread = std::unique_ptr<DabThread>(
+                new DabThread([this]() { threadedScanningFicRead(); } ));
+    } else {
+        std::clog << LOG_TAG << "FIC thread already running" << std::endl;
     }
 }
 
 void RaonTunerInput::stopReadFicThread() {
-    std::cout << LOG_TAG << "Stopping FIC thread..." << std::endl;
+    std::lock_guard<std::recursive_mutex> lockGuard(m_classmutex);
     if(m_readFicThreadRunning) {
         m_readFicThreadRunning = false;
-        if(m_readFicThread.joinable()) {
-            std::cout << LOG_TAG << "Joining FIC thread..." << std::endl;
-            m_readFicThread.join();
-            std::cout << LOG_TAG << "Joining FIC thread done" << std::endl;
+        if (m_readFicThread.get() == nullptr) {
+            return; // no thread, nothing to do
+        }
+        std::cout << LOG_TAG << "Stopping FIC thread..." << std::endl;
+        if(m_readFicThread->joinable()) {
+            if (std::this_thread::get_id() != m_readFicThread->get_id()) {
+                std::cout << LOG_TAG << "Joining FIC thread..." << std::endl;
+                m_readFicThread->join();
+                std::cout << LOG_TAG << "Joining FIC thread done" << std::endl;
+            } else {
+                // cannot join myself
+                std::clog << LOG_TAG << "Can't join FIC thread: it's me" << std::endl;
+                m_readFicThread->detach(); // forget about this thread
+            }
+        } else {
+            std::clog << LOG_TAG << "FIC thread not joinable" << std::endl;
         }
     }
 }
 
 void RaonTunerInput::startReadDataThread() {
-    std::cout << LOG_TAG << "Starting Data thread..." << std::endl;
-
     if(!m_commandThreadRunning) {
+        std::cout << LOG_TAG << "Starting Data thread..." << std::endl;
         m_commandThreadRunning = true;
-        m_commandThread = std::thread(&RaonTunerInput::commandProcessing, this);
+        if (m_commandThread.get() == nullptr) {
+            m_commandThread = std::unique_ptr<DabThread>(
+                    new DabThread([this]() { commandProcessing(); }));
+        } else if (m_commandThread->joinable()) { // thread seems to be running
+            std::clog << LOG_TAG << "Continue Data thread with NOP" << std::endl;
+            // trigger myself with a NOP
+            m_commandQueue.push(std::bind(&RaonTunerInput::nop, this));
+        } else {
+            std::clog << LOG_TAG << "Re-Create Data thread" << std::endl;
+            // create a new thread, other seems already dead
+            m_commandThread.release();
+            m_commandThread = std::unique_ptr<DabThread>(
+                    new DabThread([this]() { commandProcessing(); }));
+        }
+    } else {
+        std::clog << LOG_TAG << "Starting Data thread: already running" << std::endl;
     }
 }
 
 void RaonTunerInput::stopReadDataThread() {
-    std::cout << LOG_TAG << "Stopping Data thread..." << std::endl;
+    std::lock_guard<std::recursive_mutex> lockGuard(m_classmutex);
+
     if(m_commandThreadRunning) {
         m_commandThreadRunning = false;
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        if(m_commandThread.joinable()) {
-            std::cout << LOG_TAG << "Joining Data thread..." << std::endl;
-            try {
-                m_commandThread.join();
-            } catch (const std::exception& e) {
-                std::cerr << "Native thread exception: " << e.what() << std::endl;
+        if (m_commandThread.get() == nullptr) {
+            return; // no thread, nothing to do
+        }
+        std::cout << LOG_TAG << "Stopping Data thread..." << std::endl;
+        if(m_commandThread->joinable()) {
+            if (std::this_thread::get_id() != m_commandThread->get_id()) {
+                std::cout << LOG_TAG << "Join Data thread..." << std::endl;
+                m_commandThread->join();
+                std::cout << LOG_TAG << "Join Data thread done" << std::endl;
+            } else {
+                // cannot join myself, trigger myself with a NOP
+                m_commandQueue.push(std::bind(&RaonTunerInput::nop, this));
             }
-            std::cout << LOG_TAG << "Joining Data thread done" << std::endl;
+        } else {
+            std::cout << LOG_TAG << "Data thread not joinable" << std::endl;
         }
     }
 }
 
-void RaonTunerInput::readMscData() {
-    switchPage(REGISTER_PAGE_MSC1);
+void RaonTunerInput::readFicData(bool rfLock) {
+    if (m_usbDevice != nullptr) {
 
-    //std::vector<uint8_t> mscReqBuf = {0x22, 0x00, 0xD8, 0x00, 0x10};
-    //std::vector<uint8_t> mscRecBuff(1536);
-    //std::vector<uint8_t> mscReqBuf = {0x22, 0x00, 0xFF, 0x00, 0x10};
+        switchPage(REGISTER_PAGE_FIC);
 
-    //1024
-    //std::vector<uint8_t> mscReqBuf = {0x22, 0x04, 0x00, 0x00, 0x10};
+        std::vector<uint8_t> reqFic = {0x22, 0x00, 0x80, 0x01, 0x10};
+        int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, reqFic);
+        if (bytesTransfered < reqFic.size()) {
+            std::clog << LOG_TAG << "readFicData write exp:5, rcvd:" << + bytesTransfered << std::endl;
+            mUsbWriteFailure++;
+        } else {
+            mUsbWriteFailure = 0;
+        }
+        std::vector<uint8_t> reFicRet(400);
+        bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, reFicRet, READ_FIC_TIMEOUT_MS);
 
-    //2048
-    //std::vector<uint8_t> mscReqBuf = {0x22, 0x00, 0x00, 0x08, 0x10};
-    std::vector<uint8_t> mscReqBuf = {0x22, 0x00, 0x00, 0x08, 0x10};
+        switchPage(REGISTER_PAGE_DD);
+        /* FIC interrupt status clear */
+        setRegister(INT_E_UCLRL, 0x01);
 
-    std::vector<uint8_t> mscRecBuff(4096);
+        //std::cout << LOG_TAG << "FicData Hdr: " << +reFicRet.size() << " : " << +bytesTransfered  << " : " << std::hex << std::setfill('0') << std::setw(2) << +reFicRet[0] << " " << +reFicRet[1] << " " << +reFicRet[2] << " " << +reFicRet[3] << std::dec << std::endl;
+        //std::cout << LOG_TAG << "FicData: " << std::hex << std::setfill('0') << std::setw(2) << +reFicRet[5] << " " << +reFicRet[6] << " " << +reFicRet[7] << " " << +reFicRet[8] << std::dec << std::endl;
 
-    int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, mscReqBuf);
-    bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, mscRecBuff);
-
-    //std::cout << LOG_TAG << "ReadData: " << +bytesTransfered << std::endl;
-
-    if(m_startServiceLink != nullptr && bytesTransfered > 0) {
-        dataInput(std::vector<uint8_t>(mscRecBuff.begin()+4, mscRecBuff.begin()+bytesTransfered), m_currentSubchanId, false);
+        if(bytesTransfered >= 4) {
+            mUsbReadFailure = 0;
+            auto it = reFicRet.begin() + 4;
+            int payloadLen = bytesTransfered - 4;
+            if (payloadLen % FicParser::FIB_SIZE != 0) {
+                std::clog << LOG_TAG << "readFicData payloadLen " << +payloadLen
+                    << " not a multiple of " << +FicParser::FIB_SIZE << std::endl;
+                return;
+            }
+            const std::vector<uint8_t> ficData(it, it + payloadLen);
+            rawRecordFicWrite(ficData);
+            dataInput(ficData, 0x64, false, rfLock);
+        } else {
+            std::clog << LOG_TAG << "readFicData read exp:4, rcvd:" << +bytesTransfered << std::endl;
+            mUsbReadFailure++;
+        }
     } else {
-        std::cout << LOG_TAG << "StartServiceLink is null" << std::endl;
+        std::clog << LOG_TAG << "readFicData no USB device" << std::endl;
     }
-
-    //clear buffer
-    switchPage(REGISTER_PAGE_DD);
-    setRegister(INT_E_UCLRL, 0x04);
-}
-
-void RaonTunerInput::readFicData() {
-    switchPage(REGISTER_PAGE_FIC);
-
-    std::vector<uint8_t> reqFic = {0x22, 0x00, 0x80, 0x01, 0x10};
-    int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, reqFic);
-
-    std::vector<uint8_t> reFicRet(400);
-    bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, reFicRet);
-
-    switchPage(REGISTER_PAGE_DD);
-    /* FIC interrupt status clear */
-    setRegister(INT_E_UCLRL, 0x01);
-
-    //std::cout << LOG_TAG << "FicData Hdr: " << +reFicRet.size() << " : " << +bytesTransfered  << " : " << std::hex << std::setfill('0') << std::setw(2) << +reFicRet[0] << +reFicRet[1] << +reFicRet[2] << +reFicRet[3] << std::dec << std::endl;
-    //std::cout << LOG_TAG << "FicData: " << std::hex << std::setfill('0') << std::setw(2) << +reFicRet[5] << +reFicRet[6] << +reFicRet[7] << +reFicRet[8] << std::dec << std::endl;
-
-    for(int i = 0; i < ((bytesTransfered - 4) / 32); i++) {
-        try {
-            dataInput(std::vector<uint8_t>(reFicRet.begin() + 4 + i * 32, reFicRet.begin() + 4 + i * 32 + 32), 0x64, false);
-        } catch(std::length_error& lenErr) {
-            std::cout << LOG_TAG << "Length error..." << std::endl;
-        }
-    }
-}
-
-void RaonTunerInput::clearMscBuffer() {
-    switchPage(REGISTER_PAGE_DD);
-    setRegister(0x48, 0x00);
-    setRegister(0x48, 0x05);
-
-    setRegister(INT_E_UCLRL, 0x04);
 }
 
 void RaonTunerInput::readData() {
@@ -1358,6 +1753,7 @@ void RaonTunerInput::readData() {
     switchPage(REGISTER_PAGE_DD);
 
     uint8_t int_type_val1 = readRegister(INT_E_STATL);
+
     bool ofdmLock = static_cast<bool>((int_type_val1 & 0x80u) >> 7u);
     bool msc1Overrun = (int_type_val1 & MSC1_E_OVER_FLOW) >> 6u;
     bool msc1Underrun = (int_type_val1 & MSC1_E_UNDER_FLOW) >> 5u;
@@ -1367,7 +1763,6 @@ void RaonTunerInput::readData() {
     bool msc0Int = (int_type_val1 & MSC0_E_INT) >> 1u;
     bool ficInt = (int_type_val1 & FIC_E_INT);
 
-    //TODO ensemble reconfiguration signalling
     //added to possibly see reconfigure
     uint8_t int_type_val2 = readRegister(INT_E_STATH);
     bool ofdmNis = static_cast<bool>((int_type_val2 & 0x80) >> 7);
@@ -1390,28 +1785,7 @@ void RaonTunerInput::readData() {
               std::noboolalpha << std::endl;
 
     if(ficInt) {
-        switchPage(REGISTER_PAGE_FIC);
-
-        std::vector<uint8_t> reqFic = {0x22, 0x00, 0x80, 0x01, 0x10};
-        int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, reqFic);
-
-        std::vector<uint8_t> reFicRet(400);
-        bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, reFicRet);
-
-        switchPage(REGISTER_PAGE_DD);
-        /* FIC interrupt status clear */
-        setRegister(INT_E_UCLRL, 0x01);
-
-        //std::cout << LOG_TAG << "FicData Hdr: " << +reFicRet.size() << " : " << +bytesTransfered  << " : " << std::hex << std::setfill('0') << std::setw(2) << +reFicRet[0] << +reFicRet[1] << +reFicRet[2] << +reFicRet[3] << std::dec << std::endl;
-        //std::cout << LOG_TAG << "FicData: " << std::hex << std::setfill('0') << std::setw(2) << +reFicRet[5] << +reFicRet[6] << +reFicRet[7] << +reFicRet[8] << std::dec << std::endl;
-
-        for(int i = 0; i < ((bytesTransfered - 4) / 32); i++) {
-            try {
-                dataInput(std::vector<uint8_t>(reFicRet.begin() + 4 + i * 32, reFicRet.begin() + 4 + i * 32 + 32), 0x64, false);
-            } catch(std::length_error& lenErr) {
-                std::cout << LOG_TAG << "Length error..." << std::endl;
-            }
-        }
+        readFicData(RTV_DAB_CHANNEL_LOCK_OK == m_lastRfLockState);
     }
 
     if(msc1Overrun) {
@@ -1423,7 +1797,7 @@ void RaonTunerInput::readData() {
     }
 
     if(msc1Overrun || msc1Underrun) {
-        std::cout << LOG_TAG << "Clearing MSC memory for OverUnderRun, MSC0Int" << +msc0Int << ", MSC0Overrun: " << +msc0Overrun << ", MSC0Underrun: " << +msc0Underrun << std::endl;
+        std::cout << LOG_TAG << "Clearing MSC memory for OverUnderRun, MSC0Int: " << +msc0Int << ", MSC0Overrun: " << +msc0Overrun << ", MSC0Underrun: " << +msc0Underrun << std::endl;
 
         //ClearAndSetupMSCMemory
         switchPage(REGISTER_PAGE_DD);
@@ -1434,7 +1808,7 @@ void RaonTunerInput::readData() {
         return;
     }
 
-    if(msc1Int) {
+    if(msc1Int && (m_usbDevice != nullptr)) {
         //std::cout << LOG_TAG << "Reading MSC memory" << std::endl;
 
         switchPage(REGISTER_PAGE_MSC1);
@@ -1453,14 +1827,18 @@ void RaonTunerInput::readData() {
         std::vector<uint8_t> mscRecBuff(4096);
 
         int bytesTransfered = m_usbDevice->writeBulkTransferData(RAON_ENDPOINT_OUT, mscReqBuf);
-        bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, mscRecBuff);
+        bytesTransfered = m_usbDevice->readBulkTransferData(RAON_ENDPOINT_IN, mscRecBuff, READ_MSC_TIMEOUT_MS);
 
         //std::cout << LOG_TAG << "ReadData: " << +bytesTransfered << std::endl;
 
         if(m_startServiceLink != nullptr && bytesTransfered >= 4) {
-            dataInput(std::vector<uint8_t>(mscRecBuff.begin()+4, mscRecBuff.begin()+bytesTransfered), m_currentSubchanId, false);
+            const std::vector<uint8_t> mscData(mscRecBuff.begin()+4, mscRecBuff.begin()+bytesTransfered);
+            rawRecordMscWrite(mscData);
+            dataInput(mscData, m_currentSubchanId, false);
         } else {
-            std::cout << LOG_TAG << "StartServiceLink is null" << std::endl;
+            std::stringstream logMsg;
+            logMsg << LOG_TAG << "m_startServiceLink is null or bytesTransfered<4: " << +bytesTransfered;
+            std::clog << logMsg.rdbuf() << std::endl;
         }
 
         //clear buffer
@@ -1481,36 +1859,36 @@ uint8_t RaonTunerInput::getLockStatus() {
     uint8_t lockState = readRegister(0x37);
     uint8_t lockSt{0};
 
-    if(lockState & 0x01) {
+    if(lockState & 0x01u) {
         lockSt = RTV_DAB_OFDM_LOCK_MASK;
     }
 
     lockState = readRegister(0xFB);
-    if((lockState & 0x03) == 0x03) {
+    if((lockState & 0x03u) == 0x03u) {
         lockSt |= RTV_DAB_FEC_LOCK_MASK;
     }
 
-    std::cout << LOG_TAG << "LockState at: " << +m_currentFrequency << " : " << +lockSt << std::endl;
-
+    //std::cout << LOG_TAG << "LockState at: " << +m_currentFrequency << " : " << +lockSt << std::endl;
+    m_lastRfLockState = lockSt;
     return lockSt;
 }
 
 void RaonTunerInput::getAntennaLevel() {
     bool lock_stat{false};
     uint8_t rcnt3{0}, rcnt2{0}, rcnt1{0}, rcnt0{0};
-    uint32_t cer_cnt, cer_period_cnt, ret_val;
+    uint32_t cer_cnt, cer_period_cnt, rawVal;
     uint8_t fec_sync;
 
     switchPage(REGISTER_PAGE_DD);
 
-    lock_stat = (readRegister(0x37) & 0x01) != 0;
+    lock_stat = (readRegister(0x37u) & 0x01u) != 0;
     if(lock_stat) {
         // MSC CER period counter for accumulation
         rcnt3 = readRegister(0x88);
         rcnt2 = readRegister(0x89);
         rcnt1 = readRegister(0x8A);
         rcnt0 = readRegister(0x8B);
-        cer_period_cnt = (rcnt3 << 24) | (rcnt2 << 16) | (rcnt1 << 8) | rcnt0; // 442368
+        cer_period_cnt = (rcnt3 << 24u) | (rcnt2 << 16u) | (rcnt1 << 8u) | rcnt0; // 442368
 
         rcnt3 = readRegister(0x8C);
         rcnt2 = readRegister(0x8D);
@@ -1518,27 +1896,29 @@ void RaonTunerInput::getAntennaLevel() {
         rcnt0 = readRegister(0x8F);
     } else {
         cer_period_cnt = 0;
-        m_usbDevice.get()->receptionStatistics(false, 0);
+        if (m_usbDevice != nullptr) {
+            m_usbDevice->receptionStatistics(false, 0, -1);
+        }
         return;
     }
 
-    fec_sync = (uint8_t)((readRegister(0xD7) >> 4) & 0x1);
+    fec_sync = (uint8_t)((readRegister(0xD7) >> 4) & 0x01);
 
     if(cer_period_cnt != 0) {
         cer_cnt = (rcnt3 << 24) | (rcnt2 << 16) | (rcnt1 << 8) | rcnt0;
         if(cer_cnt <= 4000) {
-            ret_val = 0;
+            rawVal = 0;
         } else {
-            ret_val = ((cer_cnt * 1000)/cer_period_cnt) * 10;
-            if(ret_val > 1200) {
-                ret_val = 2000;
+            rawVal = ((cer_cnt * 1000) / cer_period_cnt) * 10;
+            if(rawVal > 1200) {
+                rawVal = 2000;
             }
         }
     } else {
-        ret_val = 2000;
+        rawVal = 2000;
     }
 
-    if ((fec_sync == 0) || (ret_val == 2000)) {
+    if ((fec_sync == 0) || (rawVal == 2000)) {
         setRegister(0x03, 0x09);
         setRegister(0x46, 0x1E);
         setRegister(0x35, 0x01);
@@ -1546,26 +1926,34 @@ void RaonTunerInput::getAntennaLevel() {
     }
 
     //AntennaLvl
-    uint_t curLevel = 0;
-    uint_t prevLevel = m_prevAntennaLvl;
+    int curLevel = 0;
+    int prevLevel = m_prevAntennaLvl;
+    int prevRaw = m_prevAntennaRaw;
 
     do {
-        if(ret_val >= AntLvlTbl[curLevel]) { /* Use equal for CER 0 */
+        if(rawVal >= AntLvlTbl[curLevel]) { /* Use equal for CER 0 */
             break;
         }
     } while(++curLevel != DAB_MAX_NUM_ANTENNA_LEVEL);
 
-    if (curLevel != prevLevel) {
+    if (curLevel != prevLevel || rawVal != prevRaw) {
         if (curLevel < prevLevel) {
             prevLevel--;
-        } else {
+        } else if ( curLevel > prevLevel) {
             prevLevel++;
         }
 
-        m_prevAntennaLvl = static_cast<uint8_t>(prevLevel);
+        m_prevAntennaLvl = prevLevel;
+        m_prevAntennaRaw = (int)rawVal;
     }
+    if (m_usbDevice != nullptr) {
+        m_usbDevice->receptionStatistics(true, (int) prevLevel, (int) rawVal);
+    }
+}
 
-    m_usbDevice.get()->receptionStatistics(true, prevLevel);
+std::vector<std::shared_ptr<LinkedServiceDab>>
+RaonTunerInput::getLinkedServices(const LinkedServiceDab &service) {
+    return getLinkedDabServices(service);
 }
 
 //TUNER METHODS END

@@ -22,14 +22,11 @@
 
 #include <iostream>
 #include <algorithm>
+#include <sstream>
 
-DabServiceComponent::DabServiceComponent() {
+DabServiceComponent::DabServiceComponent() = default;
 
-}
-
-DabServiceComponent::~DabServiceComponent() {
-    std::cout << "Dabservicecomponent base deleted" << std::endl;
-}
+DabServiceComponent::~DabServiceComponent() = default;
 
 DabServiceComponent::SERVICECOMPONENTTYPE DabServiceComponent::getServiceComponentType() const {
     return m_componentType;
@@ -113,11 +110,35 @@ void DabServiceComponent::setIsCaApplied(bool caApplied) {
 
 void DabServiceComponent::setIsPrimary(bool primary) {
     m_isPrimary = primary;
+    /** "Update of the DAB system standard EN 300 401.pdf" (update to 2.1.1)
+     * [...] the SCIdS for primary service components is fixed as 0 [...]
+     */
+    if (m_isPrimary && m_scIdS == SCIDS_INVALID) {
+        // if SCIdS has not been set yet, then set to 0
+        m_scIdS = 0;
+    }
 }
 
 void DabServiceComponent::setServiceComponentIdWithinService(uint8_t scIdS) {
     m_scIdS = scIdS;
-    m_scIdS == 0 ? (m_isPrimary = true) : (m_isPrimary = false);
+    /* EN 300 401 6.3.5 Service component global definition :
+     * v2.1.1
+     * SCIdS (Service Component Identifier within the Service): this 4-bit field shall identify the
+     * service component within the service.
+     * The primary service component shall use the value 0.
+     * Each secondary service component of the service shall use a different SCIdS value other than 0.
+     *
+     * v1.4.1 (note the slight difference)
+     * SCIdS (Service Component Identifier within the Service): this 4-bit field shall identify the
+     * service component within the service.
+     * The combination of the SId and the SCIdS provides a service component identifier which is valid globally.
+     */
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+    std::stringstream logStr;
+    logStr << m_logTag << " Setting SCIdS: " << +scIdS << " for SubChanId: " << +m_subChanId
+           << "label: '" << m_serviceComponentLabel << "'";
+    std::cout << logStr.rdbuf() << std::endl;
+#endif
 }
 
 void DabServiceComponent::setMscStartAddress(uint16_t startAddress) {
@@ -128,11 +149,11 @@ void DabServiceComponent::setSubchannelSize(uint16_t subChanSize) {
     m_subChanSize = subChanSize;
 }
 
-void DabServiceComponent::setConvolutionalCodingRate(std::string convo) {
+void DabServiceComponent::setConvolutionalCodingRate(const std::string& convo) {
     m_convoCodingRate = convo;
 }
 
-void DabServiceComponent::setProtectionLevelString(std::string protLevel) {
+void DabServiceComponent::setProtectionLevelString(const std::string& protLevel) {
     m_protectionLevelString = protLevel;
 }
 
@@ -163,31 +184,74 @@ void DabServiceComponent::setLabelCharset(uint8_t charset) {
 void DabServiceComponent::setServiceComponentLabel(const std::string& label) {
     if(m_serviceComponentLabel.empty()) {
         m_serviceComponentLabel = label;
-
-        std::cout << m_logTag << " Setting ServiceComponentLabel: " << m_serviceComponentLabel << " to ScIdS: " << std::hex << +m_scIdS << std::dec << std::endl;
+        std::stringstream logStr;
+        logStr << m_logTag << " Setting ServiceComponentLabel: " << m_serviceComponentLabel
+               << " to SCIdS: " << +getServiceComponentIdWithinService();
+        std::cout << logStr.rdbuf() << std::endl;
     }
 }
 
 void DabServiceComponent::setServiceComponentShortLabel(const std::string& shortLabel) {
     if(m_serviceComponentShortLabel.empty()) {
         m_serviceComponentShortLabel = shortLabel;
-
-        std::cout << m_logTag << " Setting ServiceComponentShortLabel: " << m_serviceComponentShortLabel << " to ScIdS: " << std::hex << +m_scIdS << std::dec << std::endl;
+        std::stringstream logStr;
+        logStr << m_logTag << " Setting ServiceComponentShortLabel: "
+               << m_serviceComponentShortLabel << " to SCIdS: " << +getServiceComponentIdWithinService();
+        std::cout << logStr.rdbuf() << std::endl;
     }
 }
 
 void DabServiceComponent::addUserApplication(const DabUserApplication& uApp) {
-    for(const DabUserApplication& app : m_userApplications) {
-        if(app == uApp) {
+    for (const DabUserApplication &app : m_userApplications) {
+        if (app == uApp) {
             //std::cout << m_logTag << " UserAppType: " << +uApp.getUserApplicationType() << " already in list: " << std::hex << +m_subChanId << std::dec << std::endl;
             return;
         }
     }
-
-    std::cout << m_logTag << " ############## Adding UserApplicationType: " << +uApp.getUserApplicationType() << " with DataServiceComponentType: " << +uApp.getDataServiceComponentType() << " for SubChanId: " << std::hex << +m_subChanId << std::dec << std::endl;
+    std::stringstream logStr;
+    logStr << m_logTag << " Adding UserApplicationType: " << +uApp.getUserApplicationType()
+           << " with DataServiceComponentType: " << +uApp.getDataServiceComponentType()
+           << " for SubChanId: " << +m_subChanId;
+    std::cout << logStr.rdbuf() << std::endl;
     m_userApplications.push_back(uApp);
 }
 
 void DabServiceComponent::flushBufferedData() {
 
+}
+
+bool DabServiceComponent::checkSanity() const {
+    bool isSane = true;
+    std::stringstream logStr;
+    logStr << m_logTag << "  check sanity SubChanId=" << +getSubChannelId() << ":"
+           << " SCIdS:" << +getServiceComponentIdWithinService();
+
+    if (getSubChannelId() == SUBCHID_INVALID || getServiceComponentIdWithinService() == SCIDS_INVALID) {
+        logStr << " invalid";
+        isSane = false;
+    }
+    else if (getMscStartAddress() == MSC_STARTADDR_INVALID) {
+        logStr << " mscstart:" << +getMscStartAddress();
+        isSane = false;
+    }
+    else if (getSubchannelSize() == SUBCHAN_SIZE_INVALID) {
+        logStr << " subch size:" << +getSubchannelSize();
+        isSane = false;
+    }
+    else if (getSubchannelBitrate() == SUBCHAN_BITRATE_INVALID) {
+        logStr << " bitrate:" << +getSubchannelBitrate();
+        isSane = false;
+    }
+    else if (getServiceComponentType() == SERVICECOMPONENTTYPE::RESERVED) {
+        logStr << " comptype:" << +getServiceComponentType();
+        isSane = false;
+    }
+    if (!isSane) {
+        std::cout << logStr.rdbuf() << std::endl;
+    }
+    return isSane;
+}
+
+bool DabServiceComponent::isAudioComponent() const {
+    return m_componentType == SERVICECOMPONENTTYPE::MSC_STREAM_AUDIO;
 }

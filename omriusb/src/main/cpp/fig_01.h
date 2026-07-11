@@ -22,9 +22,12 @@
 #define FIG_01
 
 #include <vector>
-#include <string>
 
+#include "dynamiclabeldecoder.h"
 #include "fig.h"
+#include "global_definitions.h"
+#include "registered_tables.h"
+
 
 class Fig_01 : public Fig {
 
@@ -42,68 +45,27 @@ public:
      */
     virtual uint8_t getCharset() const { return m_charSet; }
 
-    /*
-     * OE: this 1-bit flag shall indicate whether the information is related to this or another ensemble, as follows:
-     * 0: this ensemble;
-     * 1: other ensemble (or FM or AM services)
+    /* V1.4.1:
+     *  OE: this 1-bit flag shall indicate whether the information is related to this or another ensemble, as follows:
+     *  0: this ensemble;
+     *  1: other ensemble (or FM or AM services)
+     * V2.1.1
+     *  Rfu
      */
     virtual bool isOtherEnsemble() const { return m_isOtherEnsemble; }
+
+    /*
+     * Extension: this 3-bit field, expressed as an unsigned binary number, shall identify one of
+     * 8 interpretations of the FIG type 1 field (see clause 8.1).
+     * Those extensions, which are not defined, are reserved for future use.
+     */
 
 protected:
     Fig_01(const std::vector<uint8_t>& figData) : m_charSet((figData[0] & 0xF0) >> 4), m_isOtherEnsemble((figData[0] & 0x08) >> 3) {}
 
-    inline void parseLabel(std::vector<uint8_t>::const_iterator& labelIter, std::string& label, std::string& shortLabel) {
-        label.resize(16);
-        label.insert(label.begin(), labelIter, labelIter+16);
+    void parseLabel(std::vector<uint8_t>::const_iterator& labelIter, std::string& label, std::string& shortLabel) const;
 
-        labelIter += 16;
-
-        shortLabel.resize(8);
-        int shortCnt = 0;
-        for(int i = 0; i < 2; i++) {
-            for(int j = 0; j <= 7; j++) {
-
-                //sanity check
-                if(shortCnt > 7) {
-                    break;
-                }
-
-                if((((*labelIter << j) >> 7) & 0x01)) {
-                    shortLabel[shortCnt] = label.data()[j + i*7];
-                    shortCnt++;
-                }
-            }
-            labelIter++;
-        }
-    }
-
-    inline void parseLabel(const std::vector<uint8_t>& labelData, std::string& label, std::string& shortLabel) {
-        auto labelIter = labelData.begin();
-        while(labelIter < labelData.end()) {
-            label.resize(16);
-            label.insert(label.begin(), labelIter, labelIter+16);
-
-            labelIter += 16;
-
-            shortLabel.resize(8);
-            int shortCnt = 0;
-            for(int i = 0; i < 2; i++) {
-                for(int j = 0; j <= 7; j++) {
-
-                    //sanity check
-                    if(shortCnt > 7) {
-                        break;
-                    }
-
-                    if((((*labelIter << j) >> 7) & 0x01)) {
-                        shortLabel[shortCnt] = label.data()[j + i*7];
-                        shortCnt++;
-                    }
-                }
-                labelIter++;
-            }
-        }
-    }
+    void parseLabel(const std::vector<uint8_t>& labelData, std::string& label, std::string& shortLabel) const;
 
 private:
     const uint8_t m_charSet;
@@ -111,4 +73,3 @@ private:
 };
 
 #endif // FIG_01
-

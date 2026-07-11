@@ -1,16 +1,16 @@
 package org.omri.radio.impl;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
 import org.omri.radioservice.RadioServiceType;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -33,12 +33,12 @@ import org.omri.radioservice.RadioServiceType;
 //used from C
 public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServiceDab, Serializable {
 
-	private static final long serialVersionUID = 6561664196086864931L;
+	private static final long serialVersionUID = 4382868398713243924L;
 
 	private static final Logger LOGGER = LogManager.getLogger("DabService");
 	
-	private int mEnsembleEcc;
-	private int mEnsembleId;
+	private int mEnsembleEcc = 0;
+	private int mEnsembleId= 0;
 	private String mEnsembleLabel = "";
 	private String mEnsembleShortLabel = "";
 	private int mEnsembleFrequency = 0;
@@ -46,9 +46,9 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	private int mCaId = -1;
 	private String mServiceLabel = "";
 	private String mShortServiceLabel = "";
-	private int mServiceId;
+	private int mServiceId = 0;
 	private boolean mIsProgrammeService = false;
-	private List<RadioServiceDabComponent> mServiceComponents = new ArrayList<RadioServiceDabComponent>();
+	final private List<RadioServiceDabComponent> mServiceComponents = new ArrayList<RadioServiceDabComponent>();
 
 	RadioServiceDabImpl() {	}
 
@@ -63,8 +63,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	}
 	
 	void setEnsembleEcc(int ensembleEcc) {
-		this.mEnsembleEcc = ensembleEcc;
-        LOGGER.debug("Ensemble ECC: {}", mEnsembleEcc);
+		mEnsembleEcc = ensembleEcc;
 	}
 
 	@Override
@@ -73,8 +72,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	}
 	
 	void setEnsembleId(int ensembleId) {
-		this.mEnsembleId = ensembleId;
-        LOGGER.debug("Ensemble ID: {}", mEnsembleId);
+		mEnsembleId = ensembleId;
 	}
 
 	@Override
@@ -176,6 +174,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 		if(obj != null) {
 			if(obj instanceof RadioServiceDab) {
 				//A DAB service is uniquely identified by its Service Identifier (SId) and in conjunction with the Extended Country Code unique world-wide
+				//but EId and EnsembleFrequency are needed, too
 				RadioServiceDab compSrv = (RadioServiceDab) obj;
 				return ((compSrv.getEnsembleId() == mEnsembleId) && (compSrv.getEnsembleFrequency() == mEnsembleFrequency) && (compSrv.getServiceId() == mServiceId) && (compSrv.getEnsembleEcc() == mEnsembleEcc));
 			}
@@ -193,12 +192,21 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	public boolean equalsRadioService(RadioService otherSrv) {
 		if(otherSrv != null) {
 			if(otherSrv instanceof RadioServiceDab) {
-				//A DAB service is uniquely identified by its Service Identifier (SId) and in conjunction with the Extended Country Code unique world-wide
-				RadioServiceDab compSrv = (RadioServiceDab) otherSrv;
-				return (compSrv.getServiceId() == this.mServiceId) && (compSrv.getEnsembleEcc() == this.mEnsembleEcc);
+				return equals((RadioServiceDab) otherSrv);
 			}
 		}
-
 		return false;
+	}
+
+	@NonNull
+	@Override
+	public String toString() {
+		return "RadioServiceDab {" +
+				" label='" + mServiceLabel + "'" +
+				" SId=0x" + Integer.toHexString(mServiceId) +
+				" EId=0x" + Integer.toHexString(mEnsembleId) +
+				" ECC=0x" + Integer.toHexString(mEnsembleEcc) +
+				" freqKHz=" + mEnsembleFrequency / 1000 +
+				" }";
 	}
 }

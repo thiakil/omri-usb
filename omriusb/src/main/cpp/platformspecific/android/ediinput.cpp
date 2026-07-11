@@ -19,6 +19,7 @@
  */
 
 #include "ediinput.h"
+#include "jni-helper.h"
 
 EdiInput::EdiInput(JavaVM* javaVm, JNIEnv* env, jobject tunerEdiStream) {
     std::cout << LOG_TAG << "Constructing...." << std::endl;
@@ -47,7 +48,6 @@ void EdiInput::setJavaClassDabTime(JNIEnv *env, jclass ediDabTimeClass) {
     m_radioImplClass = env->FindClass("org/omri/radio/impl/RadioImpl");
     m_radioClassGetInstanceMID = env->GetStaticMethodID(m_radioClass, "getInstance", "()Lorg/omri/radio/Radio;");
     m_radioInstanceObj = env->CallStaticObjectMethod(m_radioClass, m_radioClassGetInstanceMID);
-    m_radioInstanceDabTimeMID = env->GetMethodID(m_radioImplClass, "dabTime", "(Lorg/omri/radio/impl/DabTime;)V");
 }
 
 void EdiInput::setJavaClassEdiTuner(JNIEnv *env, jclass ediTunerClass) {
@@ -162,7 +162,7 @@ void EdiInput::stopAllRunningServices() {
 }
 
 void EdiInput::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
-    //std::cout << LOG_TAG << "SBT DabTime: " << dabTime.unixTimestampSeconds << std::endl;
+    //std::cout << LOG_TAG << "SBT DabTime: " << dabTime.unixEpoch << std::endl;
 
     bool wasDetached = false;
     JNIEnv* enve;
@@ -179,8 +179,6 @@ void EdiInput::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
 
     jobject dabtimeObject = enve->NewObject(m_dabTimeClass, m_dabTimeConstructorMID, dabTime.year, dabTime.month, dabTime.day, dabTime.hour, dabTime.minute, dabTime.second, dabTime.milliseconds);
     enve->CallVoidMethod(m_ediTunerObject, m_ediTunerDabTimeUpdate, dabtimeObject);
-
-    //enve->CallVoidMethod(m_radioInstanceObj, m_radioInstanceDabTimeMID, dabtimeObject);
 
     enve->DeleteLocalRef(dabtimeObject);
 
@@ -238,191 +236,272 @@ void EdiInput::ensembleCollectFinished() {
 
     jboolean isScanning = enve->CallBooleanMethod(m_ediTunerObject, m_ediTunerIsScanningMId);
     if(isScanning) {
-        jstring ensembleLabel = enve->NewStringUTF(getEnsembleLabel().data());
-        jstring ensembleShortLabel = enve->NewStringUTF(getEnsembleShortLabel().data());
+        jstring ensembleLabel = getSafeJniStringFromCString(enve,
+                                                            getEnsembleLabel().c_str(),
+                                                            getEnsembleLabel().size());
+        jstring ensembleShortLabel = getSafeJniStringFromCString(enve,
+                                                                 getEnsembleShortLabel().c_str(),
+                                                                 getEnsembleShortLabel().size());
 
-        enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetEnsembleEccMId, getEnsembleEcc());
-        enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetEnsembleIdMId, getEnsembleId());
-        enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetEnsembleLabelMId, ensembleLabel);
-        enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetEnsembleShortLabelMId, ensembleShortLabel);
-        enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetEnsembleFrequencyMId, (jint)0);
+        jobject jDabService = m_startServiceLink->getJavaDabServiceObject();
+        if (jDabService != nullptr) {
+            enve->CallVoidMethod(jDabService, m_dabServiceSetEnsembleEccMId, getEnsembleEcc());
+            enve->CallVoidMethod(jDabService, m_dabServiceSetEnsembleIdMId, getEnsembleId());
+            enve->CallVoidMethod(jDabService, m_dabServiceSetEnsembleLabelMId, ensembleLabel);
+            enve->CallVoidMethod(jDabService, m_dabServiceSetEnsembleShortLabelMId,
+                                 ensembleShortLabel);
+            enve->CallVoidMethod(jDabService, m_dabServiceSetEnsembleFrequencyMId, (jint) 0);
+            auto srv = getDabServices()[0];
+            std::cout << LOG_TAG << "Scan Service: " << srv->getServiceLabel() << std::endl;
+            if (srv->isCaApplied() > 0) {
+                enve->CallVoidMethod(jDabService,
+                                     m_dabServiceSetIsCaAppliedMId, JNI_TRUE);
+            } else {
+                enve->CallVoidMethod(jDabService,
+                                     m_dabServiceSetIsCaAppliedMId, JNI_FALSE);
+            }
 
-        auto srv = getDabServices()[0];
-        std::cout << LOG_TAG << "Scan Service: " << srv->getServiceLabel() << std::endl;
-        if(srv->isCaApplied() > 0) {
-            enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetIsCaAppliedMId, JNI_TRUE);
+            enve->CallVoidMethod(jDabService,
+                                 m_dabServiceSetCaIdMId, (jint) srv->getCaId());
+
+            jstring dabServiceLabel = getSafeJniStringFromCString(enve,
+                                                                  srv->getServiceLabel().data(),
+                                                                  srv->getServiceLabel().size());
+            jstring dabServiceShortLabel = getSafeJniStringFromCString(enve,
+                                                                       srv->getServiceShortLabel().data(),
+                                                                       srv->getServiceShortLabel().size());
+
+            enve->CallVoidMethod(jDabService,
+                                 m_dabServiceSetServiceLabelMId, dabServiceLabel);
+            enve->CallVoidMethod(jDabService,
+                                 m_dabServiceSetServiceShortLabelMId, dabServiceShortLabel);
+            enve->CallVoidMethod(jDabService,
+                                 m_dabServiceSetServiceIdMId, srv->getServiceId());
+
+            if (srv->hasAudioServiceComponent()) {
+                enve->CallVoidMethod(jDabService,
+                                     m_dabServiceSetServiceIsProgrammeMId, JNI_TRUE);
+            } else {
+                enve->CallVoidMethod(jDabService,
+                                     m_dabServiceSetServiceIsProgrammeMId, JNI_FALSE);
+            }
+
+            jstring genrePty = getSafeJniStringFromCString(enve,
+                                                           srv->getProgrammeTypeFullName().data(),
+                                                           srv->getProgrammeTypeFullName().size());
+            jobject termIdObject = enve->NewObject(m_termIdClass, m_termIdConstructorMId);
+
+            enve->CallVoidMethod(termIdObject, m_termIdSetGenreTextMId, genrePty);
+            enve->CallVoidMethod(jDabService,
+                                 m_dabServiceAddGenreTermIdMId, termIdObject);
+            enve->DeleteLocalRef(genrePty);
+            enve->DeleteLocalRef(termIdObject);
+
+            //DABServiceComponent creation
+            for (const auto &srvComp : srv->getServiceComponents()) {
+                jobject dabServiceComponentObject = enve->NewObject(m_dabServiceComponentClass,
+                                                                    m_dabServiceComponentConstructorMId);
+
+                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetBitrateMId,
+                                     (jint) srvComp->getSubchannelBitrate());
+                if (srvComp->isCaApplied()) {
+                    enve->CallVoidMethod(dabServiceComponentObject,
+                                         m_dabServiceComponentSetCaFlagMId, JNI_TRUE);
+                } else {
+                    enve->CallVoidMethod(dabServiceComponentObject,
+                                         m_dabServiceComponentSetCaFlagMId, JNI_FALSE);
+                }
+
+                enve->CallVoidMethod(dabServiceComponentObject,
+                                     m_dabServiceComponentSetServiceIdMId,
+                                     (jint) srv->getServiceId());
+                enve->CallVoidMethod(dabServiceComponentObject,
+                                     m_dabServiceComponentSetSubchannelIdMId,
+                                     srvComp->getSubChannelId());
+
+                jstring dabServiceComponentLabel = getSafeJniStringFromCString(enve,
+                                                                               srvComp->getServiceComponentLabel().c_str(),
+                                                                               srvComp->getServiceComponentLabel().size());
+                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetLabelMId,
+                                     dabServiceComponentLabel);
+
+                jint packetAddress;
+                uint8_t tmId;
+                jint serviceComponentType;
+                jboolean dgUsed = 0;
+                switch (srvComp->getServiceComponentType()) {
+                    case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_STREAM_AUDIO: {
+                        auto audioComp = std::static_pointer_cast<DabServiceComponentMscStreamAudio>(
+                                srvComp);
+                        serviceComponentType = (jint) audioComp->getAudioServiceComponentType();
+                        packetAddress = -1;
+                        tmId = 0;
+                        dgUsed = 0;
+                        break;
+                    }
+                    case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_STREAM_DATA: {
+                        //TODO values for MSC_DATA_STREAM_MODE
+                        packetAddress = -1;
+                        tmId = 1;
+                        serviceComponentType = -1;
+                        dgUsed = 0;
+                        break;
+                    }
+                    case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_PACKET_MODE_DATA: {
+                        auto packetComp = std::static_pointer_cast<DabServiceComponentMscPacketData>(
+                                srvComp);
+                        packetAddress = (jint) packetComp->getPacketAddress();
+                        serviceComponentType = (jint) packetComp->getDataServiceComponentType();
+                        dgUsed = (jboolean) (packetComp->isDataGroupTransportUsed() ? 1 : 0);
+                        tmId = 3;
+                        break;
+                    }
+                    default: {
+                        packetAddress = -1;
+                        serviceComponentType = -1;
+                        tmId = 2;
+                        dgUsed = JNI_FALSE;
+                        break;
+                    }
+                }
+
+                enve->CallVoidMethod(dabServiceComponentObject,
+                                     m_dabServiceComponentSetPacketAddressMId, packetAddress);
+                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsDgUsedMId,
+                                     dgUsed);
+                if (srvComp->isPrimary()) {
+                    enve->CallVoidMethod(dabServiceComponentObject,
+                                         m_dabServiceComponentSetIsPrimaryMId, JNI_TRUE);
+                } else {
+                    enve->CallVoidMethod(dabServiceComponentObject,
+                                         m_dabServiceComponentSetIsPrimaryMId, JNI_FALSE);
+                }
+
+                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetScIDsMId,
+                                     (jint) srvComp->getServiceComponentIdWithinService());
+                enve->CallVoidMethod(dabServiceComponentObject,
+                                     m_dabServiceComponentSetTransportModeIdMId, (jint) tmId);
+                enve->CallVoidMethod(dabServiceComponentObject,
+                                     m_dabServiceComponentSetMscStartAddressMId,
+                                     (jint) srvComp->getMscStartAddress());
+                enve->CallVoidMethod(dabServiceComponentObject,
+                                     m_dabServiceComponentSetSubchanSizeMId,
+                                     (jint) srvComp->getSubchannelSize());
+                enve->CallVoidMethod(dabServiceComponentObject,
+                                     m_dabServiceComponentSetProtectionLvlMId,
+                                     (jint) srvComp->getProtectionLevel());
+                enve->CallVoidMethod(dabServiceComponentObject,
+                                     m_dabServiceComponentSetProtectionTypeMId,
+                                     (jint) srvComp->getProtectionType());
+                enve->CallVoidMethod(dabServiceComponentObject,
+                                     m_dabServiceComponentSetUepTblIdxMId,
+                                     (jint) srvComp->getUepTableIndex());
+                if (srvComp->isFecSchemeApplied()) {
+                    enve->CallVoidMethod(dabServiceComponentObject,
+                                         m_dabServiceComponentSetIsFecAppliedMId, JNI_TRUE);
+                } else {
+                    enve->CallVoidMethod(dabServiceComponentObject,
+                                         m_dabServiceComponentSetIsFecAppliedMId, JNI_FALSE);
+                }
+
+                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetScTypeMId,
+                                     serviceComponentType);
+
+                enve->DeleteLocalRef(dabServiceComponentLabel);
+
+                //DABUserApplication creation
+                for (const auto &uApp : srvComp->getUserApplications()) {
+                    if (uApp.getUserApplicationType() ==
+                        registeredtables::USERAPPLICATIONTYPE::DYNAMIC_LABEL) {
+                        continue;
+                    }
+
+                    jobject dabServiceUserapplicationObject = enve->NewObject(
+                            m_dabServiceUserApplicationClass,
+                            m_dabServiceUserApplicationConstructorMId);
+                    enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                         m_dabServiceUserApplicationSetAppTypeMId,
+                                         (jint) uApp.getUserApplicationType());
+                    if (uApp.isCaApplied()) {
+                        enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                             m_dabServiceUserApplicationSetIsCaAppliedMId,
+                                             JNI_TRUE);
+                    } else {
+                        enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                             m_dabServiceUserApplicationSetIsCaAppliedMId,
+                                             JNI_FALSE);
+                    }
+
+                    enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                         m_dabServiceUserApplicationSetCaOrgMId,
+                                         (jint) uApp.getCaOrganization());
+                    if (uApp.isXpadApp()) {
+                        enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                             m_dabServiceUserApplicationSetIsXPadMId, JNI_TRUE);
+                    } else {
+                        enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                             m_dabServiceUserApplicationSetIsXPadMId, JNI_FALSE);
+                    }
+
+                    enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                         m_dabServiceUserApplicationSetXPadAppTypeMId,
+                                         (jint) uApp.getXpadAppType());
+
+                    if (uApp.dataGroupsUsed()) {
+                        enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                             m_dabServiceUserApplicationSetIsDgUsedMId, JNI_TRUE);
+                    } else {
+                        enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                             m_dabServiceUserApplicationSetIsDgUsedMId, JNI_FALSE);
+                    }
+
+                    enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                         m_dabServiceUserApplicationSetDSCTyMId,
+                                         (jint) uApp.getDataServiceComponentType());
+
+                    if (!uApp.getUserApplicationData().empty()) {
+                        jbyteArray uAppData = enve->NewByteArray(
+                                uApp.getUserApplicationData().size());
+                        enve->SetByteArrayRegion(uAppData, 0, uApp.getUserApplicationData().size(),
+                                                 (jbyte *) uApp.getUserApplicationData().data());
+
+                        enve->CallVoidMethod(dabServiceUserapplicationObject,
+                                             m_dabServiceUserApplicationSetUappDataMId, uAppData);
+                        enve->DeleteLocalRef(uAppData);
+                    }
+
+                    //Add Userapplication to DabServiceComponent
+                    enve->CallVoidMethod(dabServiceComponentObject,
+                                         m_dabServiceComponentAddUserApplicationMId,
+                                         dabServiceUserapplicationObject);
+
+                    enve->DeleteLocalRef(dabServiceUserapplicationObject);
+                }
+                //DABUserApplication creation END
+
+                //Add DabServiceComponent to DabService
+                enve->CallVoidMethod(jDabService,
+                                     m_dabServiceAddServiceComponentMId, dabServiceComponentObject);
+
+                enve->DeleteLocalRef(dabServiceComponentObject);
+            }
+
+            enve->DeleteLocalRef(ensembleLabel);
+            enve->DeleteLocalRef(ensembleShortLabel);
+
+            enve->DeleteLocalRef(dabServiceLabel);
+            enve->DeleteLocalRef(dabServiceShortLabel);
+
+            enve->CallVoidMethod(m_ediTunerObject, m_ediTunerServiceUpdated,
+                                 jDabService);
+
         } else {
-            enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetIsCaAppliedMId, JNI_FALSE);
+            m_startServiceLink->setLinkDabService(getDabServices()[0]);
+            m_startServiceLink->decodeAudio(true);
+
+            enve->CallVoidMethod(m_ediTunerObject, m_ediTunerServiceStartedMId,
+                                 jDabService);
         }
-
-        enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetCaIdMId, (jint)srv->getCaId());
-
-        jstring dabServiceLabel = enve->NewStringUTF(srv->getServiceLabel().data());
-        jstring dabServiceShortLabel = enve->NewStringUTF(srv->getServiceShortLabel().data());
-
-        enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetServiceLabelMId, dabServiceLabel);
-        enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetServiceShortLabelMId, dabServiceShortLabel);
-        enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetServiceIdMId, srv->getServiceId());
-
-        if(srv->isProgrammeService() > 0) {
-            enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetServiceIsProgrammeMId, JNI_TRUE);
-        } else {
-            enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceSetServiceIsProgrammeMId, JNI_FALSE);
-        }
-
-        jstring genrePty = enve->NewStringUTF(srv->getProgrammeTypeFullName().data());
-        jobject termIdObject = enve->NewObject(m_termIdClass, m_termIdConstructorMId);
-
-        enve->CallVoidMethod(termIdObject, m_termIdSetGenreTextMId, genrePty);
-        enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceAddGenreTermIdMId, termIdObject);
-        enve->DeleteLocalRef(genrePty);
-
-        enve->DeleteLocalRef(termIdObject);
-
-        //DABServiceComponent creation
-        for(const auto& srvComp : srv->getServiceComponents()) {
-            jobject dabServiceComponentObject = enve->NewObject(m_dabServiceComponentClass, m_dabServiceComponentConstructorMId);
-
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetBitrateMId, (jint)srvComp->getSubchannelBitrate());
-            if(srvComp->isCaApplied() > 0) {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetCaFlagMId, JNI_TRUE);
-            } else {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetCaFlagMId, JNI_FALSE);
-            }
-
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetServiceIdMId, (jint)srv->getServiceId());
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetSubchannelIdMId, srvComp->getSubChannelId());
-
-            jstring dabServiceComponentLabel = enve->NewStringUTF(srvComp->getServiceComponentLabel().data());
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetLabelMId, dabServiceComponentLabel);
-
-            jint packetAddress;
-            uint8_t tmId;
-            jint serviceComponentType;
-            jboolean dgUsed = 0;
-            switch(srvComp->getServiceComponentType()) {
-                case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_STREAM_AUDIO: {
-                    auto audioComp = std::static_pointer_cast<DabServiceComponentMscStreamAudio>(srvComp);
-                    serviceComponentType = (jint)audioComp->getAudioServiceComponentType();
-                    packetAddress = -1;
-                    tmId = 0;
-                    dgUsed = 0;
-                    break;
-                }
-                case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_STREAM_DATA: {
-                    //TODO values for MSC_DATA_STREAM_MODE
-                    packetAddress = -1;
-                    tmId = 1;
-                    serviceComponentType = -1;
-                    dgUsed = 0;
-                    break;
-                }
-                case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_PACKET_MODE_DATA: {
-                    auto packetComp = std::static_pointer_cast<DabServiceComponentMscPacketData>(srvComp);
-                    packetAddress = (jint)packetComp->getPacketAddress();
-                    serviceComponentType = (jint)packetComp->getDataServiceComponentType();
-                    dgUsed = (jboolean)(packetComp->isDataGroupTransportUsed() ? 1 : 0);
-                    tmId = 3;
-                    break;
-                }
-                default: {
-                    packetAddress = -1;
-                    serviceComponentType = -1;
-                    tmId = 2;
-                    dgUsed = JNI_FALSE;
-                    break;
-                }
-            }
-
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetPacketAddressMId, packetAddress);
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsDgUsedMId, dgUsed);
-            if(srvComp->isPrimary() > 0) {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsPrimaryMId, JNI_TRUE);
-            } else {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsPrimaryMId, JNI_FALSE);
-            }
-
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetScIDsMId, (jint)srvComp->getServiceComponentIdWithinService());
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetTransportModeIdMId, (jint)tmId);
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetMscStartAddressMId, (jint)srvComp->getMscStartAddress());
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetSubchanSizeMId, (jint)srvComp->getSubchannelSize());
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetProtectionLvlMId, (jint)srvComp->getProtectionLevel());
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetProtectionTypeMId, (jint)srvComp->getProtectionType());
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetUepTblIdxMId, (jint)srvComp->getUepTableIndex());
-            if(srvComp->isFecSchemeApplied() > 0) {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsFecAppliedMId, JNI_TRUE);
-            } else {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsFecAppliedMId, JNI_FALSE);
-            }
-
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetScTypeMId, serviceComponentType);
-
-            enve->DeleteLocalRef(dabServiceComponentLabel);
-
-            //DABUserApplication creation
-            for(const auto& uApp : srvComp->getUserApplications()) {
-                if(uApp.getUserApplicationType() == registeredtables::USERAPPLICATIONTYPE::DYNAMIC_LABEL) {
-                    continue;
-                }
-
-                jobject dabServiceUserapplicationObject = enve->NewObject(m_dabServiceUserApplicationClass, m_dabServiceUserApplicationConstructorMId);
-                enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetAppTypeMId, (jint)uApp.getUserApplicationType());
-                if(uApp.isCaApplied() > 0) {
-                    enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsCaAppliedMId, JNI_TRUE);
-                } else {
-                    enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsCaAppliedMId, JNI_FALSE);
-                }
-
-                enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetCaOrgMId, (jint)uApp.getCaOrganization());
-                if(uApp.isXpadApp() > 0) {
-                    enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsXPadMId, JNI_TRUE);
-                } else {
-                    enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsXPadMId, JNI_FALSE);
-                }
-
-                enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetXPadAppTypeMId, (jint)uApp.getXpadAppType());
-
-                if(uApp.dataGroupsUsed() > 0) {
-                    enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsDgUsedMId, JNI_TRUE);
-                } else {
-                    enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetIsDgUsedMId, JNI_FALSE);
-                }
-
-                enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetDSCTyMId, (jint)uApp.getDataServiceComponentType());
-
-                if(!uApp.getUserApplicationData().empty()) {
-                    jbyteArray uAppData = enve->NewByteArray(uApp.getUserApplicationData().size());
-                    enve->SetByteArrayRegion(uAppData, 0, uApp.getUserApplicationData().size(), (jbyte*)uApp.getUserApplicationData().data());
-
-                    enve->CallVoidMethod(dabServiceUserapplicationObject, m_dabServiceUserApplicationSetUappDataMId, uAppData);
-                    enve->DeleteLocalRef(uAppData);
-                }
-
-                //Add Userapplication to DabServiceComponent
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentAddUserApplicationMId, dabServiceUserapplicationObject);
-
-                enve->DeleteLocalRef(dabServiceUserapplicationObject);
-            }
-            //DABUserApplication creation END
-
-            //Add DabServiceComponent to DabService
-            enve->CallVoidMethod(m_startServiceLink->getJavaDabServiceObject(), m_dabServiceAddServiceComponentMId, dabServiceComponentObject);
-
-            enve->DeleteLocalRef(dabServiceComponentObject);
-        }
-
-        enve->DeleteLocalRef(ensembleLabel);
-        enve->DeleteLocalRef(ensembleShortLabel);
-
-        enve->DeleteLocalRef(dabServiceLabel);
-        enve->DeleteLocalRef(dabServiceShortLabel);
-
-        enve->CallVoidMethod(m_ediTunerObject, m_ediTunerServiceUpdated, m_startServiceLink->getJavaDabServiceObject());
-    } else {
-        m_startServiceLink->setLinkDabService(getDabServices()[0]);
-        m_startServiceLink->decodeAudio(true);
-
-        enve->CallVoidMethod(m_ediTunerObject, m_ediTunerServiceStartedMId, m_startServiceLink->getJavaDabServiceObject());
     }
 
     if(wasDetached) {
@@ -478,8 +557,8 @@ void EdiInput::ediDataInput(const std::vector<uint8_t> &data, int size) {
 
             //AR
             bool crcFlag = (*ediIter & 0x80 >> 7) != 0;
-            uint8_t majVer = static_cast<uint8_t>((*ediIter & 0x70 >> 4));
-            uint8_t minVer = static_cast<uint8_t>(*ediIter++ & 0x0F);
+            uint8_t majVer8 = static_cast<uint8_t>((*ediIter & 0x70 >> 4));
+            uint8_t minVer8 = static_cast<uint8_t>(*ediIter++ & 0x0F);
 
             uint8_t protoType = static_cast<uint8_t >(*ediIter++ & 0xFF);
 
@@ -498,8 +577,8 @@ void EdiInput::ediDataInput(const std::vector<uint8_t> &data, int size) {
                 if (tagName == '*ptr') {
                     tagLenBits = static_cast<uint32_t>(((*afIter++ & 0xFF) << 24) | ((*afIter++ & 0xFF) << 16) | ((*afIter++ & 0xFF) << 8) | (*afIter++ & 0xFF));
                     uint32_t protoName = static_cast<uint32_t>(((*afIter++ & 0xFF) << 24) | ((*afIter++ & 0xFF) << 16) | ((*afIter++ & 0xFF) << 8) | (*afIter++ & 0xFF));
-                    uint16_t majVer = static_cast<uint16_t>(((*afIter++ & 0xFF) << 8) | (*afIter++ & 0xFF));
-                    uint16_t minVer = static_cast<uint16_t>(((*afIter++ & 0xFF) << 8) | (*afIter++ & 0xFF));
+                    uint16_t maxVer16 = static_cast<uint16_t>(((*afIter++ & 0xFF) << 8) | (*afIter++ & 0xFF));
+                    uint16_t minVer16 = static_cast<uint16_t>(((*afIter++ & 0xFF) << 8) | (*afIter++ & 0xFF));
                 }
 
                 if (tagName == 'deti') {

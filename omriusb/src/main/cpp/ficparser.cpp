@@ -18,188 +18,317 @@
  *
  */
 
+#include <iostream>
+#include <pthread.h>
+#include <syscall.h>
+#include <unistd.h>
+
+#include "dabthread.h"
 #include "ficparser.h"
+#include "global_definitions.h"
 
 constexpr uint16_t FicParser::CRC_CCITT_TABLE[];
 
-//calling inherited constructor with FIC_ID
-FicParser::FicParser() {
-    m_fibProcessThreadRunning = false;
+bool FicParser::FIB_CRC_CHECK(const uint8_t* data) const {
 
-    m_fibProcessorThread = std::thread(&FicParser::processFib, this);
+    //fixed fib size
+    uint16_t dataLen = FIB_SIZE;
+
+    //initial register
+    uint16_t crc = 0xffff;
+    uint16_t crc2 = 0xffff;
+
+    uint16_t crcVal, i;
+    uint8_t  crcCalData;
+
+    for (i = 0; i < (dataLen - 2); i++) {
+        crcCalData = *(data+i);
+        crc = (crc << 8)^FicParser::CRC_CCITT_TABLE[(crc >> 8)^(crcCalData)++];
+    }
+
+    crcVal = *(data+i) << 8u;
+    crcVal = crcVal | *(data+i+1);
+
+    crc2 = (crcVal^crc2);
+
+    return crc == crc2;
+}
+
+FicParser::FicParser() {
+    std::cout << M_LOG_TAG << " Constructing" << std::endl;
 }
 
 FicParser::~FicParser() {
-    m_fibDataQueue.clear();
-    m_fibProcessThreadRunning = false;
+    std::cout << M_LOG_TAG << " Destructing" << std::endl;
+    reset();
+    stop();
+    std::cout << M_LOG_TAG << " Destructed" << std::endl;
+}
 
-    if(m_fibProcessorThread.joinable()) {
-        std::cout << M_LOG_TAG << " Joining FIB processor thread" << std::endl;
-        m_fibProcessorThread.join();
+void FicParser::start() {
+    std::lock_guard<std::mutex> lockGuard(m_fibThreadMutex);
+
+    if (!m_fibProcessThreadRunning) {
+        m_fibProcessThreadRunning = true;
+        if (m_fibProcessorThread.get() == nullptr) {
+            m_fibProcessorThread = std::unique_ptr<DabThread>(
+                    new DabThread([this]() { processFib(); }));
+        } else {
+            if (m_fibProcessorThread->joinable()) { // thread seems to be running
+                std::clog << M_LOG_TAG << "Continue FIB thread " << getParserThreadName()
+                          << std::endl;
+                m_fibDataQueue.push(std::vector<uint8_t>(0)); // trigger thread with empty data
+            } else {
+                std::clog << M_LOG_TAG << "Re-Create FIB thread" << std::endl;
+                // create a new thread, other seems already dead
+                m_fibProcessorThread.release();
+                m_fibProcessorThread = std::unique_ptr<DabThread>(
+                        new DabThread([this]() { processFib(); }));
+            }
+        }
     }
 }
 
-void FicParser::call(const std::vector<uint8_t> &data) {
-    auto ficIter = data.begin();
-    while (ficIter < data.end()) {
-        std::vector<uint8_t> fib(ficIter, ficIter+32);
+void FicParser::stop() {
+    std::lock_guard<std::mutex> lockGuard(m_fibThreadMutex);
+
+    if (m_fibProcessThreadRunning) {
+        m_fibProcessThreadRunning = false;
+        if (m_fibProcessorThread.get() == nullptr) {
+            return; // no thread, nothing to do
+        }
+        if(m_fibProcessorThread->joinable()) {
+            if (std::this_thread::get_id() != m_fibProcessorThread->get_id()) {
+                std::cout << M_LOG_TAG << " Joining FIB thread " << getParserThreadName()
+                          << std::endl;
+                m_fibProcessorThread->join();
+                std::cout << M_LOG_TAG << " Joined FIB thread " << getParserThreadName()
+                          << std::endl;
+            } else {
+                // cannot join myself, trigger myself with empty data
+                m_fibDataQueue.push(std::vector<uint8_t>(0));
+            }
+        }
+    }
+}
+
+bool FicParser::isStarted() const {
+    std::lock_guard<std::mutex> lockGuard(m_fibThreadMutex);
+    return m_fibProcessThreadRunning;
+}
+
+void FicParser::call(const std::vector<uint8_t> &data, bool rfLock) {
+    auto ficIter = data.cbegin();
+    int loop = 0;
+    while (ficIter < data.cend()) {
+        loop++;
+        long remainingBytes = std::distance(ficIter, data.cend());
+        if (remainingBytes < FIB_SIZE) {
+            std::clog << M_LOG_TAG << "FIB " << +loop << " too short: exp:" << FIB_SIZE << ", rcv:" << +remainingBytes << std::endl;
+            return; // must not continue
+        }
+        std::vector<uint8_t> fib(ficIter, ficIter+FIB_SIZE);
         if(FIB_CRC_CHECK(fib.data())) {
             m_fibDataQueue.push(fib);
+            size_t sz = m_fibDataQueue.getSize();
+            if ((sz > 0u) && (sz % 50u == 0u)) {
+                std::clog << M_LOG_TAG << "FIBs pile up: " << +sz << ", fibThread running: "
+                          << std::boolalpha << m_fibProcessThreadRunning << std::noboolalpha
+                          << std::endl;
+            }
         } else {
-            std::cout << M_LOG_TAG << " FIB crc corrupted: " << std::hex << data[0] << " : " << data[1] << std::dec << std::endl;
+            if (rfLock) {
+                std::clog << M_LOG_TAG << "FIB " << +loop << " crc corrupted: "
+                          << Fig::toHexString(fib) << std::endl;
+            }
         }
 
-        ficIter += 32;
-
-        std::vector<std::string> bla;
-        bla.push_back("");
+        ficIter += FIB_SIZE;
     }
 }
 
 void FicParser::processFib() {
-    m_fibProcessThreadRunning = true;
+    // give thread a name
+    long tid = syscall(SYS_gettid);
+    char threadName[DAB_THREAD_NAME_LEN];
+    snprintf(threadName, DAB_THREAD_NAME_LEN-1, "FIB-%ld", tid);
+    threadName[DAB_THREAD_NAME_LEN-1] = '\0';
+    pthread_setname_np(pthread_self(), threadName);
+    m_ficProcessorThreadName = std::string(threadName);
 
+    std::cout << M_LOG_TAG << "FIB thread started: " << getParserThreadName() << std::endl;
+
+    const auto timeout = std::chrono::milliseconds(24);
     while (m_fibProcessThreadRunning) {
         std::vector<uint8_t> fibData;
-        if(m_fibDataQueue.tryPop(fibData, std::chrono::milliseconds(24))) {
-            auto figIter = fibData.begin();
-            while(figIter < fibData.end() - 2) {
-                uint8_t figType = (*figIter & 0xE0) >> 5;
-                uint8_t figLength = (*figIter & 0x1F);
-
-                ++figIter;
-
-                if(figType != 7 && figLength != 31 && figLength > 0) {
-
-                    switch (figType) {
-                        case 0: {
-                            parseFig_00(std::vector<uint8_t>(figIter, figIter+figLength));
-                            break;
-                        }
-                        case 1: {
-                            parseFig_01(std::vector<uint8_t>(figIter, figIter+figLength));
-                            break;
-                        }
-                        default:
-                            std::cout << M_LOG_TAG << "Unknown FIG Type: " << figType << std::endl;
-                            break;
-                    }
-
-                    figIter += figLength;
-                } else {
-                    break;
+        if(m_fibDataQueue.tryPop(fibData, timeout)) {
+            try {
+                auto figIter = fibData.begin();
+                auto remainingBytes = std::distance(figIter, fibData.end());
+                if (remainingBytes < 2) {
+                    std::cout << M_LOG_TAG << "popped FIB too short: exp:2, rcv:" << +remainingBytes
+                              << std::endl;
+                    continue;
                 }
+                while (figIter < fibData.end() - 2 && m_fibProcessThreadRunning) {
+                    const auto figType = static_cast<uint8_t>((*figIter & 0xE0u) >> 5u);
+                    const auto figLength = static_cast<uint8_t>(*figIter & 0x1Fu);
+
+                    ++figIter;
+
+                    if (figType != 7 && figLength != 31 && figLength > 0) {
+                        remainingBytes = std::distance(figIter, fibData.end());
+                        if (remainingBytes < figLength) {
+                            std::cout << M_LOG_TAG << "FIG too short: exp:" << +figLength
+                                      << ", rcv:"
+                                      << +remainingBytes << std::endl;
+                        }
+                        const std::vector<uint8_t> figData(figIter, figIter + figLength);
+                        switch (figType) {
+                            case 0: {
+                                parseFig_00(figData);
+                                break;
+                            }
+                            case 1: {
+                                parseFig_01(figData);
+                                break;
+                            }
+                            default:
+                                std::cout << M_LOG_TAG << "Unknown FIG Type: " << +figType
+                                          << std::endl;
+                                break;
+                        }
+
+                        figIter += figLength;
+                    } else {
+                        // figType=7, figLength=31: End Marker
+                        // -OR-
+                        // figLength = 0
+                        break;
+                    }
+                }
+            } catch (std::exception& e) {
+                std::clog << M_LOG_TAG << "Caught exception: " << e.what() << std::endl;
+                std::clog << M_LOG_TAG << "FIB size: " << +fibData.size() << std::endl;
+                std::clog << M_LOG_TAG << Fig::toHexString(fibData) << std::endl;
             }
         }
     }
-
-    std::cout << M_LOG_TAG << "FIB Processor thread stopped" << std::endl;
+    std::stringstream logMsg;
+    logMsg << M_LOG_TAG << "FIB Processor thread stopped: " << threadName;
+    std::cout << logMsg.rdbuf() << std::endl;
 }
 
 void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
-    //ficData[0] ensured by the calling thread - figLEngth > 0
-    switch (ficData[0] & 0x1F) {
+    //ficData[0] ensured by the calling thread - figLength > 0
+    const auto figType = static_cast<Fig::FIG_00_TYPE>(ficData[0] & 0x1Fu);
+    switch (figType) {
         case Fig::FIG_00_TYPE::ENSEMBLE_INFORMATION: {
             Fig_00_Ext_00 extZero(ficData);
-
             m_fig00_00dispatcher.invoke(extZero);
+
+            bool done{false};
+            if(!contains<Fig_00_Ext_00>(m_parsedFig0000, extZero)) {
+                m_parsedFig0000.push_back(extZero);
+            } else {
+                done = true;
+            }
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+            }
+#endif
+            if (done) {
+                m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::ENSEMBLE_INFORMATION);
+            }
             break;
         }
         case Fig::FIG_00_TYPE::BASIC_SUBCHANNEL_ORGANIZATION: {
             Fig_00_Ext_01 extOne(ficData);
+            m_fig00_01dispatcher.invoke(extOne);
 
             bool done{false};
             if(!contains<Fig_00_Ext_01>(m_parsedFig0001, extOne)) {
                 m_parsedFig0001.push_back(extOne);
-                if(m_1wasDone) {
-                    std::cout << "FICParser Ext 2 done" << std::endl;
-                }
             } else {
                 done = true;
-                m_1wasDone = true;
             }
-
-            m_fig00_01dispatcher.invoke(extOne);
-            //tell callbacks that there will be no new FIGs
-            if(done) {
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+            }
+#endif
+            if (done) {
                 m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::BASIC_SUBCHANNEL_ORGANIZATION);
             }
             break;
         }
         case Fig::FIG_00_TYPE::BASIC_SERVICE_COMPONENT_DEFINITION: {
             Fig_00_Ext_02 extTwo(ficData);
+            m_fig00_02dispatcher.invoke(extTwo);
 
             bool done{false};
             if(!contains<Fig_00_Ext_02>(m_parsedFig0002, extTwo)) {
-                if(m_2wasDone) {
-                    std::cout << "FICParser Ext 2 was done" << std::endl;
-                }
                 m_parsedFig0002.push_back(extTwo);
             } else {
                 done = true;
-                m_2wasDone = true;
             }
-
-            m_fig00_02dispatcher.invoke(extTwo);
-            if(done) {
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            std::string hexStr = Fig::toHexString(ficData);
+            std::cout << M_LOG_TAG << "FIG 0/" << +figType << " : " << hexStr << std::endl;
+            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+            }
+#endif
+            if (done) {
                 m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::BASIC_SERVICE_COMPONENT_DEFINITION);
             }
             break;
         }
         case Fig::FIG_00_TYPE::SERVICE_COMPONENT_PACKET_MODE: {
             Fig_00_Ext_03 extThree(ficData);
-
-            bool done{false};
-            if(!contains<Fig_00_Ext_03>(m_parsedFig0003, extThree)) {
-                if(m_3wasDone) {
-                    std::cout << "FICParser Ext 3 was done" << std::endl;
-                }
-                m_parsedFig0003.push_back(extThree);
-            } else {
-                done = true;
-                m_3wasDone = true;
-            }
-
             m_fig00_03dispatcher.invoke(extThree);
-            if(done) {
-                m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::SERVICE_COMPONENT_PACKET_MODE);
-            }
+            m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::SERVICE_COMPONENT_PACKET_MODE);
             break;
         }
         case Fig::FIG_00_TYPE::SERVICE_COMPONENT_STREAM_CA: {
             Fig_00_Ext_04 extFour(ficData);
+            m_fig00_04dispatcher.invoke(extFour);
             break;
         }
         case Fig::FIG_00_TYPE::SERVICE_COMPONENT_LANGUAGE: {
             Fig_00_Ext_05 extFive(ficData);
+            m_fig00_05dispatcher.invoke(extFive);
             break;
         }
         case Fig::FIG_00_TYPE::SERVICE_LINKING_INFORMATION: {
             Fig_00_Ext_06 extSix(ficData);
-
             m_fig00_06dispatcher.invoke(extSix);
             break;
         }
         case Fig::FIG_00_TYPE::CONFIGURATION_INFORMATION: {
             Fig_00_Ext_07 extSeven(ficData);
+            m_fig00_07dispatcher.invoke(extSeven);
             break;
         }
         case Fig::FIG_00_TYPE::SERVICE_COMPONENT_GLOBAL_DEFINITION: {
             Fig_00_Ext_08 extEight(ficData);
+            m_fig00_08dispatcher.invoke(extEight);
 
             bool done{false};
             if(!contains<Fig_00_Ext_08>(m_parsedFig0008, extEight)) {
-                if(m_8wasDone) {
-                    std::cout << "FICParser Ext 8 done" << std::endl;
-                }
                 m_parsedFig0008.push_back(extEight);
             } else {
                 done = true;
-                m_8wasDone = true;
             }
-
-            m_fig00_08dispatcher.invoke(extEight);
-            if(done) {
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            std::string hexStr = Fig::toHexString(ficData);
+            std::cout << M_LOG_TAG << "FIG 0/" << +figType << " : " << hexStr << std::endl;
+            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+            }
+#endif
+            if (done) {
                 m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::SERVICE_COMPONENT_GLOBAL_DEFINITION);
             }
             break;
@@ -216,6 +345,7 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
         }
         case Fig::FIG_00_TYPE::USERAPPLICATION_INFORMATION: {
             Fig_00_Ext_13 ext3Ten(ficData);
+            m_fig00_13dispatcher.invoke(ext3Ten);
 
             bool done{false};
             if(!contains<Fig_00_Ext_13>(m_parsedFig0013, ext3Ten)) {
@@ -223,43 +353,30 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             } else {
                 done = true;
             }
-
-            m_fig00_13dispatcher.invoke(ext3Ten);
-            if(done) {
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+            }
+#endif
+            if (done) {
                 m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::USERAPPLICATION_INFORMATION);
             }
             break;
         }
         case Fig::FIG_00_TYPE::FEC_SUBCHANNEL_ORGANIZATION: {
-            bool done{false};
             Fig_00_Ext_14 ext4Ten(ficData);
-
-            if(!contains<Fig_00_Ext_14>(m_parsedFig0014, ext4Ten)) {
-                m_parsedFig0014.push_back(ext4Ten);
-            } else {
-                done = true;
-            }
-
             m_fig00_14dispatcher.invoke(ext4Ten);
-            if(done) {
-                m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::FEC_SUBCHANNEL_ORGANIZATION);
-            }
+            m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::FEC_SUBCHANNEL_ORGANIZATION);
+            break;
+        }
+        case Fig::FIG_00_TYPE::PROGRAMME_NUMBER: {
+            // is not needed and no more contained in v2.1.1
             break;
         }
         case Fig::FIG_00_TYPE::PROGRAMME_TYPE: {
             Fig_00_Ext_17 ext7Ten(ficData);
-
-            bool done{false};
-            if(!contains<Fig_00_Ext_17>(m_parsedFig0017, ext7Ten)) {
-                m_parsedFig0017.push_back(ext7Ten);
-            } else {
-                done = true;
-            }
-
             m_fig00_17dispatcher.invoke(ext7Ten);
-            if(done) {
-                m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::PROGRAMME_TYPE);
-            }
+            m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::PROGRAMME_TYPE);
             break;
         }
         case Fig::FIG_00_TYPE::ANNOUNCEMENT_SUPPORT: {
@@ -274,6 +391,7 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
         }
         case Fig::FIG_00_TYPE::SERVICE_COMPONENT_INFORMATION: {
             Fig_00_Ext_20 extTwenty(ficData);
+            m_fig00_20dispatcher.invoke(extTwenty);
             break;
         }
         case Fig::FIG_00_TYPE::FREQUENCY_INFORMATION: {
@@ -288,23 +406,26 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
         }
         case Fig::FIG_00_TYPE::OE_ANNOUNCEMENT_SUPPORT: {
             Fig_00_Ext_25 ext5Twenty(ficData);
+            m_fig00_25dispatcher.invoke(ext5Twenty);
             break;
         }
         case Fig::FIG_00_TYPE::OE_ANNOUNCEMENT_SWITCHING: {
             Fig_00_Ext_26 ext6Twenty(ficData);
+            m_fig00_26dispatcher.invoke(ext6Twenty);
             break;
         }
         default:
-            std::cout << M_LOG_TAG << "Unknown Extension0: " << +(ficData[0] & 0x1F) << " ##############################################################" << std::endl;
+            std::clog << M_LOG_TAG << "Unknown FIG 0/" << +figType << std::endl;
             break;
     }
 }
 
 void FicParser::parseFig_01(const std::vector<uint8_t>& ficData) {
     //ficData[0] ensured by the calling thread - figLEngth > 0
-    switch(ficData[0] & 0x07) {
+    switch(ficData[0] & 0x07u) {
         case Fig::FIG_01_TYPE::ENSEMBLE_LABEL: {
             Fig_01_Ext_00 extZero(ficData);
+            m_fig01_00dispatcher.invoke(extZero);
 
             bool done{false};
             if(!contains<Fig_01_Ext_00>(m_parsedFig0100, extZero)) {
@@ -313,16 +434,23 @@ void FicParser::parseFig_01(const std::vector<uint8_t>& ficData) {
                 done = true;
             }
 
-            m_fig01_00dispatcher.invoke(extZero);
-            if(done) {
+            if (done) {
                 m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::ENSEMBLE_LABEL);
             }
-
             break;
         }
         case Fig::FIG_01_TYPE::PROGRAMME_SERVICE_LABEL: {
             Fig_01_Ext_01 extOne(ficData);
-
+            m_fig01_01dispatcher.invoke(extOne);
+#if defined(LOG_DETAILLED_FIG_ANALYSIS)
+            std::stringstream logStr;
+            std::string hexStr = Fig::toHexString(ficData);
+            logStr << M_LOG_TAG << "FIG 1/1 : " << hexStr << " SId:" << std::hex <<
+                   +extOne.getProgrammeServiceId() << std::dec << " charset:"
+                   << +extOne.getCharset() << " '" << extOne.getProgrammeServiceLabel()
+                   << "' short:'" << extOne.getProgrammeServiceShortLabel() << "'";
+            std::cout << logStr.rdbuf() << std::endl;
+#endif
             bool done{false};
             if(!contains<Fig_01_Ext_01>(m_parsedFig0101, extOne)) {
                 m_parsedFig0101.push_back(extOne);
@@ -330,62 +458,31 @@ void FicParser::parseFig_01(const std::vector<uint8_t>& ficData) {
                 done = true;
             }
 
-            m_fig01_01dispatcher.invoke(extOne);
-            if(done) {
+            if (done) {
                 m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::PROGRAMME_SERVICE_LABEL);
             }
             break;
         }
         case Fig::FIG_01_TYPE::SERVICE_COMPONENT_LABEL: {
             Fig_01_Ext_04 ext4(ficData);
-
-            bool done{false};
-            if(!contains<Fig_01_Ext_04>(m_parsedFig0104, ext4)) {
-                m_parsedFig0104.push_back(ext4);
-            } else {
-                done = true;
-            }
-
             m_fig01_04dispatcher.invoke(ext4);
-            if(done) {
-                m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::SERVICE_COMPONENT_LABEL);
-            }
+            m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::SERVICE_COMPONENT_LABEL);
             break;
         }
         case Fig::FIG_01_TYPE::DATA_SERVICE_LABEL: {
             Fig_01_Ext_05 ext5(ficData);
-
-            bool done{false};
-            if(!contains<Fig_01_Ext_05>(m_parsedFig0105, ext5)) {
-                m_parsedFig0105.push_back(ext5);
-            } else {
-                done = true;
-            }
-
             m_fig01_05dispatcher.invoke(ext5);
-            if(done) {
-                m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::DATA_SERVICE_LABEL);
-            }
+            m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::DATA_SERVICE_LABEL);
             break;
         }
         case Fig::FIG_01_TYPE::XPAD_USERAPPLICATION_LABEL: {
             Fig_01_Ext_06 ext6(ficData);
-
-            bool done{false};
-            if(!contains<Fig_01_Ext_06>(m_parsedFig0106, ext6)) {
-                m_parsedFig0106.push_back(ext6);
-            } else {
-                done = true;
-            }
-
             m_fig01_06dispatcher.invoke(ext6);
-            if(done) {
-                m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::XPAD_USERAPPLICATION_LABEL);
-            }
+            m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::XPAD_USERAPPLICATION_LABEL);
             break;
         }
         default:
-            std::cout << M_LOG_TAG << "Unknown Extension1: " << +(ficData[0] & 0x07) << " ##############################################################" << std::endl;
+            std::clog << M_LOG_TAG << "Unknown Extension1: " << +(ficData[0] & 0x07u) << std::endl;
             break;
     }
 
@@ -404,24 +501,14 @@ std::shared_ptr<FicParser::Fig_00_00_Callback> FicParser::registerFig_00_00_Call
 }
 
 std::shared_ptr<FicParser::Fig_00_01_Callback> FicParser::registerFig_00_01_Callback(Fig_00_01_Callback cb) {
-    //newly registered callback will get all already parsed FIGs
-    for(const auto& fig : m_parsedFig0001) {
-        cb(fig);
-    }
     return m_fig00_01dispatcher.add(cb);
 }
 
 std::shared_ptr<FicParser::Fig_00_02_Callback> FicParser::registerFig_00_02_Callback(Fig_00_02_Callback cb) {
-    for(const auto& fig : m_parsedFig0002) {
-        cb(fig);
-    }
     return m_fig00_02dispatcher.add(cb);
 }
 
 std::shared_ptr<FicParser::Fig_00_03_Callback> FicParser::registerFig_00_03_Callback(Fig_00_03_Callback cb) {
-    for(const auto& fig : m_parsedFig0003) {
-        cb(fig);
-    }
     return m_fig00_03dispatcher.add(cb);
 }
 
@@ -442,9 +529,6 @@ std::shared_ptr<FicParser::Fig_00_07_Callback> FicParser::registerFig_00_07_Call
 }
 
 std::shared_ptr<FicParser::Fig_00_08_Callback> FicParser::registerFig_00_08_Callback(Fig_00_08_Callback cb) {
-    for(const auto& fig : m_parsedFig0008) {
-        cb(fig);
-    }
     return m_fig00_08dispatcher.add(cb);
 }
 
@@ -457,23 +541,14 @@ std::shared_ptr<FicParser::Fig_00_10_Callback> FicParser::registerFig_00_10_Call
 }
 
 std::shared_ptr<FicParser::Fig_00_13_Callback> FicParser::registerFig_00_13_Callback(Fig_00_13_Callback cb) {
-    for(const auto& fig : m_parsedFig0013) {
-        cb(fig);
-    }
     return m_fig00_13dispatcher.add(cb);
 }
 
 std::shared_ptr<FicParser::Fig_00_14_Callback> FicParser::registerFig_00_14_Callback(Fig_00_14_Callback cb) {
-    for(const auto& fig : m_parsedFig0014) {
-        cb(fig);
-    }
     return m_fig00_14dispatcher.add(cb);
 }
 
 std::shared_ptr<FicParser::Fig_00_17_Callback> FicParser::registerFig_00_17_Callback(Fig_00_17_Callback cb) {
-    for(const auto& fig : m_parsedFig0017) {
-        cb(fig);
-    }
     return m_fig00_17dispatcher.add(cb);
 }
 
@@ -506,48 +581,71 @@ std::shared_ptr<FicParser::Fig_00_26_Callback> FicParser::registerFig_00_26_Call
 }
 
 std::shared_ptr<FicParser::Fig_01_00_Callback> FicParser::registerFig_01_00_Callback(Fig_01_00_Callback cb) {
-    for(const auto& fig : m_parsedFig0100) {
-        cb(fig);
-    }
     return m_fig01_00dispatcher.add(cb);
 }
 
 std::shared_ptr<FicParser::Fig_01_01_Callback> FicParser::registerFig_01_01_Callback(Fig_01_01_Callback cb) {
-    for(const auto& fig : m_parsedFig0101) {
-        cb(fig);
-    }
     return m_fig01_01dispatcher.add(cb);
 }
 
 std::shared_ptr<FicParser::Fig_01_04_Callback> FicParser::registerFig_01_04_Callback(Fig_01_04_Callback cb) {
-    for(const auto& fig : m_parsedFig0104) {
-        cb(fig);
-    }
     return m_fig01_04dispatcher.add(cb);
 }
 
 std::shared_ptr<FicParser::Fig_01_05_Callback> FicParser::registerFig_01_05_Callback(Fig_01_05_Callback cb) {
-    for(const auto& fig : m_parsedFig0105) {
-        cb(fig);
-    }
     return m_fig01_05dispatcher.add(cb);
 }
 
 std::shared_ptr<FicParser::Fig_01_06_Callback> FicParser::registerFig_01_06_Callback(Fig_01_06_Callback cb) {
-    for(const auto& fig : m_parsedFig0106) {
-        cb(fig);
-    }
     return m_fig01_06dispatcher.add(cb);
+}
+
+std::shared_ptr<FicParser::Fig_00_isComplete_Callback> FicParser::registerFig_00_Complete_Callback(Fig_00_isComplete_Callback cb) {
+    return m_fig00IsCompleteDispatcher.add(cb);
+}
+
+std::shared_ptr<FicParser::Fig_01_isComplete_Callback> FicParser::registerFig_01_Complete_Callback(Fig_01_isComplete_Callback cb) {
+    return m_fig01IsCompleteDispatcher.add(cb);
 }
 
 void FicParser::reset() {
     m_fibDataQueue.clear();
-    ficBuffer.clear();
+
+    m_fig00_00dispatcher.clear();
+    m_fig01DoneDispatcher.clear();
+    m_fig00_00dispatcher.clear();
+    m_fig00_01dispatcher.clear();
+    m_fig00_02dispatcher.clear();
+    m_fig00_03dispatcher.clear();
+    m_fig00_04dispatcher.clear();
+    m_fig00_05dispatcher.clear();
+    m_fig00_06dispatcher.clear();
+    m_fig00_07dispatcher.clear();
+    m_fig00_08dispatcher.clear();
+    m_fig00_09dispatcher.clear();
+    m_fig00_10dispatcher.clear();
+    m_fig00_13dispatcher.clear();
+    m_fig00_14dispatcher.clear();
+    m_fig00_17dispatcher.clear();
+    m_fig00_18dispatcher.clear();
+    m_fig00_19dispatcher.clear();
+    m_fig00_20dispatcher.clear();
+    m_fig00_21dispatcher.clear();
+    m_fig00_24dispatcher.clear();
+    m_fig00_25dispatcher.clear();
+    m_fig00_26dispatcher.clear();
+
+    m_fig01_00dispatcher.clear();
+    m_fig01_01dispatcher.clear();
+    m_fig01_04dispatcher.clear();
+    m_fig01_05dispatcher.clear();
+    m_fig01_06dispatcher.clear();
+
+    m_parsedFig0000.clear();
     m_parsedFig0001.clear();
     m_parsedFig0002.clear();
-    m_parsedFig0003.clear();
     m_parsedFig0008.clear();
     m_parsedFig0013.clear();
-    m_parsedFig0014.clear();
-    m_parsedFig0017.clear();
+    m_parsedFig0100.clear();
+    m_parsedFig0101.clear();
 }

@@ -1,11 +1,5 @@
 package org.omri.radio.impl;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.omri.radio.Radio;
@@ -22,6 +16,12 @@ import org.omri.tuner.TunerStatus;
 import org.omri.tuner.TunerType;
 
 import com.thiakil.standin.Context;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -42,38 +42,43 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	private RadioStatus mRadioStatus = RadioStatus.STATUS_RADIO_SUSPENDED;
 
-	private List<Tuner> mTunerList = new ArrayList<Tuner>();
-	private List<RadioService> mRadioserviceList = new ArrayList<RadioService>();
-	private List<RadioStatusListener> mRadioStatusListeners = new ArrayList<>();
+	private final List<Tuner> mTunerList = new ArrayList<Tuner>();
+	private fina List<RadioService> mRadioserviceList = new ArrayList<RadioService>();
+	private final List<RadioStatusListener> mRadioStatusListeners = new ArrayList<>();
 
-	Context mContext = null;
+	private Context mContext;
 
-	File getStorageDir() {
-		if (mContext != null) {
-			return mContext.getExternalCacheDir();
-		}
 
-		return null;
-	}
 
 	public RadioImpl() {
 	}
 
-	@Override
-	public RadioErrorCode initialize(Context appContext) {
+	@Override//TODO not null context annotation
+	public RadioErrorCode initialize(Context appContext, Object bundle) {
 		LOGGER.debug("Initializing with Context!");
 
 		mContext = appContext;
 
-		if (mContext != null) {
 
-			UsbHelper.create(this);
+        boolean redirectCoutToALog = false;
+		String rawRecordingPath = "";
+		boolean demoMode = false;
+		/*if (bundle != null) {
+			redirectCoutToALog = bundle.getBoolean(RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS, false);
+			rawRecordingPath = bundle.getString(RADIO_INIT_OPT_RAW_RECORDING_PATH, "");
+			demoMode = bundle.getBoolean(RADIO_INIT_OPT_DEMO_MODE, false);
+			if (DEBUG) {
+				Log.d(TAG, RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS + ":" + redirectCoutToALog);
+				Log.d(TAG, RADIO_INIT_OPT_RAW_RECORDING_PATH + ":'" + rawRecordingPath + "'");
+				Log.d(TAG, RADIO_INIT_OPT_DEMO_MODE + ":" + demoMode);
+			}
+		}*/
+		UsbHelper.create(appContext, this, redirectCoutToALog, rawRecordingPath);
 
-			//List of Pairs consisiting of first.VendorId and second.ProductId
-			//ArrayList<UsbHelper.UsbId> wantedDevices = new ArrayList<>();
+		//List of Pairs consisting of first.VendorId and second.ProductId
 
+		if (!demoMode) {
 			//Raon DAB USB sticks
-			//wantedDevices.add(new UsbHelper.UsbId(0x16C0, 0x05DC));
 
 			for (long dev : UsbHelper.getInstance().scanDevices()) {
 				LOGGER.debug("Found Siano device!");
@@ -83,8 +88,15 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 			}
 
             LOGGER.debug("Initialized with {} tuners", mTunerList.size());
+		
 		} else {
-			LOGGER.debug("Context is null!");
+			// Demo tuner
+			if(DEBUG)Log.d(TAG, "Adding DemoTuner");
+			DemoTuner demoTuner = new DemoTuner(rawRecordingPath);
+			demoTuner.subscribe(this);
+			synchronized (mTunerList) {
+				mTunerList.add(demoTuner);
+			}
 		}
 
 		mRadioStatus = RadioStatus.STATUS_RADIO_RUNNING;
@@ -94,8 +106,10 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public RadioErrorCode suspend() {
-		for (Tuner tuner : mTunerList) {
-			tuner.suspendTuner();
+		synchronized (mTunerList) {
+			for (Tuner tuner : mTunerList) {
+				tuner.suspendTuner();
+			}
 		}
 
 		return RadioErrorCode.ERROR_SUSPEND_OK;
@@ -103,10 +117,11 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public RadioErrorCode resume() {
-		for (Tuner tuner : mTunerList) {
-			tuner.resumeTuner();
+		synchronized (mTunerList) {
+			for (Tuner tuner : mTunerList) {
+				tuner.resumeTuner();
+			}
 		}
-
 		return RadioErrorCode.ERROR_RESUME_OK;
 	}
 
@@ -117,16 +132,29 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public void deInitialize() {
-		LOGGER.debug("deInitialize");
-		for (Tuner tuner : mTunerList) {
-			tuner.stopRadioService();
-			tuner.unsubscribe(this);
-			tuner.deInitializeTuner();
+		if(DEBUG)Log.d(TAG, "deInitialize");
+		synchronized (mTunerList) {
+			for (Tuner tuner : mTunerList) {
+				tuner.stopRadioService();
+				tuner.unsubscribe(this);
+				tuner.deInitializeTuner();
+			}
 		}
-
 		mRadioStatus = RadioStatus.STATUS_RADIO_SUSPENDED;
 
-		mTunerList.clear();
+		synchronized (mTunerList) {
+			mTunerList.clear();
+		}
+		synchronized (mRadioserviceList) {
+			mRadioserviceList.clear();
+		}
+		synchronized (mRadioStatusListeners) {
+			mRadioStatusListeners.clear();
+		}
+
+		if (UsbHelper.getInstance() != null) UsbHelper.getInstance().destroyInstance();
+		VisualLogoManager.getInstance().destroyInstance();
+		RadioServiceManager.getInstance().destroyInstance();
 	}
 
 	@Override
@@ -136,10 +164,12 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public List<Tuner> getAvailableTuners(TunerType tunerType) {
-		ArrayList<Tuner> retList = new ArrayList<Tuner>();
-		for (Tuner tuner : mTunerList) {
-			if (tuner.getTunerType() == tunerType) {
-				retList.add(tuner);
+		ArrayList<Tuner> retList = new ArrayList<>();
+		synchronized (mTunerList) {
+			for (Tuner tuner : mTunerList) {
+				if (tuner.getTunerType() == tunerType) {
+					retList.add(tuner);
+				}
 			}
 		}
 
@@ -151,26 +181,31 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		LOGGER.debug("Returning Services...");
 
 		synchronized (this) {
-			List<RadioService> aggServiceList = Collections.synchronizedList(new ArrayList<RadioService>());
-
-			for (Tuner atuner : mTunerList) {
-				for (RadioService srv : atuner.getRadioServices()) {
-					if (!aggServiceList.contains(srv)) {
-						aggServiceList.add(srv);
-					} else {
-                        LOGGER.debug("ServiceList already contains: '{}' Type: {}{}", srv.getServiceLabel(), srv.getRadioServiceType(), srv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB ? (" EId: " + ((RadioServiceDab) srv).getEnsembleId()) : "");
+			List<RadioService> aggServiceList = new ArrayList<>();
+			synchronized (mTunerList) {
+				for (Tuner atuner : mTunerList) {
+					for (RadioService srv : atuner.getRadioServices()) {
+						if (!aggServiceList.contains(srv)) {
+							aggServiceList.add(srv);
+						} else {
+							LOGGER.debug("ServiceList already contains: '{}' Type: {}{}", srv.getServiceLabel(), srv.getRadioServiceType(), srv.getRadioServiceType() == RadioServiceType.RADIOSERVICE_TYPE_DAB ? (" EId: " + ((RadioServiceDab) srv).getEnsembleId()) : "");
+						}
 					}
 				}
 			}
-
+			/* don't sort to improve performance
 			Collections.sort(aggServiceList, new Comparator<RadioService>() {
 				@Override
 				public int compare(RadioService radioService2, RadioService radioService1) {
 					return radioService2.getServiceLabel().toLowerCase().compareTo(radioService1.getServiceLabel().toLowerCase());
 				}
 			});
+			 */
 
-			mRadioserviceList = aggServiceList;
+			synchronized (mRadioserviceList) {
+				mRadioserviceList.clear();
+				mRadioserviceList.addAll(aggServiceList);
+			}
 
 			return mRadioserviceList;
 		}
@@ -178,7 +213,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public void startRadioService(RadioService radioService) {
-		TunerType wantedType = null;
+		final TunerType wantedType;
 
 		switch (radioService.getRadioServiceType()) {
 			case RADIOSERVICE_TYPE_DAB: {
@@ -191,11 +226,13 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 			}
 		}
 
-		if (wantedType != null) {
-			for (Tuner tuner : mTunerList) {
-				if (tuner.getTunerType() == wantedType) {
-					tuner.startRadioService(radioService);
-					break;
+		if(wantedType != null) {
+			synchronized (mTunerList) {
+				for (Tuner tuner : mTunerList) {
+					if (tuner.getTunerType() == wantedType) {
+						tuner.startRadioService(radioService);
+						break;
+					}
 				}
 			}
 		}
@@ -205,12 +242,14 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	public void stopRadioService(RadioService radioService) {
 		if (radioService != null) {
             LOGGER.debug("Stopping Service: {} : {}", radioService, radioService.getRadioServiceType().toString());
-			for (Tuner tuner : mTunerList) {
-				RadioService curRunningSrv = tuner.getCurrentRunningRadioService();
-				if (curRunningSrv != null) {
-					if (curRunningSrv.equals(radioService)) {
-						tuner.stopRadioService();
-						break;
+			synchronized (mTunerList) {
+				for (Tuner tuner : mTunerList) {
+					RadioService curRunningSrv = tuner.getCurrentRunningRadioService();
+					if (curRunningSrv != null) {
+						if (curRunningSrv.equals(radioService)) {
+							tuner.stopRadioService();
+							break;
+						}
 					}
 				}
 			}
@@ -219,73 +258,44 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public void startRadioServiceScan() {
-		for (Tuner tuner : mTunerList) {
-			tuner.startRadioServiceScan();
+		synchronized (mTunerList) {
+			for (Tuner tuner : mTunerList) {
+				tuner.startRadioServiceScan();
+			}
 		}
 	}
 
 	@Override
 	public void stopRadioServiceScan() {
-		for (Tuner tuner : mTunerList) {
-			tuner.stopRadioServiceScan();
+		synchronized (mTunerList) {
+			for (Tuner tuner : mTunerList) {
+				tuner.stopRadioServiceScan();
+			}
 		}
 	}
 
 	@Override
 	public void initializeTuner(Tuner tuner) {
-		if (mTunerList.contains(tuner)) {
-			tuner.initializeTuner();
+		synchronized (mTunerList) {
+			if (mTunerList.contains(tuner)) {
+				tuner.initializeTuner();
+			}
 		}
 	}
 
 	@Override
 	public void deInitializeTuner(Tuner tuner) {
-		if (mTunerList.contains(tuner)) {
-			tuner.deInitializeTuner();
+		synchronized (mTunerList) {
+			if (mTunerList.contains(tuner)) {
+				tuner.deInitializeTuner();
+			}
 		}
 	}
 
 	/* TunerListener impl */
 	@Override
 	public void tunerStatusChanged(Tuner tuner, TunerStatus newState) {
-		//We listen here on all tuners for state changes		
-		switch (newState) {
-			case TUNER_STATUS_INITIALIZED: {
-				LOGGER.debug("Collecting after tuner init");
-				//collectRadioServices();
-				break;
-			}
-			default:
-				break;
-		}
-	}
-
-	private boolean mCollectingRadioServices = false;
-
-	private synchronized void collectRadioServices() {
-		LOGGER.debug("Collecting all radioservices...");
-
-		if (!mCollectingRadioServices) {
-			mCollectingRadioServices = true;
-
-			mRadioserviceList.clear();
-			for (Tuner atuner : mTunerList) {
-				for (RadioService srv : atuner.getRadioServices()) {
-					if (!mRadioserviceList.contains(srv)) {
-						mRadioserviceList.add(srv);
-					}
-				}
-			}
-
-			Collections.sort(mRadioserviceList, new Comparator<RadioService>() {
-				@Override
-				public int compare(RadioService radioService2, RadioService radioService1) {
-					return radioService2.getServiceLabel().compareTo(radioService1.getServiceLabel());
-				}
-			});
-
-			mCollectingRadioServices = false;
-		}
+		//We can listen here on all tuners for state changes
 	}
 
 	@Override
@@ -299,7 +309,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	@Override
-	public void tunerScanProgress(Tuner tuner, int percentScanned) {
+	public void tunerScanProgress(Tuner tuner, int percentScanned, int currentFrequencyHz) {
 
 	}
 
@@ -319,7 +329,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	@Override
-	public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality) {
+	public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality, int rawValue) {
 		//Do something useful with this later
 	}
 
@@ -330,14 +340,16 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public void registerRadioStatusListener(RadioStatusListener listener) {
-		if (!mRadioStatusListeners.contains(listener)) {
-			mRadioStatusListeners.add(listener);
+		synchronized (mRadioStatusListeners) {
+			if (!mRadioStatusListeners.contains(listener)) {
+				mRadioStatusListeners.add(listener);
+			}
 		}
 	}
 
 	@Override
 	public void unregisterRadioStatusListener(RadioStatusListener listener) {
-		if (mRadioStatusListeners.contains(listener)) {
+		synchronized (mRadioStatusListeners) {
 			mRadioStatusListeners.remove(listener);
 		}
 	}
@@ -347,26 +359,30 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	public void UsbTunerDeviceAttached(long attachedDevice) {
 		Tuner sianoTuner = new TunerUsbImpl(attachedDevice);
 		sianoTuner.subscribe(this);
-		mTunerList.add(sianoTuner);
-
-		for (RadioStatusListener cb : mRadioStatusListeners) {
-			cb.tunerAttached(sianoTuner);
+		synchronized (mTunerList) {
+			mTunerList.add(sianoTuner);
+		}
+		synchronized (mRadioStatusListeners) {
+			for (RadioStatusListener cb : mRadioStatusListeners) {
+				cb.tunerAttached(sianoTuner);
+			}
 		}
 	}
 
 	@Override
 	public void UsbTunerDeviceDetached(long detachedDevice) {
-		for (Tuner tuner : mTunerList) {
-			if (tuner instanceof TunerUsb) {
-				if (detachedDevice == (((TunerUsb) tuner).getUsbDevice())) {
-
-					for (RadioStatusListener cb : mRadioStatusListeners) {
-						cb.tunerDetached(tuner);
+		synchronized (mTunerList) {
+			for (Tuner tuner : mTunerList) {
+				if (tuner instanceof TunerUsb) {
+					if (detachedDevice.equals(((TunerUsb) tuner).getUsbDevice())) {
+						synchronized (mRadioStatusListeners) {
+							for (RadioStatusListener cb : mRadioStatusListeners) {
+								cb.tunerDetached(tuner);
+							}
+						}
+						mTunerList.remove(tuner);
+						break;
 					}
-
-					mTunerList.remove(tuner);
-
-					break;
 				}
 			}
 		}
@@ -400,15 +416,15 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		return false;
 	}
 
-	/* Experimental and dangerous */
 	public boolean deleteRadioService(RadioService delService) {
-		for (Tuner chkTun : mTunerList) {
-			if (chkTun.getCurrentRunningRadioService() == delService) {
-                LOGGER.debug("Service to delete is currently running on {}, stopping it", chkTun);
-				chkTun.stopRadioService();
+		synchronized (mTunerList) {
+			for (Tuner chkTun : mTunerList) {
+				if (chkTun.getCurrentRunningRadioService() == delService) {
+					LOGGER.debug("Service to delete is currently running on {}, stopping it", chkTun);
+					chkTun.stopRadioService();
+				}
 			}
 		}
-
 		boolean delSuccess = false;
 		if (delService != null) {
 			delSuccess = RadioServiceManager.getInstance().deleteService(delService);
@@ -417,22 +433,25 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		return delSuccess;
 	}
 
-	public final List<RadioService> getFollowingServices(RadioService followSrv) {
+	@Override
+	@NonNull
+	public ArrayList<RadioService> getFollowingServices(RadioService followSrv) {
 		ArrayList<RadioService> followingServices = new ArrayList<>();
 
-		for (RadioService srv : getRadioServices()) {
-			if (srv.equalsRadioService(followSrv) && !srv.equals(followSrv)) {
-				followingServices.add(srv);
-			}
+		if (followSrv != null) {
+			followingServices.addAll(followSrv.getFollowingServices());
 		}
-
 		return followingServices;
 	}
 
-	private void dabTime(DabTime dabTime) {
-        LOGGER.debug("DabTime: {}", dabTime.getPosixMillis());
+	@Override
+	public void dabDateTime(Tuner tuner, Date dabTime) {
+
 	}
 
 	public final static String SERVICE_SEARCH_OPT_DELETE_SERVICES = "delete_services";
-	/* */
+
+	public final static String RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS = "verbose_native_logs";
+	public final static String RADIO_INIT_OPT_RAW_RECORDING_PATH = "raw_recording_path";
+	public final static String RADIO_INIT_OPT_DEMO_MODE = "demo_mode";
 }

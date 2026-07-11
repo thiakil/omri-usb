@@ -28,6 +28,9 @@
 /* ETS 300 401 clause 6.3.2 Service component in packet mode with or without Conditional Access
  *
  * The Extension 3 of FIG type 0 (FIG 0/3) gives additional information about the service component description in packet mode.
+ *
+ * V2.1.1 adds following line:
+ * The FIG type 0 flags (see clause 5.2.2.1) are used as follows: C/N flag - MCI; OE flag - Rfu; P/D flag - Rfu.
  */
 class Fig_00_Ext_03 : public Fig_00 {
 
@@ -55,8 +58,7 @@ public:
      */
     struct PacketModeServiceComponentDescription {
         inline bool operator==(const PacketModeServiceComponentDescription& other) const {
-            return other.isProgrammeService == isProgrammeService && \
-                   other.serviceComponentId == serviceComponentId && \
+            return other.serviceComponentId == serviceComponentId && \
                    other.caOrganizationPresent == caOrganizationPresent && \
                    other.caOrganization == caOrganization && \
                    other.dataGroupTransportUsed == dataGroupTransportUsed && \
@@ -66,7 +68,6 @@ public:
         }
         inline bool operator!=(const PacketModeServiceComponentDescription& other) const { return !operator==(other); }
 
-        bool isProgrammeService;
         uint16_t serviceComponentId;
         bool caOrganizationPresent;
         uint16_t caOrganization{0};

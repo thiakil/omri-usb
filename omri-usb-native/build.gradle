@@ -28,7 +28,10 @@ library {
                 "-I${javaHome}/include",
                 "-I${javaHome}/include/linux",
                 "-I${javaHome}/include/win32",
-                "-I${javaHome}/include/darwin"
+                "-I${javaHome}/include/darwin",
+				"-std=c++11", 
+				"-frtti", 
+				"-fexceptions"
         ])
     }
 }

@@ -2,7 +2,8 @@
 # documentation: https://d.android.com/studio/projects/add-native-code.html
 
 # Sets the minimum version of CMake required to build the native library.
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION  3.22.1)
+
 project(irtdab)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules
         CACHE STRING "CMake module path")
@@ -23,13 +24,15 @@ add_subdirectory(src/main/cpp/thirdparty/fec)
 # Gradle automatically packages shared libraries with your APK.
 
 add_library( # Sets the name of the library.
-             irtdab
+             ${PROJECT_NAME}
 
              # Sets the library as a shared library.
              SHARED
 
              # Provides a relative path to your source file(s).
              src/main/cpp/platformspecific/android/native-lib.cpp
+             src/main/cpp/platformspecific/android/jni-helper.cpp
+             src/main/cpp/fig_01.cpp
              src/main/cpp/fig_00_ext_05.cpp
              src/main/cpp/fig_00_ext_13.cpp
              src/main/cpp/fig_00_ext_21.cpp
@@ -75,11 +78,14 @@ add_library( # Sets the name of the library.
              src/main/cpp/dabensemble.cpp
              src/main/cpp/dabservicecomponentmscstream.cpp
              src/main/cpp/ficparser.cpp
+             src/main/cpp/dabthread.cpp
              src/main/cpp/platformspecific/android/raontunerinput.cpp
              src/main/cpp/platformspecific/android/jusbdevice.cpp
              src/main/cpp/platformspecific/android/jtunerusbdevice.cpp
              src/main/cpp/platformspecific/android/jdabservice.cpp
              src/main/cpp/platformspecific/android/ediinput.cpp
+             src/main/cpp/platformspecific/android/demousbtunerinput.cpp
+
         src/main/cpp/platformspecific/android/log4jbridge.cpp
         src/main/cpp/platformspecific/android/stdoutbridge.h
 )
@@ -97,23 +103,70 @@ add_library( # Sets the name of the library.
               # you want CMake to locate.
 #              log)
 
+target_compile_options(${PROJECT_NAME} PUBLIC
+        # start with super pedantic compiler settings ...
+        -Wall -Wextra -pedantic -Werror
+        -Wformat
+        -Wformat-security
+        -Werror=format-security
+        -Werror=array-bounds
+        # ... and relax them as needed
+        -Wno-c++14-binary-literal
+        -Wno-comment
+        -Wno-four-char-constants
+        -Wno-gnu-statement-expression
+        -Wno-sign-compare
+        -Wno-unused-but-set-variable
+        -Wno-unused-function
+        -Wno-unused-parameter
+        -Wno-unused-private-field
+        -Wno-unused-variable
+        # always keep frame-pointer
+        -fno-omit-frame-pointer
+        )
+
+# hardening
+target_compile_options(${PROJECT_NAME} PUBLIC
+        -D_FORTIFY_SOURCE=2
+        -fstack-protector-strong # not using -fstack-protector-all because of execution time impact
+        )
+target_link_options(${PROJECT_NAME} PUBLIC
+        -Wl,-z,now -Wl,-z,relro  # GOT protection
+        -Wl,-z,noexecstack       # mark stack not-executable
+        )
+
+
+if(IRTDAB_ADDRESS_SANITIZER STREQUAL "yes")
+    target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=address)
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS -fsanitize=address)
+    file(GLOB_RECURSE ASAN_SRC ${ANDROID_TOOLCHAIN_ROOT}/lib*/clang/${CLANG_VERSION}/lib/linux/libclang_rt.asan-${ARCH}-android.so)
+    set(ASAN_DEST ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    add_custom_command(
+            TARGET ${PROJECT_NAME} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${ASAN_SRC} ${ASAN_DEST}
+    )
+elseif(IRTDAB_ADDRESS_SANITIZER STREQUAL "hw" AND ARCH STREQUAL "aarch64")
+    target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=hwaddress)
+    target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=hwaddress)
+    file(GLOB_RECURSE ASAN_SRC ${ANDROID_TOOLCHAIN_ROOT}/lib*/clang/${CLANG_VERSION}/lib/linux/libclang_rt.hwasan-${ARCH}-android.so)
+    set(ASAN_DEST ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    add_custom_command(
+            TARGET ${PROJECT_NAME} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${ASAN_SRC} ${ASAN_DEST}
+    )
+endif()
+
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
-#target_include_directories (HelloWorldJNI-cpp PRIVATE ${JNI_INCLUDE_DIRS})
-#target_link_libraries (HelloWorldJNI-cpp PRIVATE HelloWorldJNI-native ${JNI_LIBRARIES})
-#include_directories(${LIBUSB_INCLUDE_DIRS})
-#target_link_libraries(wradio ${LIBUSB_LIBRARIES})
 
 target_include_directories (irtdab PRIVATE ${JNI_INCLUDE_DIRS} ${LIBUSB_INCLUDE_DIRS})
 target_link_libraries( # Specifies the target library.
-                       irtdab
+                       ${PROJECT_NAME}
 
         ${JNI_LIBRARIES}
         ${LIBUSB_LIBRARIES}
                        fec
-                       )
 
-#set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_BUILD_TYPE Release)
-#set(CMAKE_BUILD_TYPE MinSizeRel)
+                       ${MAPFILE_LINK_OPTION}
+                       )

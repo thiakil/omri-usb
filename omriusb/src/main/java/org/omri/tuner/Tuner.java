@@ -1,10 +1,11 @@
 package org.omri.tuner;
 
-import java.util.List;
-
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.omri.radioservice.RadioService;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Copyright (C) 2016 Open Mobile Radio Interface (OMRI) Group
@@ -69,7 +70,17 @@ public interface Tuner {
 	 */
 	@NotNull
 	public List<@NotNull RadioService> getRadioServices();
-	
+
+	/**
+	 * Retrieve {@link RadioService}s for following the given service.
+	 * @param service
+	 * @return An array list of {@link RadioService}s or an empty set. The array list is sorted by
+	 * a) affordance, and b) likelyhood that the returned service matches with the given service.
+	 * The term 'affordance' here relates to the waiting time for the user for continuing to listen
+	 * to the service again once the system decides to start the returned service.
+	 */
+	public @NotNull	ArrayList<RadioService> getLinkedRadioServices(@NotNull RadioService service);
+
 	/**
 	 * Start a scan for available {@link RadioService}s
 	 */
@@ -104,7 +115,21 @@ public interface Tuner {
 	 */
 	@Nullable
 	public RadioService getCurrentRunningRadioService();
-	
+
+	/**
+	 * Get the software version string of this tuner
+	 * May be an empty string in case it is not supported by this tuner.
+	 * @return software version string
+	 */
+	public @NonNull String getSoftwareVersion();
+
+	/**
+	 * Get the hardware version string of this tuner
+	 * May be an empty string in case it is not supported by this tuner.
+	 * @return software version string
+	 */
+	public @NonNull String getHardwareVersion();
+
 	/**
 	 * Subscribe a {@link TunerListener} to receive updates of this tuner
 	 * @param tunerListener the {@link TunerListener} to subscribe

@@ -1,6 +1,6 @@
 package org.omri.radio;
 
-import java.util.List;
+import com.thiakil.standin.Context;
 
 import org.jetbrains.annotations.NotNull;
 import org.omri.radio.impl.RadioImpl;
@@ -9,7 +9,8 @@ import org.omri.tuner.Tuner;
 import org.omri.tuner.TunerListener;
 import org.omri.tuner.TunerType;
 
-import com.thiakil.standin.Context;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Copyright (C) 2016 Open Mobile Radio Interface (OMRI) Group
@@ -33,16 +34,27 @@ import com.thiakil.standin.Context;
 public abstract class Radio {
 
 	/** the singleton instance of OMRI Radio */
-    private static final Radio INSTANCE = new RadioImpl();
+    private static Radio INSTANCE = null;
     
     /**
      * Returns the {@link Radio} instance or {@code null} if no implemented {@link Radio} instance is set
      * @return the {@link Radio} instance or {@code null} if no implemented {@link Radio} instance is set
      */
     public static Radio getInstance() {
+    	if (INSTANCE == null) {
+			INSTANCE = new RadioImpl();
+		}
     	return INSTANCE;
     }
-    
+
+	/**
+	 * Destroys the {@link Radio} instance
+	 * Only use after {@code deInitialize()} to allow the instance to be garbage collected
+	 */
+    public void destroyInstance() {
+    	INSTANCE = null;
+    }
+
     /**
      * Initializes the {@link Radio} instance with an Android {@link Context}
      * @param appContext the App Context
@@ -50,8 +62,16 @@ public abstract class Radio {
      */
 	@NotNull
     public abstract RadioErrorCode initialize(Context appContext);
-        
-    /**
+
+	/**
+	 * Initializes the {@link Radio} instance with an Android {@link Context}
+	 * @param appContext the App Context
+	 * @param bundle a Bundle with options
+	 * @return the {@link RadioErrorCode} indicating the success of init.
+	 */
+	public abstract RadioErrorCode initialize(Context appContext, Object bundle);
+
+	/**
      * Suspends the {@link Radio} and with it all {@link Tuner}s
      * @return a {@link RadioErrorCode} indicating the success of the suspend.
      */
@@ -161,4 +181,16 @@ public abstract class Radio {
 	public abstract boolean addRadioService(RadioService addSrv);
 
 	public abstract boolean removeRadioService(RadioService remSrv);
+
+	/**
+	 * Retrieve {@link RadioService}s for following the given service using any of the tuners, which
+	 * are currently initialized.
+	 * @param followSrv the {@link RadioService} to be followed
+	 * @return An array list of {@link RadioService}s or an empty list. The array list is sorted by
+	 * a) affordance, and b) likelyhood that the returned service matches with the given service.
+	 * The term 'affordance' here relates to the waiting time for the user for continuing to listen
+	 * to the service again once the system decides to start the returned service.
+	 */
+	@NonNull
+	public abstract ArrayList<RadioService> getFollowingServices(RadioService followSrv);
 }

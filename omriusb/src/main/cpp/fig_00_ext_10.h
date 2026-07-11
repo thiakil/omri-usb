@@ -26,11 +26,13 @@
 #include "fig_00.h"
 
 /*
- * ETS 300 401 clause 8.1.3.1 Date and time (d&t)
+ * ETSI 300 401 clause 8.1.3.1 Date and time (d&t)
  *
  * The date and time feature is used to signal a location-independent timing reference in UTC format. This feature is
  * encoded in Extension 10 of FIG type 0 (FIG 0/10). Figure 38 shows the structure of the date and time field which is part
- * of the Type 0 field. The time reference shall be defined by the synchronization channel.
+ * of the Type 0 field. The time reference shall be defined by the synchronization channel (see clause 14.3.3).
+ *
+ * The FIG 0/10 has a repetition rate of once per second (was not defined in V1.4.1)
  */
 class Fig_00_Ext_10 : public Fig_00 {
 
@@ -43,7 +45,7 @@ public:
         int minute;
         int second;
         int milliseconds;
-        time_t unixTimestampSeconds;
+        std::time_t unixEpoch;
     };
 
 public:
@@ -63,10 +65,9 @@ private:
 private:
     const std::string m_logTag = {"[Fig_00_Ext_10]"};
 
-    bool m_leapSecondPending;
-    //time_t m_unixTime;
+    bool m_leapSecondPending{false};
 
-    DabTime m_dabTime;
+    DabTime m_dabTime{};
 
     inline void mjd2ymd(long mjd, int* year, int* month, int* day) {
         long J, C, Y, M;
@@ -81,32 +82,6 @@ private:
         J = M / 11;
         *month = M + 2 - (12 * J);
         *year = 100 * (C - 49) + Y + J;
-    }
-
-    inline time_t _mkgmtime(const struct tm *tm) {
-        // Month-to-day offset for non-leap-years.
-        static const int month_day[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
-
-        // Most of the calculation is easy; leap years are the main difficulty.
-        long month = tm->tm_mon % 12;
-        long year = tm->tm_year + tm->tm_mon / 12;
-        if (month < 0) {
-            month += 12;
-            --year;
-        }
-
-        // Number of Februaries since 1900.
-        const long year_for_leap = (month > 1) ? year + 1 : year;
-
-        time_t rt = tm->tm_sec                                  // Seconds
-                    + 60 * (tm->tm_min                          // Minute = 60 seconds
-                    + 60 * (tm->tm_hour                         // Hour = 60 minutes
-                    + 24 * (month_day[month] + tm->tm_mday - 1  // Day = 24 hours
-                    + 365 * (year - 70)                         // Year = 365 days
-                    + (year_for_leap - 69) / 4                  // Every 4 years is leap...
-                    - (year_for_leap - 1) / 100                 // Except centuries...
-                    + (year_for_leap + 299) / 400)));           // Except 400s.
-        return rt < 0 ? -1 : rt;
     }
 };
 

@@ -22,9 +22,12 @@
 
 #include <iostream>
 
+#include "dabservicecomponentmscstreamaudio.h"
 #include "dabservicecomponentmscpacketdata.h"
+#include "dabensemble.h"
 
 DabService::DabService() {
+    m_ensembleFrequency = DabEnsemble::FREQ_INVALID;
     //std::cout << "DabService constructed" << std::endl;
 }
 
@@ -50,8 +53,17 @@ uint8_t DabService::getNumberServiceComponents() const {
     return m_numSrvComps;
 }
 
-bool DabService::isProgrammeService() const {
-    return m_isProgrammeService;
+bool DabService::hasAudioServiceComponent() const {
+    // Following is not covered by DAB specs:
+    // A DabService is a Programme Service if it has at least one audio service component
+    bool hasProgrammeComponent = false;
+    for (const auto& srvComp : m_components) {
+        if (srvComp->isAudioComponent()) {
+            hasProgrammeComponent = true;
+            break;
+        }
+    }
+    return hasProgrammeComponent;
 }
 
 uint8_t DabService::getLabelCharset() const {
@@ -98,12 +110,9 @@ void DabService::setServiceId(uint32_t serviceId) {
     m_serviceId = serviceId;
 }
 
-void DabService::setIsProgrammeService(bool isProgramme) {
-    m_isProgrammeService = isProgramme;
-}
-
 void DabService::setCaId(uint8_t caId) {
-    m_caId = m_caApplied = caId;
+    m_caId = caId;
+    m_caApplied = true;
 }
 
 void DabService::setNumberOfServiceComponents(uint8_t numSc) {
@@ -118,7 +127,7 @@ void DabService::setServiceLabel(const std::string& label) {
     if(m_serviceLabel.empty()) {
         m_serviceLabel = label;
 
-        std::cout << m_logTag << " Setting ServiceLabel: " << m_serviceLabel << " to SId: " << std::hex << m_serviceId << std::dec << std::endl;
+        //std::cout << m_logTag << "Setting ServiceLabel: " << m_serviceLabel << " to SId: " << std::hex << +m_serviceId << std::dec << std::endl;
     }
 }
 
@@ -126,13 +135,53 @@ void DabService::setServiceShortLabel(const std::string& shortLabel) {
     if(m_serviceShortLabel.empty()) {
         m_serviceShortLabel = shortLabel;
 
-        std::cout << m_logTag << " Setting ServiceShortlabel: " << m_serviceShortLabel << " to SId: " << std::hex << m_serviceId << std::dec << std::endl;
+        //std::cout << m_logTag << "Setting ServiceShortlabel: " << m_serviceShortLabel << " to SId: " << std::hex << +m_serviceId << std::dec << std::endl;
     }
 }
 
-void DabService::addServiceComponent(std::shared_ptr<DabServiceComponent> component) {
+void DabService::addServiceComponent(const std::shared_ptr<DabServiceComponent>& component) {
     m_components.push_back(component);
-    std::cout << m_logTag << " Adding ServicecomponentPtr with SubChanId: " << std::hex << +component->getSubChannelId() << " for SId: " << +m_serviceId << std::dec << " as Servicecomponent#: " << m_components.size() << std::endl;
+    std::stringstream logStr;
+    const DabServiceComponent::SERVICECOMPONENTTYPE type = component->getServiceComponentType();
+    logStr << m_logTag << "Adding ServiceComponent for SId: 0x" << std::hex << +m_serviceId
+           << std::dec << " as Servicecomponent #" << +m_components.size()
+           << " '" << component->getServiceComponentLabel() << "'"
+           << " isPrim:" << +component->isPrimary()
+           << " SubChanId:" << +component->getSubChannelId()
+           << " SCIdS:" << +component->getServiceComponentIdWithinService()
+           << " type:" << +type << ":";
+    switch (type) {
+        case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_STREAM_AUDIO: {
+            const auto mscStreamAudioComponent =
+                    std::static_pointer_cast<DabServiceComponentMscStreamAudio>(component);
+            const auto ascty = mscStreamAudioComponent->getAudioServiceComponentType();
+            switch (ascty) {
+                case DabServiceComponentMscStreamAudio::AUDIOTYPE_MP2:
+                    logStr << "MP2";
+                    break;
+                case DabServiceComponentMscStreamAudio::AUDIOTYPE_AAC:
+                    logStr << "AAC";
+                    break;
+                default:
+                    logStr << "streamaudioinvalid";
+                    break;
+            }
+            break;
+        }
+        case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_PACKET_MODE_DATA:
+            logStr << "packetdata";
+            break;
+        case DabServiceComponent::SERVICECOMPONENTTYPE::MSC_STREAM_DATA:
+            logStr << "streamdata";
+            break;
+        case DabServiceComponent::SERVICECOMPONENTTYPE::RESERVED:
+            logStr << "reserved";
+            break;
+        default:
+            logStr << "?";
+            break;
+    }
+    std::cout << logStr.rdbuf() << std::endl;
 }
 
 void DabService::setProgrammeTypeCode(uint8_t intPtyCode) {
@@ -141,8 +190,13 @@ void DabService::setProgrammeTypeCode(uint8_t intPtyCode) {
         m_ptyNameFull = registeredtables::PROGRAMME_TYPE_NAME[m_ptyCode][0];
         m_ptyName16 = registeredtables::PROGRAMME_TYPE_NAME[m_ptyCode][1];
         m_ptyName8 = registeredtables::PROGRAMME_TYPE_NAME[m_ptyCode][2];
-
-        std::cout << m_logTag << " Setting " << (m_ptyIsDynamic ? "dynamic" : "static") << " PTY for SId: " << std::hex << m_serviceId << std::dec << " to: " << +m_ptyCode << " : " << m_ptyNameFull << " : " << m_ptyName16 << " : " << m_ptyName8 << std::endl;
+        std::stringstream logStr;
+        logStr << m_logTag << "Setting " << (isProgrammeTypeDynamic() ? "dynamic" : "static")
+               << " PTY for SId: 0x" << std::hex << +m_serviceId << std::dec
+               << " to: " << +getProgrammeTypeCode()
+               << " : " << getProgrammeTypeFullName() << " : " << getProgrammeType16charName()
+               << " : " << getProgrammeType8CharName();
+        std::cout << logStr.rdbuf() << std::endl;
     }
 }
 
@@ -154,3 +208,58 @@ void DabService::setEnsembleFrequency(uint32_t ensembleFrequency) {
     m_ensembleFrequency = ensembleFrequency;
 }
 
+void DabService::setDabEnsemble(DabEnsemble *pEnsemble) {
+    m_ptr_dabEnsemble = pEnsemble;
+}
+
+DabEnsemble* DabService::getDabEnsemble() const {
+    return m_ptr_dabEnsemble;
+}
+
+bool DabService::checkSanity() const {
+    bool isSane = true;
+    std::ostringstream logStr;
+    logStr << m_logTag << "check sanity SId=0x" << std::hex << +getServiceId() << std::dec << ": ";
+
+    if (getServiceId() == SID_INVALID) {
+        logStr << "SID:invalid";
+        isSane = false;
+    }
+    else if (getEnsembleFrequency() == DabEnsemble::FREQ_INVALID) {
+        logStr << "EFreq:invalid";
+        isSane = false;
+    }
+    else if (getNumberServiceComponents() == 0) {
+        logStr << "numCmp:0";
+        isSane = false;
+    }
+    else if (getLabelCharset() == CHARSET_INVALID) {
+        logStr << "charset:invalid";
+        isSane = false;
+    }
+    else if (getServiceLabel().empty()) {
+        logStr << "label:empty";
+        isSane = false;
+    }
+    // ETSI EN 300 401 V2.1.1, 5.2.2.2 FIG 1/1 does not mandate Short Label to be present
+    else if (getServiceComponents().size() != getNumberServiceComponents()) {
+        logStr << "components != numCmp:" << +getServiceComponents().size() << "/" << +getNumberServiceComponents();
+        isSane = false;
+    } else {
+        for (const auto& srvCmp : getServiceComponents()) {
+            bool wasSane = srvCmp->checkSanity();
+            if (!wasSane) {
+                // log message was created in checkSanity already, clear this logStr buffer
+                logStr.str(std::string());
+                isSane = false;
+                break;
+            }
+        }
+    }
+    auto logBufCStr = reinterpret_cast<const char *>(logStr.rdbuf());
+    if (!isSane && strlen(logBufCStr) > 0) {
+        std::cout << logBufCStr << std::endl;
+    }
+
+    return isSane;
+}

@@ -3,6 +3,8 @@ package org.omri.tuner;
 import org.omri.radio.RadioListener;
 import org.omri.radioservice.RadioService;
 
+import java.util.Date;
+
 /**
  * Copyright (C) 2016 Open Mobile Radio Interface (OMRI) Group
  *
@@ -37,8 +39,9 @@ public interface TunerListener extends RadioListener {
 	/**
 	 * Tuner scan progress indicator
 	 * @param percentScanned the percentage finished so far
+	 * @param frequencyHz current tuner frequency in Hz, -1 if no frequency is available
 	 */
-	public void tunerScanProgress(Tuner tuner, int percentScanned);
+	public void tunerScanProgress(Tuner tuner, int percentScanned, int frequencyHz);
 
 	/**
 	 * Tuner finished scan for services
@@ -67,8 +70,9 @@ public interface TunerListener extends RadioListener {
 	 * Updates on RF reception statistics
 	 * @param rfLock RF tuner frontend gained lock
 	 * @param quality the {@link ReceptionQuality} indicating the current quality
+	 * @param rawValue raw, implementation-specific quality indicator. Valid if >= 0
 	 */
-	public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality);
+	public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality, int rawValue);
 
 	/**
 	 * Implementation and {@link TunerType} dependent raw data (e.g. in case of a DAB Tuner raw Fast Information Blocks)
@@ -76,4 +80,11 @@ public interface TunerListener extends RadioListener {
 	 * @param data the raw data
 	 */
 	public void tunerRawData(Tuner tuner, byte[] data);
+
+	/**
+	 * Update on DAB date and time
+	 * @param tuner the {@link Tuner} from which the date and time was received
+	 * @param dabDateTime {@link Date}
+	 */
+	public void dabDateTime(Tuner tuner, Date dabDateTime);
 }

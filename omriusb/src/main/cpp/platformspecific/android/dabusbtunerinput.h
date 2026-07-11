@@ -22,23 +22,39 @@
 #define DABUSBTUNERINPUT_H
 
 #include "../../dabinput.h"
+#include "../../linkedservicedab.h"
 #include "jdabservice.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include "libusb-1.0/libusb.h"
 
 class DabUsbTunerInput : public DabInput {
 
 public:
-    virtual void startService(std::shared_ptr<JDabService> serviceLink) = 0;
+    virtual void startService(std::shared_ptr<JDabService>& serviceLink) = 0;
+    virtual std::shared_ptr<JDabService>& getStartedService() = 0;
     virtual void stopService(const DabService& service) = 0;
 
     virtual void startServiceScan() = 0;
     virtual void stopServiceScan() = 0;
     virtual void stopAllRunningServices() = 0;
 
-    virtual std::string getDeviceName() const = 0;
+    virtual std::string getDeviceName() = 0;
+
+    virtual std::string getHardwareVersion() const {
+        return ""; // dummy implementation for sub-classes that can't implement this
+    };
+    virtual std::string getSoftwareVersion() const {
+        return ""; // dummy implementation for sub-classes that can't implement this
+    };
+
+    virtual std::vector<std::shared_ptr<LinkedServiceDab>> getLinkedServices(const LinkedServiceDab & service) {
+        // dummy implementation for sub-classes that can't implement this
+        return std::vector<std::shared_ptr<LinkedServiceDab>>();
+    };
+
     virtual libusb_device* getDeviceHandle() const = 0;
 };
 #endif //DABUSBTUNERINPUT_H

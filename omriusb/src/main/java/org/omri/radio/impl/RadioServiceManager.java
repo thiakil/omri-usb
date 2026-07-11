@@ -10,10 +10,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
+import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
 import org.omri.radioservice.RadioServiceDabUserApplication;
 import org.omri.radioservice.RadioServiceType;
 import org.omri.radioservice.metadata.TermId;
+import org.omri.tuner.Tuner;
+import org.omri.tuner.TunerStatus;
+import org.omri.tuner.TunerType;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -29,6 +33,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -48,29 +54,37 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 
 	private static final Logger LOGGER = LogManager.getLogger("RadioServiceManager");
 
-	private final static RadioServiceManager INSTANCE = new RadioServiceManager();
+	@Nullable private static RadioServiceManager INSTANCE = null;
+	static final AtomicBoolean instanceGuard = new AtomicBoolean();
 
-	private ConcurrentHashMap<RadioServiceType, CopyOnWriteArrayList<RadioService>> mServicesMap = new ConcurrentHashMap<>();
-	private ConcurrentHashMap<RadioServiceType, Boolean> mServicesDeSerializingInProgress = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<RadioServiceType, CopyOnWriteArrayList<RadioService>> mServicesMap = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<RadioServiceType, Boolean> mServicesDeSerializingInProgress = new ConcurrentHashMap<>();
 
-	private final String SERVICES_DIR;
-	private final String SERVICES_JSON_DAB;
+	@Nullable private final String SERVICES_DIR;
+	@Nullable private final String SERVICES_JSON_DAB;
 
 	private boolean mFirstInitDab = true;
 
 	private RadioServiceManager() {
-		if (((RadioImpl) Radio.getInstance()).mContext != null) {
-			SERVICES_DIR = ((RadioImpl) Radio.getInstance()).mContext.getFilesDir() + "/services/";
+		LOGGER.debug("Constructor");
+		final Context context = ((RadioImpl) Radio.getInstance();
+		if (context != null) {
+			SERVICES_DIR = context.getFilesDir() + "/services/";
 			SERVICES_JSON_DAB = SERVICES_DIR + "dabservices.json";
 		} else {
 			SERVICES_DIR = null;
 			SERVICES_JSON_DAB = null;
+			SERVICES_JSON_IP = null;
+			SERVICES_JSON_EDI = null;
+			Log.w(TAG, "Radio without context");
 		}
 
-		File servicesDir = new File(SERVICES_DIR);
-		if (!servicesDir.exists()) {
-			boolean dirCreated = servicesDir.mkdirs();
-            LOGGER.debug("Services dir created: {}", dirCreated);
+		if (SERVICES_DIR != null) {
+			File servicesDir = new File(SERVICES_DIR);
+			if (!servicesDir.exists()) {
+				boolean dirCreated = servicesDir.mkdirs();
+				LOGGER.debug("Services dir created: {}", dirCreated);
+			}
 		}
 
 		mServicesMap.put(RadioServiceType.RADIOSERVICE_TYPE_DAB, new CopyOnWriteArrayList<RadioService>());
@@ -80,13 +94,42 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
+				Thread.currentThread().setName("DeserServices");
 				deserializeDabServices();
 			}
 		}).start();
 	}
 
+	@NonNull
 	static RadioServiceManager getInstance() {
-		return INSTANCE;
+		RadioServiceManager ret = null;
+		synchronized (instanceGuard) {
+			if (INSTANCE == null) {
+				INSTANCE = new RadioServiceManager();
+			}
+			ret = INSTANCE;
+		}
+		return ret;
+	}
+
+	void destroyInstance() {
+		LOGGER.debug("destroyInstance");
+		CopyOnWriteArrayList<RadioService> list;
+		final RadioServiceType[] types = {
+				RadioServiceType.RADIOSERVICE_TYPE_DAB,
+				RadioServiceType.RADIOSERVICE_TYPE_IP,
+				RadioServiceType.RADIOSERVICE_TYPE_EDI
+		};
+		for (RadioServiceType type : types) {
+			list = mServicesMap.get(type);
+			if (list != null) {
+				list.clear();
+			}
+		}
+		mServicesMap.clear();
+		synchronized (instanceGuard) {
+			INSTANCE = null;
+		}
 	}
 
 	final boolean isServiceListReady(RadioServiceType type) {
@@ -101,7 +144,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 	void addService(@NotNull RadioService addSrv) {
 		CopyOnWriteArrayList<RadioService> addList = mServicesMap.get(addSrv.getRadioServiceType());
 		if (addList != null) {
-			//TODO remove service and add new one for update?
 			boolean oldSrvRemoved = addList.remove(addSrv);
 			if (oldSrvRemoved) {
                 LOGGER.debug("Removed old version of service: {} : {}", addSrv.getServiceLabel(), addSrv.getRadioServiceType().toString());
@@ -118,7 +160,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 	boolean addRadioservice(RadioService addSrv) {
 		CopyOnWriteArrayList<RadioService> addList = mServicesMap.get(addSrv.getRadioServiceType());
 		if (addList != null) {
-			//TODO remove service and add new one for update?
 			boolean oldSrvRemoved = addList.remove(addSrv);
 			if (oldSrvRemoved) {
                 LOGGER.debug("Removed old version of service: {} : {}", addSrv.getServiceLabel(), addSrv.getRadioServiceType().toString());
@@ -303,6 +344,22 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		saveSrvObj.put("longDescription", service.getLongDescription());
 		saveSrvObj.put("shortDescription", service.getShortDescription());
 
+		JSONArray sfServicesArr = new JSONArray();
+		for (RadioService srv : service.getFollowingServices()) {
+			JSONObject srvObj = new JSONObject();
+			srvObj.put("radioServiceType", srv.getRadioServiceType().toString());
+			if (srv instanceof RadioServiceDab) {
+				RadioServiceDab srvDab = (RadioServiceDab) srv;
+				srvObj.put("ensembleEcc", srvDab.getEnsembleEcc());
+				srvObj.put("ensembleFrequency", srvDab.getEnsembleFrequency());
+				srvObj.put("ensembleId", srvDab.getEnsembleId());
+				srvObj.put("serviceId", srvDab.getServiceId());
+				srvObj.put("isProgrammeService", srvDab.isProgrammeService());
+			}
+			sfServicesArr.put(srvObj);
+		}
+		saveSrvObj.put("followingServices", sfServicesArr);
+
 		return saveSrvObj;
 	}
 
@@ -394,10 +451,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 				dabSrvComp.addScUserApplication(uapp);
 			}
 
-			dabSrvComp.setPacketAddress(dabSrvCompObj.getInt("packetAddress"));
-			dabSrvComp.setPacketAddress(dabSrvCompObj.getInt("packetAddress"));
-			dabSrvComp.setPacketAddress(dabSrvCompObj.getInt("packetAddress"));
-
 			dabSrv.addServiceComponent(dabSrvComp);
 		}
 
@@ -425,6 +478,29 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 
 		dabSrv.setLongDescription(srvObj.getString("longDescription"));
 		dabSrv.setShortDescription(srvObj.getString("shortDescription"));
+
+		try {
+			JSONArray sfServicesArr = srvObj.getJSONArray("followingServices");
+			ArrayList<RadioService> tempSfArray = new ArrayList<>(sfServicesArr.length());
+			for (int m = 0; m < sfServicesArr.length(); m++) {
+				JSONObject dabSrvObj = sfServicesArr.getJSONObject(m);
+				String radioServiceType = dabSrvObj.getString("radioServiceType");
+				if (radioServiceType.equals(RadioServiceType.RADIOSERVICE_TYPE_DAB.toString())) {
+					RadioServiceDabImpl srvDab = new RadioServiceDabImpl();
+					srvDab.setEnsembleEcc(dabSrvObj.getInt("ensembleEcc"));
+					srvDab.setEnsembleFrequency(dabSrvObj.getInt("ensembleFrequency"));
+					srvDab.setEnsembleId(dabSrvObj.getInt("ensembleId"));
+					srvDab.setServiceId(dabSrvObj.getInt("serviceId"));
+					srvDab.setIsProgrammeService(dabSrvObj.getBoolean("isProgrammeService"));
+					tempSfArray.add(srvDab);
+				}
+			}
+			if (tempSfArray.size()> 0) {
+				dabSrv.setFollowingServices(tempSfArray);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void deserializeDabServices() {
@@ -493,8 +569,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 	}
 
 	private ConcurrentHashMap<RadioServiceType, Timer> mSaveDelServicesMap = new ConcurrentHashMap<>();
-
-	private void scheduleSaveServices(RadioServiceType type) {
+	void scheduleSaveServices(RadioServiceType type) {
 		LOGGER.debug("Scheduling DelSaveServices task");
 
 		Timer delSaveTimer = mSaveDelServicesMap.get(type);
@@ -515,6 +590,46 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 				}
 			}
 		}, 5000);
+	}
+
+	void updateAllServiceFollowingServices(RadioService radioService) {
+		LOGGER.debug("updateAllServiceFollowingServices from " + radioService.toString());
+		// implemented for DAB only
+		if (radioService instanceof RadioServiceDab) {
+			boolean shouldSave = false;
+			// for all services with from same ensemble as radioService, query LinkedRadioServices and store
+			final CopyOnWriteArrayList<RadioService> services = mServicesMap.get(RadioServiceType.RADIOSERVICE_TYPE_DAB);
+			final List<Tuner> tuners = Radio.getInstance().getAvailableTuners(TunerType.TUNER_TYPE_DAB);
+			if (services != null && !services.isEmpty() && tuners != null && !tuners.isEmpty()) {
+				for (RadioService service : services) {
+					RadioServiceDab serviceDab = (RadioServiceDab) service;
+					// same EId, then query Linked services for this programme service ...
+					if (serviceDab.getEnsembleId() == ((RadioServiceDab) radioService).getEnsembleId()
+							&& serviceDab.isProgrammeService() ) {
+						// ... on all initialized (or scanning) DAB tuners
+						for (Tuner tuner : tuners) {
+							TunerStatus tunerStatus = tuner.getTunerStatus();
+							if (tunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED
+									|| tunerStatus == TunerStatus.TUNER_STATUS_SCANNING) {
+								ArrayList<RadioService> sfServices = tuner.getLinkedRadioServices(serviceDab);
+								boolean hasChanged =
+										((RadioServiceImpl) service).setServiceFollowingServices(sfServices);
+								if (hasChanged) {
+									if (tuner instanceof TunerUsbImpl) {
+										((TunerUsbImpl) tuner).callBack(TunerUsbCallbackTypes.SERVICELIST_READY.getIntValue());
+									}
+									shouldSave = true;
+								}
+							}
+						}
+					}
+				}
+			}
+			if (shouldSave) {
+				// save
+				RadioServiceManager.getInstance().scheduleSaveServices(RadioServiceType.RADIOSERVICE_TYPE_DAB);
+			}
+		}
 	}
 
 	/* RadioServiceManager interface implementation */
@@ -559,5 +674,3 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		return false;
 	}
 }
-
-

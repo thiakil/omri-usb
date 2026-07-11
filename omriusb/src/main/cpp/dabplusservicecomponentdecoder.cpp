@@ -29,15 +29,16 @@
 
 DabPlusServiceComponentDecoder::DabPlusServiceComponentDecoder() {
     m_processThreadRunning = true;
-    m_processThread = std::thread(&DabPlusServiceComponentDecoder::processData, this);
+    m_processThread = std::unique_ptr<DabThread>(
+            new DabThread([this]() { processData(); } ));
 }
 
 DabPlusServiceComponentDecoder::~DabPlusServiceComponentDecoder() {
-    std::cout << m_logTag << " Deconstructing" << std::endl;
+    //std::cout << m_logTag << " Deconstructing" << std::endl;
 
     m_processThreadRunning = false;
-    if(m_processThread.joinable()) {
-        m_processThread.join();
+    if(m_processThread->joinable()) {
+        m_processThread->join();
     }
     //m_conQueue.clear();
 }
@@ -50,7 +51,7 @@ void DabPlusServiceComponentDecoder::setSubchannelBitrate(uint16_t bitrate) {
     //audio_super_frame_size (bytes) = subchannel_index × 110
     m_superFrameSize = static_cast<uint16_t>((m_subChanBitrate / 8) * 110);
 
-    std::cout << m_logTag << " SuperFrameSize: " << +m_superFrameSize << " SubchanBitrate: " << +m_subChanBitrate << std::endl;
+    //std::cout << m_logTag << " SuperFrameSize: " << +m_superFrameSize << " SubchanBitrate: " << +m_subChanBitrate << std::endl;
 }
 
 void DabPlusServiceComponentDecoder::componentDataInput(const std::vector<uint8_t> &frameData, bool synchronized) {
@@ -313,7 +314,7 @@ void DabPlusServiceComponentDecoder::processData() {
         }
     }
 
-    std::cout << m_logTag << " ProcessData thread stopped" << std::endl;
+    //std::cout << m_logTag << " ProcessData thread stopped" << std::endl;
 }
 
 const uint16_t DabPlusServiceComponentDecoder::FIRECODE_TABLE[256] = {

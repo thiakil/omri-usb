@@ -77,7 +77,6 @@ private:
     jclass m_radioClass;
     jclass m_radioImplClass;
     jmethodID m_radioClassGetInstanceMID;
-    jmethodID m_radioInstanceDabTimeMID;
 
     //DABService
     jclass m_dabServiceClass;

@@ -57,9 +57,13 @@
 #include "fig_01_ext_06.h"
 
 #include "callbackhandle.h"
+#include "dabthread.h"
+
+// enable for very verbose logs for deep analysis of FIGs
+// #define LOG_DETAILLED_FIG_ANALYSIS
 
 class DabEnsemble;
-class FicParser : public Callback {
+class FicParser {
 
 public:
     using Fig_00_00_Callback = std::function<void(const Fig_00_Ext_00&)>;
@@ -73,7 +77,6 @@ public:
     using Fig_00_08_Callback = std::function<void(const Fig_00_Ext_08&)>;
     using Fig_00_09_Callback = std::function<void(const Fig_00_Ext_09&)>;
     using Fig_00_10_Callback = std::function<void(const Fig_00_Ext_10&)>;
-
     using Fig_00_13_Callback = std::function<void(const Fig_00_Ext_13&)>;
     using Fig_00_14_Callback = std::function<void(const Fig_00_Ext_14&)>;
     using Fig_00_17_Callback = std::function<void(const Fig_00_Ext_17&)>;
@@ -84,12 +87,14 @@ public:
     using Fig_00_24_Callback = std::function<void(const Fig_00_Ext_24&)>;
     using Fig_00_25_Callback = std::function<void(const Fig_00_Ext_25&)>;
     using Fig_00_26_Callback = std::function<void(const Fig_00_Ext_26&)>;
+    using Fig_00_isComplete_Callback = std::function<bool(const Fig::FIG_00_TYPE)>;
 
     using Fig_01_00_Callback = std::function<void(const Fig_01_Ext_00&)>;
     using Fig_01_01_Callback = std::function<void(const Fig_01_Ext_01&)>;
     using Fig_01_04_Callback = std::function<void(const Fig_01_Ext_04&)>;
     using Fig_01_05_Callback = std::function<void(const Fig_01_Ext_05&)>;
     using Fig_01_06_Callback = std::function<void(const Fig_01_Ext_06&)>;
+    using Fig_01_isComplete_Callback = std::function<bool(const Fig::FIG_01_TYPE)>;
 
     using Fig_00_Done_Callback = std::function<void(Fig::FIG_00_TYPE)>;
     using Fig_01_Done_Callback = std::function<void(Fig::FIG_01_TYPE)>;
@@ -98,10 +103,13 @@ public:
     explicit FicParser();
     virtual ~FicParser();
 
-    virtual void call(const std::vector<uint8_t>& data) override;
+    virtual void call(const std::vector<uint8_t>& data, bool rfLock);
 
     std::shared_ptr<Fig_00_Done_Callback> registerFig_00_Done_Callback(Fig_00_Done_Callback cb);
     std::shared_ptr<Fig_01_Done_Callback> registerFig_01_Done_Callback(Fig_01_Done_Callback cb);
+    std::shared_ptr<Fig_00_isComplete_Callback> registerFig_00_Complete_Callback(Fig_00_isComplete_Callback cb);
+    std::shared_ptr<Fig_01_isComplete_Callback> registerFig_01_Complete_Callback(Fig_01_isComplete_Callback cb);
+
     std::shared_ptr<Fig_00_00_Callback> registerFig_00_00_Callback(Fig_00_00_Callback cb);
     std::shared_ptr<Fig_00_01_Callback> registerFig_00_01_Callback(Fig_00_01_Callback cb);
     std::shared_ptr<Fig_00_02_Callback> registerFig_00_02_Callback(Fig_00_02_Callback cb);
@@ -130,7 +138,22 @@ public:
     std::shared_ptr<Fig_01_05_Callback> registerFig_01_05_Callback(Fig_01_05_Callback cb);
     std::shared_ptr<Fig_01_06_Callback> registerFig_01_06_Callback(Fig_01_06_Callback cb);
 
+    /* start the FIB processing thread */
+    void start();
+
+    /* retrieve status of FIB processing thread */
+    bool isStarted() const;
+
+    /* reset internal data structures */
     void reset();
+
+    /* stop the FIB processing thread */
+    void stop();
+
+    const std::string getParserThreadName() const { return m_ficProcessorThreadName; }
+
+public:
+    static constexpr size_t FIB_SIZE = 32;
 
 private:
     const std::string M_LOG_TAG = "[FicParser] ";
@@ -166,11 +189,14 @@ private:
     CallbackDispatcher<Fig_00_Done_Callback> m_fig00DoneDispatcher;
     CallbackDispatcher<Fig_01_Done_Callback> m_fig01DoneDispatcher;
 
-    ConcurrentQueue<std::vector<uint8_t> > m_fibDataQueue;
-    std::atomic<bool> m_fibProcessThreadRunning;
-    std::thread m_fibProcessorThread;
+    CallbackDispatcher<Fig_00_isComplete_Callback> m_fig00IsCompleteDispatcher;
+    CallbackDispatcher<Fig_01_isComplete_Callback> m_fig01IsCompleteDispatcher;
 
-    std::vector<std::vector<uint8_t> > ficBuffer;
+    ConcurrentQueue<std::vector<uint8_t> > m_fibDataQueue;
+    mutable std::mutex m_fibThreadMutex;
+    bool m_fibProcessThreadRunning{false};
+    std::unique_ptr<DabThread> m_fibProcessorThread;
+    std::string m_ficProcessorThreadName{""};
 
 private:
     void processFib();
@@ -212,55 +238,19 @@ private:
         0xEF1F, 0xFF3E, 0xCF5D, 0xDF7C, 0xAF9B, 0xBFBA, 0x8FD9, 0x9FF8,
         0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0
     };
-
-    static inline bool FIB_CRC_CHECK(const uint8_t* data) {
-
-        //fixed fib size
-        uint16_t dataLen = 32;
-
-        //initial register
-        uint16_t crc = 0xffff;
-        uint16_t crc2 = 0xffff;
-
-        uint16_t crcVal, i;
-        uint8_t  crcCalData;
-
-        for (i = 0; i < (dataLen - 2); i++) {
-            crcCalData = *(data+i);
-            crc = (crc << 8)^FicParser::CRC_CCITT_TABLE[(crc >> 8)^(crcCalData)++];
-        }
-
-        crcVal = *(data+i) << 8;
-        crcVal = crcVal | *(data+i+1);
-
-        crc2 = (crcVal^crc2);
-
-        if(crc == crc2) {
-            return true;
-        }
-
-        return false;
-    }
+    bool FIB_CRC_CHECK(const uint8_t* data) const;
 
 private:
-    std::vector<Fig_00_Ext_01> m_parsedFig0001;
-    std::vector<Fig_00_Ext_02> m_parsedFig0002;
-    std::vector<Fig_00_Ext_03> m_parsedFig0003;
-    std::vector<Fig_00_Ext_08> m_parsedFig0008;
-    std::vector<Fig_00_Ext_13> m_parsedFig0013;
-    std::vector<Fig_00_Ext_14> m_parsedFig0014;
-    std::vector<Fig_00_Ext_17> m_parsedFig0017;
-
-    std::vector<Fig_01_Ext_00> m_parsedFig0100;
-    std::vector<Fig_01_Ext_01> m_parsedFig0101;
-    std::vector<Fig_01_Ext_04> m_parsedFig0104;
-    std::vector<Fig_01_Ext_05> m_parsedFig0105;
-    std::vector<Fig_01_Ext_06> m_parsedFig0106;
-
-    bool m_1wasDone{false};
-    bool m_2wasDone{false};
-    bool m_3wasDone{false};
-    bool m_8wasDone{false};
+    // essential FIGs which need to be analysed as long as they don't start
+    // to be repeated before an ensemble sanity check makes sense
+    // see DabEnsemble::fig_00/01_done_cb()
+    std::vector<Fig_00_Ext_00> m_parsedFig0000; // ENSEMBLE_INFORMATION
+    std::vector<Fig_00_Ext_01> m_parsedFig0001; // BASIC_SUBCHANNEL_ORGANIZATION
+    std::vector<Fig_00_Ext_02> m_parsedFig0002; // BASIC_SERVICE_COMPONENT_DEFINITION
+    std::vector<Fig_00_Ext_08> m_parsedFig0008; // SERVICE_COMPONENT_GLOBAL_DEFINITION
+    std::vector<Fig_00_Ext_13> m_parsedFig0013; // USERAPPLICATION_INFORMATION
+    std::vector<Fig_01_Ext_00> m_parsedFig0100; // ENSEMBLE_LABEL
+    std::vector<Fig_01_Ext_01> m_parsedFig0101; // PROGRAMME_SERVICE_LABEL
 
 private:
     template<class T>

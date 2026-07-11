@@ -18,9 +18,10 @@
  *
  */
 
-#include "jusbdevice.h"
+#include <iostream>
 
-#include "iostream"
+
+#include "jusbdevice.h"
 
 JUsbDevice::JUsbDevice(libusb_device* device) : m_usbDevice(device) {
     if(device != nullptr) {

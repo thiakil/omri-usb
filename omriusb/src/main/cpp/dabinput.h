@@ -38,12 +38,13 @@ public:
     virtual ~DabInput() = default;
 
     virtual void initialize() = 0;
+    virtual void deInitialize() = 0;
     virtual bool isInitialized() const = 0;
-    virtual int getCurrentTunedFrequency() const = 0;
+    virtual uint32_t getCurrentTunedFrequency() const = 0;
     virtual const DabEnsemble& getEnsemble() const = 0;
     virtual int getMaximumConcurrentSubChannels() const = 0;
 
-    virtual void tuneFrequency(int frequencyKHz) = 0;
+    virtual void tuneFrequency(uint32_t frequencyHz) = 0;
 
 public:
     using CallbackFunction = std::function<void(const std::vector<uint8_t>&)>;
@@ -52,4 +53,3 @@ public:
 };
 
 #endif // DABINPUT
-

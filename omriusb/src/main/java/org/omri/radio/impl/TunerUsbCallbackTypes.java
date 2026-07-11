@@ -21,11 +21,13 @@ package org.omri.radio.impl;
 public enum TunerUsbCallbackTypes {
 
 	TUNER_CALLBACK_UNKNOWN(-1),
+	// >>> must match with platformspecific/android/jtunerusbdevice.h
 	TUNER_READY(0),
 	TUNER_FAILED(1),
-	TUNER_FREQUENCY_LOCKED(2),
-	TUNER_FREQUENCY_NOT_LOCKED(3),
-	TUNER_SCAN_IN_PROGRESS(4);
+	TUNER_SCAN_IN_PROGRESS(4),
+	// <<< must match with platformspecific/android/jtunerusbdevice.h
+	SERVICELIST_READY(5),
+	VISUALLIST_READY(6);
 
 	private final int mIntType;
 

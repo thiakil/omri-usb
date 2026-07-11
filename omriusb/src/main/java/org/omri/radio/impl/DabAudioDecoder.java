@@ -3,6 +3,8 @@ package org.omri.radio.impl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import org.omri.radio.Radio;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -35,16 +37,18 @@ class DabAudioDecoder {
 	private final int BUFFER_TIMEOUT = 1000;
 
 	//DAB ASCTy
-	private int DAB_CODEC_MP2 = 0;
-	private int DAB_CODEC_AAC = 63;
+	private final int DAB_CODEC_MP2 = 0;
+	private final int DAB_CODEC_AAC = 63;
 
 	private final String[] DAB_MIME = {"audio/unknown", "audio/mpeg-l2" /*"audio/mpeg"*/, "audio/mp4a-latm"};
 
 	private Pipeline pipeline = null;
 	private AppSrc appSrc = null;
 
-	private Thread mDecodeThread = null;
+	private @Nullable Thread mDecodeThread = null;
 	private boolean mDecode = false;
+
+	private DabDecoderCallback mCallback = null;
 
 	private int mConfCodec = 0;
 	private int mConfSampling = 0;
@@ -52,7 +56,7 @@ class DabAudioDecoder {
 	private boolean mConfSbr = false;
 	private boolean mConfPs = false;
 
-	private ConcurrentLinkedQueue<byte[]> mDataQ = new ConcurrentLinkedQueue<>();
+	private final ConcurrentLinkedQueue<byte[]> mDataQ = new ConcurrentLinkedQueue<>();
 
 	DabAudioDecoder() {
 		LOGGER.debug("Creating new decoder instance");
@@ -77,6 +81,13 @@ class DabAudioDecoder {
 	boolean getConfPs() {
 		return mConfPs;
 	}
+
+
+	synchronized void setCodecCallback(DabDecoderCallback codecCallback) {
+		mDataQ.clear();
+		mCallback = codecCallback;
+	}
+
 
 	void feedData(byte[] audioData) {
 		if (mConfCodec == DAB_CODEC_AAC) {
@@ -118,7 +129,7 @@ class DabAudioDecoder {
 				try {
 					mDecodeThread.join(2000);
 				} catch (InterruptedException interExc) {
-					LOGGER.debug("InterruptedException while joining decodethread");
+					LOGGER.debug("InterruptedException while joining Decodethread");
 				}
 			}
 		}
@@ -157,8 +168,6 @@ class DabAudioDecoder {
 			mDecodeThread = new Thread(DecoderRunnable, "aac decoder thread");
 			mDecodeThread.start();
 		}
-
-		mDataQ.clear();
 
 		return true;
 	}
@@ -325,8 +334,12 @@ class DabAudioDecoder {
 	private int mOutputChannels = 0;
 	private int mOutputSampling = 0;
 
-	private transient ArrayList<DabAudioDecoderStateCallBack> mCodecStateCallbacks = new ArrayList<>();
+	interface DabDecoderCallback {
+		void decodedAudioData(final byte[] pcmData, final int samplerate, final int channels);
+		void outputFormatChanged(int sampleRate, int chanCnt);
+	}
 
+	private final ArrayList<DabAudioDecoderStateCallBack> mCodecStateCallbacks = new ArrayList<>();
 	void registerDabAudioDecoderStateCallBack(DabAudioDecoderStateCallBack stateCb) {
 		if (!mCodecStateCallbacks.contains(stateCb)) {
 			mCodecStateCallbacks.add(stateCb);

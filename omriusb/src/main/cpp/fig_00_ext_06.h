@@ -21,6 +21,8 @@
 #ifndef FIG_00_EXT_06_H
 #define FIG_00_EXT_06_H
 
+#include <algorithm>
+
 #include "fig_00.h"
 
 /*
@@ -56,9 +58,6 @@ public:
         SERVICE_LINKING_IDENTIFIER_LIST_QUALIFIER idListQualifier;
 
         /*
-         * The identifier for the key service, which shall always be a DAB SId of a service carried in the ensemble, is the first
-         * identifier in the Id list at the start of the database; this is when the version number of the type 0 field is set to "0" (see clause 5.2.2.1).
-         *
          * Depending on isIls, isDataService and idListQualifier the size of id's are:
          * if(isIls == false && isDataService == false)
          *   id's are 16 bit
@@ -73,18 +72,16 @@ public:
 
 
         inline bool operator==(const ServiceLinkList& other) const {
-            //return std::includes(frequenciesKHz.begin(), frequenciesKHz.end(), otherFreqList.begin(), otherFreqList.end());
             return idListQualifier == other.idListQualifier &&
                    std::includes(idList.begin(), idList.end(), other.idList.begin(), other.idList.end());
         }
 
         inline bool operator!=(const ServiceLinkList& other) const { return !operator==(other); }
 
-        bool containsId(uint32_t otherId) {
-            if(std::find(idList.begin(), idList.end(), otherId) != idList.end()) {
+        bool containsId(uint32_t otherId) const {
+            if(std::find(idList.cbegin(), idList.cend(), otherId) != idList.cend()) {
                 return true;
             }
-
             return false;
         }
     };

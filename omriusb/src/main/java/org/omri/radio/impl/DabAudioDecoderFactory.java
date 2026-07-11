@@ -3,6 +3,7 @@ package org.omri.radio.impl;
 import java.util.Vector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import java.util.Vector;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -57,6 +58,7 @@ class DabAudioDecoderFactory implements DabAudioDecoder.DabAudioDecoderStateCall
 	@Override
 	public void codecStopped(DabAudioDecoder decoder) {
 		LOGGER.debug("Removing stopped DabAudioDecoder");
+		decoder.unregisterDabAudioDecoderStateCallBack(this);
 		mDecoderInstances.remove(decoder);
 	}
 }
