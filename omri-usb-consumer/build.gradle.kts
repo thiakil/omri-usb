@@ -33,7 +33,7 @@ dependencies {
     implementation(libs.log4j.slf4j.impl)
 
 
-    implementation(project(":omri-usb-java"))
+    implementation(project(":omriusb"))
     implementation("org.freedesktop.gstreamer:gst1-java-core:1.4.0")
 
     testImplementation(kotlin("test"))
