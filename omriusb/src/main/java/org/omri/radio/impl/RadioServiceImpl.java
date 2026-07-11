@@ -2,6 +2,8 @@ package org.omri.radio.impl;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceAudiodataListener;
@@ -141,7 +143,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 	@Override
 	public boolean isReadyForGetLogos() {
-		return VisualLogoManager.getInstance().isReady();
+		return true;
 	}
 
 	@Override
@@ -370,20 +372,6 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	@SuppressWarnings("unused")
-	void spiReceived(String spiPath) {
-		LOGGER.debug("RadioDns Spi Path: " + spiPath);
-
-		SpiProgrammeInformationImpl spiInfo = new SpiProgrammeInformationImpl(spiPath);
-
-		LOGGER.debug("RadioDns DocsSize: " + spiInfo.getSpiDocument().getElementsByTagName("schedule").getLength());
-		synchronized (mSpiListeners) {
-			for (ProgrammeServiceMetadataListener metaListener : mSpiListeners) {
-				metaListener.newProgrammeInformation(spiInfo);
-			}
-		}
-	}
-
-	@SuppressWarnings("unused")
 	void audioData(final byte[] pcmData, final int channelCount, final int samplingRate) {
 		if (/*mDecodeAudio && */mAudioDec != null) {
 			mAudioDec.feedData(pcmData);
@@ -396,7 +384,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		}
 	}
 
-	@NonNull ArrayList<RadioService> replaceLinkedRadioServicesWithKnown(@NonNull ArrayList<RadioService> linkedServices) {
+	@NotNull ArrayList<RadioService> replaceLinkedRadioServicesWithKnown(@NotNull ArrayList<RadioService> linkedServices) {
 		ArrayList<RadioService> retLinkedServices = new ArrayList<>();
 		// retrieve list of known services
 		final List<RadioService> radioServices = RadioServiceManager.getInstance().getRadioServices(this.getRadioServiceType());
@@ -425,7 +413,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		return retLinkedServices;
 	}
 
-	void setFollowingServices(@NonNull ArrayList<RadioService> sfServices) {
+	void setFollowingServices(@NotNull ArrayList<RadioService> sfServices) {
 		LOGGER.debug("setFollowingServices sz=" + sfServices.size() + " for " +
 				this.toString());
 		synchronized (mSfServices) {
@@ -511,6 +499,10 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
             Radio.getInstance().stopRadioService(this);
         }
     }
+
+	void serviceStarted() {
+		LOGGER.debug("Service '" + getServiceLabel() + "' started");
+	}
 
 	void serviceStopped() {
         LOGGER.debug("Service '{}' stopped", getServiceLabel());

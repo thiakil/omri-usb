@@ -1,7 +1,11 @@
 package org.omri.radio.impl;
 
+import java.util.Objects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 
 import java.util.ArrayList;
@@ -62,7 +66,7 @@ public class UsbHelper {
 	
 	private UsbHelper() {
 		LOGGER.debug("Constructing UsbHelper...");
-		created();
+		created(mRedirectCoutToALog, mRawRecordingPath);
 	}
 
 	/*public void scanUsbDevices() {
@@ -139,48 +143,21 @@ public class UsbHelper {
 		startSrv(device, srv);
 	}
 
-	public void stopService(String deviceName) {
-		stopSrv(deviceName);
-	}
-
-	/** @noinspection unused (used by native code) */
-	public void tuneFrequencyKHz(String deviceName, long frequency) {
-		tuneFreq(deviceName, frequency);
-	}
-
-	void startEnsembleScan(String deviceName) {
-		startServiceScan(deviceName);
-	}
-
-	void stopEnsembleScan(String deviceName) {
-		stopServiceScan(deviceName);
-	}
-
 	void attachDevice(TunerUsb dev) {
-		deviceAttached(dev);
+		deviceAttached(dev, dev.getUsbDevice());
 	}
 
-	public @Nullable ArrayList<RadioServiceDab> getLinkedDabServices(@NonNull String deviceName, @NonNull RadioServiceDab serviceDab) {
-		return getLinkedServices(deviceName, serviceDab);
+	public @Nullable ArrayList<RadioServiceDab> getLinkedDabServices(long libUsbDevice, @NotNull RadioServiceDab serviceDab) {
+		return getLinkedServices(libUsbDevice, serviceDab);
 	}
 
-	public @Nullable String getHwVersion(@NonNull String deviceName) {
-		return getHardwareVersion(deviceName);
+	public @Nullable String getHwVersion(long libUsbDevice) {
+		return getHardwareVersion(libUsbDevice);
 	}
 
-	public @Nullable String getSwVersion(@NonNull String deviceName) {
-		return getSoftwareVersion(deviceName);
+	public @Nullable String getSwVersion(long libUsbDevice) {
+		return getSoftwareVersion(libUsbDevice);
 	}
-
-	public void setDirectBulkTransferModeEnabled(String deviceName, boolean direct) {
-		setDirectBulkTransferEnabled(deviceName, direct);
-	}
-	public boolean getDirectBulkTransferModeEnabled(String deviceName) {
-		return getDirectBulkTransferEnabled(deviceName);
-	}
-
-	/* EdiStream */
-
 
 	public void stopService(long libUsbDevice) {
 		stopSrv(libUsbDevice);
@@ -192,6 +169,10 @@ public class UsbHelper {
 
 	void startEnsembleScan(long libUsbDevice) {
 		startServiceScan(libUsbDevice);
+	}
+
+	void stopEnsembleScan(long libUsbDevice) {
+		stopServiceScan(libUsbDevice);
 	}
 
 	/* Demo tuner */
@@ -208,26 +189,18 @@ public class UsbHelper {
 		demoServiceStop();
 	}
 
-	static void create(Context context, UsbHelperCallback cb, boolean redirectCoutToALog,
+	static void create(UsbHelperCallback cb, boolean redirectCoutToALog,
 					   String rawRecordingPath) {
 		if(mInstance == null) {
 			mUsbCb = cb;
 			mRedirectCoutToALog = redirectCoutToALog;
 			mRawRecordingPath = rawRecordingPath;
-			mInstance = new UsbHelper(context);
+			mInstance = new UsbHelper();
 		}
 	}
 
 	void destroyInstance() {
 		LOGGER.debug("destroyInstance");
-		try {
-			mContext.unregisterReceiver(mUsbBroadcastReceiver);
-		} catch (Exception e) {
-			LOGGER.debug(e);
-		}
-		if (mUsbDeviceList != null) {
-			mUsbDeviceList.clear();
-		}
 
 		mRedirectCoutToALog = false;
 		mUsbCb = null;

@@ -2,6 +2,7 @@ package org.omri.radio.impl;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
@@ -198,7 +199,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 		return false;
 	}
 
-	@NonNull
+	@NotNull
 	@Override
 	public String toString() {
 		return "RadioServiceDab {" +

@@ -1,10 +1,12 @@
 package org.omri.radio.impl;
 
+import com.thiakil.standin.Context;
 import java.util.Base64;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -61,22 +63,21 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 	private final ConcurrentHashMap<RadioServiceType, Boolean> mServicesDeSerializingInProgress = new ConcurrentHashMap<>();
 
 	@Nullable private final String SERVICES_DIR;
-	@Nullable private final String SERVICES_JSON_DAB;
+	@Nullable
+	private final String SERVICES_JSON_DAB;
 
 	private boolean mFirstInitDab = true;
 
 	private RadioServiceManager() {
 		LOGGER.debug("Constructor");
-		final Context context = ((RadioImpl) Radio.getInstance();
+		final Context context = ((RadioImpl) Radio.getInstance()).getContext();
 		if (context != null) {
 			SERVICES_DIR = context.getFilesDir() + "/services/";
 			SERVICES_JSON_DAB = SERVICES_DIR + "dabservices.json";
 		} else {
 			SERVICES_DIR = null;
 			SERVICES_JSON_DAB = null;
-			SERVICES_JSON_IP = null;
-			SERVICES_JSON_EDI = null;
-			Log.w(TAG, "Radio without context");
+			LOGGER.warn("Radio without context");
 		}
 
 		if (SERVICES_DIR != null) {
@@ -100,7 +101,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		}).start();
 	}
 
-	@NonNull
+	@NotNull
 	static RadioServiceManager getInstance() {
 		RadioServiceManager ret = null;
 		synchronized (instanceGuard) {
@@ -117,8 +118,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		CopyOnWriteArrayList<RadioService> list;
 		final RadioServiceType[] types = {
 				RadioServiceType.RADIOSERVICE_TYPE_DAB,
-				RadioServiceType.RADIOSERVICE_TYPE_IP,
-				RadioServiceType.RADIOSERVICE_TYPE_EDI
 		};
 		for (RadioServiceType type : types) {
 			list = mServicesMap.get(type);

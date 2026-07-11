@@ -1,15 +1,10 @@
 package org.omri.radio.impl;
 
-import static org.omri.BuildConfig.DEBUG;
-
-import android.annotation.SuppressLint;
-import android.os.AsyncTask;
-import android.os.SystemClock;
-import android.util.Log;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
+import com.thiakil.standin.AsyncTask;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceType;
@@ -45,7 +40,7 @@ import java.util.List;
 
 public class DemoTuner implements Tuner {
 
-    private final static String TAG = "DemoTuner";
+    private final static Logger LOGGER = LogManager.getLogger("DemoTuner");
     private final static String DEMO_DEVICE_NAME = "DemoDevice"; // must be equal to DemoUsbTunerInput::DEMO_DEVICE_NAME
     private final TunerType mTunertype = TunerType.TUNER_TYPE_DAB;
     private final List<RadioService> mServices = new ArrayList<>();
@@ -56,7 +51,6 @@ public class DemoTuner implements Tuner {
     @Nullable
     private RestoreServicesTask mRestoreServicesTask = null;
     private boolean mTunerInitDone = false;
-    @Nullable private RestoreVisualsTask mRestoreVisualsTask = null;
 
 
     DemoTuner(String inputFilesPath) {
@@ -66,7 +60,7 @@ public class DemoTuner implements Tuner {
     @Override
     public void initializeTuner() {
         if(mTunerStatus == TunerStatus.TUNER_STATUS_NOT_INITIALIZED) {
-            if (DEBUG) Log.d(TAG, "Initializing Tuner");
+            LOGGER.debug("Initializing Tuner");
             UsbHelper.getInstance().attachDemoTuner(this);
             new CollectRecordingsTask(this).execute();
         }
@@ -82,7 +76,7 @@ public class DemoTuner implements Tuner {
                 stopRadioServiceScan();
             case TUNER_STATUS_INITIALIZED:
             case TUNER_STATUS_ERROR: {
-                if(DEBUG)Log.d(TAG, "Suspending Tuner: " + this);
+                LOGGER.debug("Suspending Tuner: " + this);
                 mTunerStatus = TunerStatus.TUNER_STATUS_SUSPENDED;
 
                 for (TunerListener listener : mTunerlisteners) {
@@ -127,7 +121,7 @@ public class DemoTuner implements Tuner {
     }
 
     @Override
-    public TunerType getTunerType() {
+    public @NonNull TunerType getTunerType() {
         return mTunertype;
     }
 
@@ -153,7 +147,7 @@ public class DemoTuner implements Tuner {
 
             // retrieve DAB services that are linked to the given service
             final ArrayList<RadioServiceDab> linkedDabServices =
-                    UsbHelper.getInstance().getLinkedDabServices(DEMO_DEVICE_NAME,
+                    UsbHelper.getInstance().getLinkedDabServices(-1,
                             (RadioServiceDab) service);
 
             if (linkedDabServices != null) {
@@ -182,7 +176,7 @@ public class DemoTuner implements Tuner {
 
     @Override
     public void startRadioService(RadioService radioService) {
-        if (DEBUG) Log.d(TAG, "Starting Service: " + radioService.getServiceLabel());
+        LOGGER.debug("Starting Service: " + radioService.getServiceLabel());
         mCurrentlyRunningService = radioService;
         UsbHelper.getInstance().startDemoService(radioService);
     }
@@ -190,7 +184,7 @@ public class DemoTuner implements Tuner {
     @Override
     public void stopRadioService() {
         if (mCurrentlyRunningService != null) {
-            if (DEBUG)Log.d(TAG, "Stopping Service: " + mCurrentlyRunningService.getServiceLabel());
+            LOGGER.debug("Stopping Service: " + mCurrentlyRunningService.getServiceLabel());
             mCurrentlyRunningService = null;
             UsbHelper.getInstance().stopDemoService();
         }
@@ -309,13 +303,9 @@ public class DemoTuner implements Tuner {
         CollectRecordingsTask(Tuner instance) {
             mInstance = instance;
         }
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-        }
 
         @Override
-        protected Void doInBackground(Void... voids) {
+        protected Void doInBackground(Void voids) {
             File inputDir = new File(mInputFilesPath);
             if (inputDir.isDirectory()) {
                 String[] filenames = inputDir.list(new FilenameFilter() {
@@ -332,7 +322,7 @@ public class DemoTuner implements Tuner {
                     for (String filename : filenames) {
                         File file = new File(inputDir, filename);
                         if (file.exists()) {
-                            if (DEBUG) Log.d(TAG, "recording found:'" + file.getAbsolutePath() + "'");
+                            LOGGER.debug("recording found:'" + file.getAbsolutePath() + "'");
                             filename = filename.replace("dab_", "");
                             filename = filename.replace(".raw", "");
                             String[] splits = filename.split("_");
@@ -354,7 +344,7 @@ public class DemoTuner implements Tuner {
                                 counter++;
                             }
                             else {
-                                Log.w(TAG, "split filename: " + Arrays.toString(splits));
+                                LOGGER.warn("split filename: " + Arrays.toString(splits));
                             }
                             RadioServiceDabImpl foundService = new RadioServiceDabImpl();
                             foundService.setServiceLabel(label);
@@ -368,20 +358,18 @@ public class DemoTuner implements Tuner {
                     }
                 }
             } else {
-                Log.w(TAG, "not a dir:'" + mInputFilesPath + "'");
+                LOGGER.warn("not a dir:'" + mInputFilesPath + "'");
             }
 
             if (!mServices.isEmpty()) {
                 // Collected >0 recordings, use them as the service list
                 final RadioServiceManager rsm = RadioServiceManager.getInstance();
-                while (!rsm.isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB) || !VisualLogoManager.getInstance().isReady()) {
+                while (!rsm.isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB)) {
                     try {
                         //noinspection BusyWait
                         Thread.sleep(10);
-                        if (DEBUG)
-                            Log.d(TAG, "Waiting for servicelist or VisualLogoManager to be ready");
                     } catch (Exception e) {
-                        if (DEBUG) e.printStackTrace();
+                        LOGGER.error(e);
                     }
                 }
                 rsm.clearServiceList(RadioServiceType.RADIOSERVICE_TYPE_DAB);
@@ -394,22 +382,26 @@ public class DemoTuner implements Tuner {
 
         @Override
         protected void onPostExecute(Void aVoid) {
-            if (DEBUG) Log.d(TAG, "CollectRecordingsTask finished with " + mServices.size()
+            LOGGER.debug("CollectRecordingsTask finished with " + mServices.size()
                     + " services");
             mRestoreServicesTask = new RestoreServicesTask();
             mRestoreServicesTask.execute();
         }
     }
 
-    @SuppressLint("StaticFieldLeak")
     private class RestoreServicesTask extends AsyncTask<Void, Void, Void> {
 
         @Override
-        protected Void doInBackground(Void... params) {
-            if(DEBUG)Log.d(TAG, "Restoring services....");
+        protected Void doInBackground(Void params) {
+            LOGGER.debug("Restoring services....");
             while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB) && !isCancelled() ) {
-                SystemClock.sleep(100);
-                if(DEBUG)Log.d(TAG, "Waiting for servicelist to be ready");
+                try {
+                    //noinspection BusyWait
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                LOGGER.debug("Waiting for servicelist to be ready");
             }
 
             synchronized (mServices) {
@@ -417,46 +409,9 @@ public class DemoTuner implements Tuner {
                 mServices.addAll(RadioServiceManager.getInstance().getRadioServices(RadioServiceType.RADIOSERVICE_TYPE_DAB));
             }
 
-            if(DEBUG)Log.d(TAG, "Restore services finished");
+            LOGGER.debug("Restore services finished");
             callBack(TunerUsbCallbackTypes.TUNER_READY.getIntValue());
 
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void unused) {
-            super.onPostExecute(unused);
-            if (!isCancelled()) {
-                mRestoreVisualsTask = new RestoreVisualsTask();
-                mRestoreVisualsTask.execute();
-            }
-        }
-
-        @Override
-        protected void onCancelled(Void unused) {
-            super.onCancelled(unused);
-
-            if (mRestoreVisualsTask != null) {
-                mRestoreVisualsTask.cancel(true);
-                mRestoreVisualsTask = null;
-            }
-        }
-    }
-
-    @SuppressLint("StaticFieldLeak")
-    private class RestoreVisualsTask extends AsyncTask<Void, Void, Void> {
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            if(DEBUG)Log.d(TAG, "Restoring visuals....");
-            while ((!VisualLogoManager.getInstance().isReady() ||  !mTunerInitDone) && !isCancelled()) {
-                SystemClock.sleep(100);
-                if(DEBUG)Log.d(TAG, "Waiting for VisualLogoManager or tuner to be ready");
-            }
-            if(DEBUG)Log.d(TAG, "Restore visuals finished");
-            if(mTunerInitDone) {
-                callBack(TunerUsbCallbackTypes.VISUALLIST_READY.getIntValue());
-            }
             return null;
         }
     }

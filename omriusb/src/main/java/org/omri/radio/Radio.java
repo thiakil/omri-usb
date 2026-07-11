@@ -55,14 +55,6 @@ public abstract class Radio {
     	INSTANCE = null;
     }
 
-    /**
-     * Initializes the {@link Radio} instance with an Android {@link Context}
-     * @param appContext the App Context
-     * @return the {@link RadioErrorCode} indicating the success of init.
-     */
-	@NotNull
-    public abstract RadioErrorCode initialize(Context appContext);
-
 	/**
 	 * Initializes the {@link Radio} instance with an Android {@link Context}
 	 * @param appContext the App Context
@@ -191,6 +183,6 @@ public abstract class Radio {
 	 * The term 'affordance' here relates to the waiting time for the user for continuing to listen
 	 * to the service again once the system decides to start the returned service.
 	 */
-	@NonNull
+	@NotNull
 	public abstract ArrayList<RadioService> getFollowingServices(RadioService followSrv);
 }

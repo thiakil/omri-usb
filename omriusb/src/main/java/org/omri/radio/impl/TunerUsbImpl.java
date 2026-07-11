@@ -54,9 +54,6 @@ public class TunerUsbImpl implements TunerUsb {
 	private final List<TunerListener> mTunerlisteners = Collections.synchronizedList(new ArrayList<>());
 	@Nullable private RadioServiceDab mCurrentlyRunningService = null;
 
-	private List<TunerListener> mTunerlisteners = new ArrayList<>();
-	private RadioServiceDab mCurrentlyRunningService = null;
-
 	private final long mUsbDevice;
 
 	TunerUsbImpl(long device) {
@@ -69,7 +66,6 @@ public class TunerUsbImpl implements TunerUsb {
 	private boolean mTunerInitDone = false;
 	private boolean mRestoreVisualsDone = false;
 	private boolean mRestoreVisualsInProgress = false;
-	@Nullable private RestoreVisualsTask mRestoreVisualsTask = null;
 
 	@Override
 	public void initializeTuner() {
@@ -171,11 +167,6 @@ public class TunerUsbImpl implements TunerUsb {
 				mRestoreServicesInProgress = false;
 				mRestoreServicesDone = false;
 
-				// stop restore visuals list
-				if (mRestoreVisualsInProgress && mRestoreVisualsTask != null) {
-					mRestoreVisualsTask.cancel(true);
-				}
-				mRestoreVisualsTask = null;
 				mRestoreVisualsInProgress = false;
 				mRestoreVisualsDone = false;
 
@@ -209,8 +200,12 @@ public class TunerUsbImpl implements TunerUsb {
 	public void startRadioServiceScan() {
 		if (getCurrentRunningRadioService() != null) {
 			stopRadioService();
-			Thread.sleep(300); // allow time to process the request
-		}
+            try {
+                Thread.sleep(300); // allow time to process the request
+            } catch (InterruptedException e) {
+                LOGGER.error(e);
+            }
+        }
 		final UsbHelper usbHelper = UsbHelper.getInstance();
 		if (usbHelper != null) {
 			usbHelper.startEnsembleScan(mUsbDevice);
@@ -226,8 +221,12 @@ public class TunerUsbImpl implements TunerUsb {
 	public void startRadioServiceScan(Object scanOptions) {
 		if (getCurrentRunningRadioService() != null) {
 			stopRadioService();
-			SystemClock.sleep(300); // allow time to process the request
-		}
+            try {
+                Thread.sleep(300); // allow time to process the request
+            } catch (InterruptedException e) {
+                LOGGER.error(e);
+            }
+        }
 		if (scanOptions != null) {
 			if (scanOptions instanceof SearchSettings) {
 				if (((SearchSettings) scanOptions).clearExisting()) {
@@ -283,7 +282,7 @@ public class TunerUsbImpl implements TunerUsb {
 
 			// retrieve DAB services that are linked to the given service
 			final ArrayList<RadioServiceDab> linkedDabServices =
-					usbHelper.getLinkedDabServices(mUsbDevice.getDeviceName(),
+					usbHelper.getLinkedDabServices(mUsbDevice,
 							(RadioServiceDab) service);
 
 			if (linkedDabServices != null) {
@@ -299,7 +298,7 @@ public class TunerUsbImpl implements TunerUsb {
 	public @NonNull String getHardwareVersion() {
 		final UsbHelper usbHelper = UsbHelper.getInstance();
 		if (usbHelper != null) {
-			String hwVersion = usbHelper.getHwVersion(mUsbDevice.getDeviceName());
+			String hwVersion = usbHelper.getHwVersion(mUsbDevice);
 			if (hwVersion != null) {
 				return hwVersion;
 			}
@@ -311,7 +310,7 @@ public class TunerUsbImpl implements TunerUsb {
 	public @NonNull String getSoftwareVersion() {
 		final UsbHelper usbHelper = UsbHelper.getInstance();
 		if (usbHelper != null) {
-			String swVersion = UsbHelper.getInstance().getSwVersion(mUsbDevice.getDeviceName());
+			String swVersion = UsbHelper.getInstance().getSwVersion(mUsbDevice);
 			if (swVersion != null) {
 				return swVersion;
 			}
@@ -338,7 +337,7 @@ public class TunerUsbImpl implements TunerUsb {
 	@Override
 	public void callBack(int callbackType) {
 		TunerUsbCallbackTypes type = TunerUsbCallbackTypes.getTypeByValue(callbackType);
-		LOGGER.debug("Native callback for device: " + mUsbDevice.getDeviceName() + " with CallbackType: " + type.toString());
+		LOGGER.debug("Native callback for device: " + mUsbDevice + " with CallbackType: " + type.toString());
 		switch(type) {
 			case TUNER_READY: {
 				if (!mIsScanning) {
@@ -354,8 +353,6 @@ public class TunerUsbImpl implements TunerUsb {
 				} else {
 					mIsScanning = false;
 					mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
-
-					new EnrichServicesData().execute();
 				}
 				break;
 			}
@@ -498,7 +495,6 @@ public class TunerUsbImpl implements TunerUsb {
 		}
 	}
 
-	@SuppressLint("StaticFieldLeak")
 	private class SerializeServicesTask extends AsyncTask<Void, Void, Void> {
 
 		private final Tuner mInstance;
@@ -526,7 +522,6 @@ public class TunerUsbImpl implements TunerUsb {
 		}
 	}
 
-	@SuppressLint("StaticFieldLeak")
 	private class RestoreServicesTask extends AsyncTask<Void, Void, Void> {
 
 		@Override
@@ -534,7 +529,8 @@ public class TunerUsbImpl implements TunerUsb {
 			LOGGER.debug("Restoring services....");
 			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB) && !isCancelled()) {
 				try {
-					Thread.sleep(100);
+                    //noinspection BusyWait
+                    Thread.sleep(100);
 					LOGGER.debug("Waiting for servicelist to be ready");
 				} catch (InterruptedException interExc) {
 					LOGGER.error("Interrupted waiting for service list", interExc);
@@ -549,22 +545,11 @@ public class TunerUsbImpl implements TunerUsb {
 			mRestoreServicesDone = true;
 			mRestoreServicesInProgress = false;
 
-			if(DEBUG)Log.d(TAG, "Restore services finished");
+			LOGGER.debug("Restore services finished");
 			callBack(TunerUsbCallbackTypes.TUNER_READY.getIntValue());
 
 			return null;
 		}
-
-		/*@Override
-		protected void onPostExecute(Void unused) {
-			super.onPostExecute(unused);
-
-			if (!mRestoreVisualsDone && !mRestoreVisualsInProgress && !isCancelled()) {
-				mRestoreVisualsTask = new RestoreVisualsTask();
-				mRestoreVisualsTask.execute();
-				mRestoreVisualsInProgress = true;
-			}
-		}*/
 	}
 
 	/*@SuppressLint("StaticFieldLeak")

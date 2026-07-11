@@ -121,14 +121,14 @@ public interface Tuner {
 	 * May be an empty string in case it is not supported by this tuner.
 	 * @return software version string
 	 */
-	public @NonNull String getSoftwareVersion();
+	public @NotNull String getSoftwareVersion();
 
 	/**
 	 * Get the hardware version string of this tuner
 	 * May be an empty string in case it is not supported by this tuner.
 	 * @return software version string
 	 */
-	public @NonNull String getHardwareVersion();
+	public @NotNull String getHardwareVersion();
 
 	/**
 	 * Subscribe a {@link TunerListener} to receive updates of this tuner

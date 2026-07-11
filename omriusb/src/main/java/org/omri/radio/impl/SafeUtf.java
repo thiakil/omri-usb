@@ -1,10 +1,10 @@
 package org.omri.radio.impl;
 
-import android.util.Log;
-
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Copyright (C) 2023 realzoulou
@@ -25,7 +25,7 @@ import java.util.Arrays;
  */
 
 public class SafeUtf {
-    private static final String LOGTAG = "SafeUtf";
+    private static final Logger LOGGER = LogManager.getLogger("SafeUtf");
 
     /**
      * Converts a byte array holding a C-style string in unknown encoding safely to a Java string.
@@ -47,7 +47,7 @@ public class SafeUtf {
             logStrBuilder.append(" not ").append(StandardCharsets.UTF_8);
         }
         if (resultStr == null) {
-            Log.w(LOGTAG, logStrBuilder.toString());
+            LOGGER.warn(logStrBuilder.toString());
             return ""; // empty string is safe harbor after all attempts to convert failed
         }
         return resultStr;

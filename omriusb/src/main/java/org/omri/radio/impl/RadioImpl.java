@@ -1,7 +1,10 @@
 package org.omri.radio.impl;
 
+import java.util.Objects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 import org.omri.radio.Radio;
 import org.omri.radio.RadioErrorCode;
 import org.omri.radio.RadioStatus;
@@ -16,9 +19,7 @@ import org.omri.tuner.TunerStatus;
 import org.omri.tuner.TunerType;
 
 import com.thiakil.standin.Context;
-import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -43,12 +44,14 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	private RadioStatus mRadioStatus = RadioStatus.STATUS_RADIO_SUSPENDED;
 
 	private final List<Tuner> mTunerList = new ArrayList<Tuner>();
-	private fina List<RadioService> mRadioserviceList = new ArrayList<RadioService>();
+	private final List<RadioService> mRadioserviceList = new ArrayList<RadioService>();
 	private final List<RadioStatusListener> mRadioStatusListeners = new ArrayList<>();
 
 	private Context mContext;
 
-
+	Context getContext() {
+		return mContext;
+	}
 
 	public RadioImpl() {
 	}
@@ -63,24 +66,21 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
         boolean redirectCoutToALog = false;
 		String rawRecordingPath = "";
 		boolean demoMode = false;
-		/*if (bundle != null) {
-			redirectCoutToALog = bundle.getBoolean(RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS, false);
-			rawRecordingPath = bundle.getString(RADIO_INIT_OPT_RAW_RECORDING_PATH, "");
-			demoMode = bundle.getBoolean(RADIO_INIT_OPT_DEMO_MODE, false);
-			if (DEBUG) {
-				Log.d(TAG, RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS + ":" + redirectCoutToALog);
-				Log.d(TAG, RADIO_INIT_OPT_RAW_RECORDING_PATH + ":'" + rawRecordingPath + "'");
-				Log.d(TAG, RADIO_INIT_OPT_DEMO_MODE + ":" + demoMode);
-			}
-		}*/
-		UsbHelper.create(appContext, this, redirectCoutToALog, rawRecordingPath);
+		if (bundle instanceof InitOptions initOptions) {
+			redirectCoutToALog = initOptions.verboseNativeLogs;
+			rawRecordingPath = initOptions.rawRecordingsPath != null? initOptions.rawRecordingsPath : "";
+			demoMode = initOptions.demoMode;
+			LOGGER.debug(RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS + ":" + redirectCoutToALog);
+			LOGGER.debug(RADIO_INIT_OPT_RAW_RECORDING_PATH + ":'" + rawRecordingPath + "'");
+			LOGGER.debug(RADIO_INIT_OPT_DEMO_MODE + ":" + demoMode);
+		}
+		UsbHelper.create(this, redirectCoutToALog, rawRecordingPath);
 
-		//List of Pairs consisting of first.VendorId and second.ProductId
 
 		if (!demoMode) {
 			//Raon DAB USB sticks
 
-			for (long dev : UsbHelper.getInstance().scanDevices()) {
+			for (long dev : Objects.requireNonNull(UsbHelper.getInstance(), "not initialised").scanDevices()) {
 				LOGGER.debug("Found Siano device!");
 				Tuner usbTuner = new TunerUsbImpl(dev);
 				usbTuner.subscribe(this);
@@ -91,7 +91,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		
 		} else {
 			// Demo tuner
-			if(DEBUG)Log.d(TAG, "Adding DemoTuner");
+			LOGGER.debug("Adding DemoTuner");
 			DemoTuner demoTuner = new DemoTuner(rawRecordingPath);
 			demoTuner.subscribe(this);
 			synchronized (mTunerList) {
@@ -132,7 +132,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	@Override
 	public void deInitialize() {
-		if(DEBUG)Log.d(TAG, "deInitialize");
+		LOGGER.debug("deInitialize");
 		synchronized (mTunerList) {
 			for (Tuner tuner : mTunerList) {
 				tuner.stopRadioService();
@@ -153,17 +153,16 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 		}
 
 		if (UsbHelper.getInstance() != null) UsbHelper.getInstance().destroyInstance();
-		VisualLogoManager.getInstance().destroyInstance();
 		RadioServiceManager.getInstance().destroyInstance();
 	}
 
 	@Override
-	public List<Tuner> getAvailableTuners() {
+	public @NonNull List<Tuner> getAvailableTuners() {
 		return mTunerList;
 	}
 
 	@Override
-	public List<Tuner> getAvailableTuners(TunerType tunerType) {
+	public @NonNull List<Tuner> getAvailableTuners(TunerType tunerType) {
 		ArrayList<Tuner> retList = new ArrayList<>();
 		synchronized (mTunerList) {
 			for (Tuner tuner : mTunerList) {
@@ -177,7 +176,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	@Override
-	public List<RadioService> getRadioServices() {
+	public @NonNull List<RadioService> getRadioServices() {
 		LOGGER.debug("Returning Services...");
 
 		synchronized (this) {
@@ -373,8 +372,8 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	public void UsbTunerDeviceDetached(long detachedDevice) {
 		synchronized (mTunerList) {
 			for (Tuner tuner : mTunerList) {
-				if (tuner instanceof TunerUsb) {
-					if (detachedDevice.equals(((TunerUsb) tuner).getUsbDevice())) {
+				if (tuner instanceof TunerUsb tunerUsb) {
+					if (detachedDevice == tunerUsb.getUsbDevice()) {
 						synchronized (mRadioStatusListeners) {
 							for (RadioStatusListener cb : mRadioStatusListeners) {
 								cb.tunerDetached(tuner);
@@ -449,6 +448,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	}
 
+	public record InitOptions(boolean deleteServiced, boolean verboseNativeLogs, @Nullable String rawRecordingsPath, boolean demoMode){}
 	public final static String SERVICE_SEARCH_OPT_DELETE_SERVICES = "delete_services";
 
 	public final static String RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS = "verbose_native_logs";
