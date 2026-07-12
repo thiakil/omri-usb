@@ -158,11 +158,13 @@ elseif(IRTDAB_ADDRESS_SANITIZER STREQUAL "hw" AND ARCH STREQUAL "aarch64")
     )
 endif()
 
+set(JNI_GENERATED_HEADERS "${PROJECT_SOURCE_DIR}/../omriusb/build/generated/sources/headers/java/main")
+
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
 
-target_include_directories (irtdab PRIVATE ${JNI_INCLUDE_DIRS} ${LIBUSB_INCLUDE_DIRS})
+target_include_directories (irtdab PRIVATE ${JNI_GENERATED_HEADERS} ${JNI_INCLUDE_DIRS} ${LIBUSB_INCLUDE_DIRS})
 target_link_libraries( # Specifies the target library.
                        ${PROJECT_NAME}
 

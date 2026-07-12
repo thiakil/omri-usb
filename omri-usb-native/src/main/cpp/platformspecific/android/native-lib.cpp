@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <org_omri_radio_impl_UsbHelper.h>
 
 #include "log4jbridge.h"
 #include "stdoutbridge.h"

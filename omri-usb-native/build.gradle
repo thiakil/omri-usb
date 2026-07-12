@@ -21,17 +21,22 @@ library {
     //targetMachines.add(machines.windows.x86_64)
     //targetMachines.add(machines.macOS.x86_64)
 
+    def generatedHeader = project(":omriusb").getLayout().buildDirectory.dir("generated/sources/headers/java/main")
+
     binaries.configureEach {
 
         // Pass system-specific include directories to the C++ compiler
         compileTask.get().compilerArgs.addAll([
+                "-I${generatedHeader.get()}",
                 "-I${javaHome}/include",
                 "-I${javaHome}/include/linux",
                 "-I${javaHome}/include/win32",
                 "-I${javaHome}/include/darwin",
-				"-std=c++11", 
 				"-frtti", 
-				"-fexceptions"
+				"-fexceptions",
+                "-fno-omit-frame-pointer",
+                "-D_FORTIFY_SOURCE=2",
+                "-fstack-protector-strong",
         ])
     }
 }
