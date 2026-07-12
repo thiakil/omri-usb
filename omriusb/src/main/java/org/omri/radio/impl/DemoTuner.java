@@ -3,6 +3,7 @@ package org.omri.radio.impl;
 import com.thiakil.standin.AsyncTask;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.omri.radioservice.RadioService;
@@ -127,12 +128,12 @@ public class DemoTuner implements Tuner {
     }
 
     @Override
-    public TunerStatus getTunerStatus() {
+    public @NotNull TunerStatus getTunerStatus() {
         return mTunerStatus;
     }
 
     @Override
-    public List<RadioService> getRadioServices() {
+    public @NotNull List<RadioService> getRadioServices() {
         if(mTunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED) {
             return mServices;
         } else {
