@@ -1,4 +1,4 @@
-#include <__bit_reference>
+
 /*
  * Copyright (C) 2020 realzoulou
  *
@@ -21,7 +21,15 @@
 
 #include <iostream>
 #include <chrono>
+#ifndef WIN32
+#include <__bit_reference>
 #include <sys/endian.h>
+#else
+#if defined(__MINGW32__) || defined(__MINGW64__)
+#define htonq(x) __builtin_bswap64(x)
+#define ntohq(x) __builtin_bswap64(x)
+#endif
+#endif
 #include "demousbtunerinput.h"
 
 const std::string DemoUsbTunerInput::DEMO_DEVICE_NAME = "DemoDevice";
@@ -232,7 +240,7 @@ void DemoUsbTunerInput::serviceStarted(jobject radioService) {
 
     int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
     if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
+        if (m_javaVm->AttachCurrentThread((void **) &enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
@@ -260,7 +268,7 @@ void DemoUsbTunerInput::serviceStopped(jobject radioService) {
 
     int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
     if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
+        if (m_javaVm->AttachCurrentThread((void **) &enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
@@ -290,7 +298,7 @@ std::string DemoUsbTunerInput::callJavaRadioServiceGetDescription(jobject radioS
 
     int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
     if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread(&enve, nullptr) == 0) {
+        if (m_javaVm->AttachCurrentThread((void **) &enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
@@ -526,4 +534,8 @@ void DemoUsbTunerInput::inputStreamClose() {
     if (m_inFileStream.is_open()) {
         m_inFileStream.close();
     }
+}
+
+libusb_device * DemoUsbTunerInput::getDeviceHandle() const {
+    return -1;
 }

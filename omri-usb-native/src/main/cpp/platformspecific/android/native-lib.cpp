@@ -27,8 +27,7 @@
 #include <memory>
 
 #include "log4jbridge.h"
-#include "stdoutbridge.h"//TODO merge this
-#include "androidlogbuf.h"
+#include "stdoutbridge.h"
 #include "demousbtunerinput.h"
 #include "ediinput.h"
 #include "jni-helper.h"
@@ -130,8 +129,6 @@ static void cacheClassDefinitions(JavaVM *vm) {
     m_slideshowClass = (jclass) env->NewGlobalRef(
             env->FindClass("org/omri/radio/impl/VisualDabSlideShowImpl"));
 
-    m_ediTunerClass = (jclass) env->NewGlobalRef(
-            env->FindClass("org/omri/radio/impl/TunerEdistream"));
     //OMRI DabTime class
     m_dabTimeClass = (jclass) env->NewGlobalRef(env->FindClass("org/omri/radio/impl/DabTime"));
     //Java Date class
@@ -173,7 +170,6 @@ static void cleanClassDefinitions(JavaVM *vm) {
     env->DeleteGlobalRef(m_dynamicLabelPlusItemClass);
     env->DeleteGlobalRef(m_slideshowClass);
 
-    env->DeleteGlobalRef(m_ediTunerClass);
     env->DeleteGlobalRef(m_dabTimeClass);
     env->DeleteGlobalRef(m_javaDateClass);
     env->DeleteGlobalRef(m_demoTunerClass);
@@ -185,13 +181,18 @@ static void cleanClassDefinitions(JavaVM *vm) {
     }
 }
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
-    //sets the redirect stream for logcat logging
-    std::clog.rdbuf(new androidlogbuf("stdwarn", ANDROID_LOG_WARN));
-    std::cerr.rdbuf(new androidlogbuf("stderr", ANDROID_LOG_ERROR));
+static LogRedirector * clogDirector;
+static LogRedirector * cerrDirector;
+static LogRedirector * coutDirector;
 
-    //todo merge
-    std::cout.rdbuf(new LogRedirector);
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    clogDirector = new LogRedirector(LOGLEVEL_WARN);
+    cerrDirector = new LogRedirector(LOGLEVEL_ERROR);
+    coutDirector = new LogRedirector(LOGLEVEL_DEBUG);
+    //sets the redirect stream for logcat logging
+    std::clog.rdbuf(clogDirector);
+    std::cerr.rdbuf(cerrDirector);
+    std::cout.rdbuf(coutDirector);
     
     JNIEnv *env;
     if (vm != nullptr) {
@@ -219,36 +220,36 @@ JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
 
     cleanClassDefinitions(m_javaVm);
 
-    if (m_CoutRedirectedToALog == JNI_TRUE) {
-        m_CoutRedirectedToALog = JNI_FALSE;
-        delete std::cout.rdbuf(0);
+    if (coutDirector) {
+        std::cout.rdbuf(nullptr);
+        delete coutDirector;
     }
-    delete std::clog.rdbuf(0);
-    delete std::cerr.rdbuf(0);
+    if (cerrDirector) {
+        std::cerr.rdbuf(nullptr);
+        delete cerrDirector;
+    }
+    if (clogDirector) {
+        std::clog.rdbuf(nullptr);
+        delete clogDirector;
+    }
 }
 
 
-JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_created(JNIEnv *env, jobject thiz,
+JNIEXPORT jboolean JNICALL Java_org_omri_radio_impl_UsbHelper_created(JNIEnv *env, jobject thiz,
                                                                   jboolean redirectCoutToALog,
                                                                   jstring rawRecordingPath = nullptr) {
     bool wasDetached;
     if (!JNI_ATTACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
+        return JNI_FALSE;
     }
 
     int r = libusb_init(nullptr);
     if (r != 0) {
-        LOG_ERROR(LOG_TAG, std::string("error in libusb init! ") + libusb_error_name(r));
+        LOG_ERROR(LOG_TAG.c_str(), std::string("error in libusb init! ") + libusb_error_name(r));
         return JNI_FALSE;
     }
 
-
-
-    if (JNI_TRUE == redirectCoutToALog) {
-        m_CoutRedirectedToALog = JNI_TRUE;
-        std::cout.rdbuf(new androidlogbuf);
-    }
     if (rawRecordingPath != nullptr) {
         const char *path = env->GetStringUTFChars(rawRecordingPath, JNI_FALSE);
         if (path != nullptr) {
@@ -263,15 +264,16 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_created(JNIEnv *env, j
     if (!JNI_DETACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
     }
+    return JNI_TRUE;
 }
 
 
-    void print_device_endpoints(libusb_device *dev) {
+void print_device_endpoints(libusb_device *dev) {
     // 1. Get the configuration descriptor
     libusb_config_descriptor *config;
     int r = libusb_get_config_descriptor(dev, 0, &config); // Index 0 = default config
     if (r < 0) {
-        LOG_ERROR(LOG_TAG, std::string("Failed to get config descriptor") + libusb_error_name(r));
+        LOG_ERROR(LOG_TAG.c_str(), std::string("Failed to get config descriptor") + libusb_error_name(r));
         return;
     }
 
@@ -360,7 +362,7 @@ Java_org_omri_radio_impl_UsbHelper_detachDevice(JNIEnv* env, jobject thiz, jlong
     auto bla = m_dabInputs.begin();
     while(bla < m_dabInputs.end()) {
         if(bla->get() != nullptr && bla->get()->getDeviceHandle() == device_handle) {
-            LOG_DEBUG(LOG_TAG,  std::format("Removing UsbTunerInput: {}", bla->get()->getDeviceName()));
+            LOG_DEBUG(LOG_TAG.c_str(),  std::format("Removing UsbTunerInput: {}", bla->get()->getDeviceName()));
             bla->get()->deInitialize();
             m_dabInputs.erase(bla);
             break;
@@ -370,8 +372,8 @@ Java_org_omri_radio_impl_UsbHelper_detachDevice(JNIEnv* env, jobject thiz, jlong
 
     auto devIter = m_usbDevices.cbegin();
     while(devIter != m_usbDevices.cend()) {
-        if((devIter->get() != nullptr && devIter->get()->device_handle() == device_handle) {
-            LOG_DEBUG(LOG_TAG,  std::format("Removing device: {}", devIter->get()->getDeviceName()));
+        if(devIter->get() != nullptr && devIter->get()->device_handle() == device_handle) {
+            LOG_DEBUG(LOG_TAG.c_str(),  std::format("Removing device: {}", devIter->get()->getDeviceName()));
             m_usbDevices.erase(devIter);
             break;
         }
@@ -417,8 +419,13 @@ Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv* env, jobject thiz, job
 }
 
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startSrv(JNIEnv* env, jobject thiz, jlong libusbDevice, jobject dabService) {
+    bool wasDetached;
+    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
+        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
+        return;
+    }
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
-    LOG_DEBUG(LOG_TAG,  std::format("UsbHelper starting service for Device: {}", libusbDevice));
+    LOG_DEBUG(LOG_TAG.c_str(),  std::format("UsbHelper starting service for Device: {}", libusbDevice));
 
     auto devIter = m_dabInputs.cbegin();
     while(devIter != m_dabInputs.cend()) {
@@ -450,7 +457,7 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopSrv(JNIEnv* env, j
     }
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
-    LOG_DEBUG(LOG_TAG,  std::format("UsbHelper stopping service on device: {}", libusbDevice));
+    LOG_DEBUG(LOG_TAG.c_str(),  std::format("UsbHelper stopping service on device: {}", libusbDevice));
 
     auto devIter = m_dabInputs.cbegin();
     while(devIter != m_dabInputs.cend()) {
@@ -494,7 +501,7 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startServiceScan(JNIEn
 
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
-    LOG_DEBUG(LOG_TAG,  std::format("UsbHelper starting serviceScan on device: {}", libusbDevice));
+    LOG_DEBUG(LOG_TAG.c_str(),  std::format("UsbHelper starting serviceScan on device: {}", libusbDevice));
 
     auto devIter = m_dabInputs.cbegin();
     while(devIter != m_dabInputs.cend()) {
@@ -519,7 +526,7 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopServiceScan(JNIEnv
 
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
-    LOG_DEBUG(LOG_TAG,  std::format("UsbHelper stopping serviceScan on device: {}", libusbDevice));
+    LOG_DEBUG(LOG_TAG.c_str(),  std::format("UsbHelper stopping serviceScan on device: {}", libusbDevice));
 
     auto devIter = m_dabInputs.cbegin();
     while(devIter != m_dabInputs.cend()) {
@@ -685,63 +692,6 @@ Java_org_omri_radio_impl_UsbHelper_getSoftwareVersion(JNIEnv *env, jobject thiz,
     }
     return retString;
 }
-
-JNIEXPORT void JNICALL
-Java_org_omri_radio_impl_UsbHelper_setDirectBulkTransferEnabled(JNIEnv *env, jobject thiz,
-                                                                jstring usbDeviceName,
-                                                                jboolean directEnabled) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-    jboolean isCopy;
-    const char *cDeviceName = env->GetStringUTFChars(usbDeviceName, &isCopy);
-    std::string devName(cDeviceName);
-    env->ReleaseStringUTFChars(usbDeviceName, cDeviceName);
-
-    auto devIter = m_usbDevices.cbegin();
-    while (devIter != m_usbDevices.cend()) {
-        if ((*devIter)->getDeviceName() == devName) {
-            (*devIter)->setDirectBulkTransferEnabled(directEnabled);
-            break;
-        }
-    }
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
-}
-
-JNIEXPORT jboolean JNICALL
-Java_org_omri_radio_impl_UsbHelper_getDirectBulkTransferEnabled(JNIEnv *env, jobject thiz,
-                                                                jstring usbDeviceName) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return false;
-    }
-    jboolean isCopy;
-    const char *cDeviceName = env->GetStringUTFChars(usbDeviceName, &isCopy);
-    std::string devName(cDeviceName);
-    env->ReleaseStringUTFChars(usbDeviceName, cDeviceName);
-
-    bool retVal = false;
-    auto devIter = m_usbDevices.cbegin();
-    while (devIter != m_usbDevices.cend()) {
-        if ((*devIter)->getDeviceName() == devName) {
-            retVal = (*devIter)->getDirectBulkTransferEnabled();
-            break;
-        }
-    }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
-
-    return retVal;
-}
-
-
 
 /* Demo Tuner */
 static std::unique_ptr<DemoUsbTunerInput> m_demoInput = nullptr;

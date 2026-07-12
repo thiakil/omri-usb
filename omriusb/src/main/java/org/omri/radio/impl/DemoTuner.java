@@ -42,6 +42,7 @@ public class DemoTuner implements Tuner {
 
     private final static Logger LOGGER = LogManager.getLogger("DemoTuner");
     private final static String DEMO_DEVICE_NAME = "DemoDevice"; // must be equal to DemoUsbTunerInput::DEMO_DEVICE_NAME
+    private final static int DEVICE_ID = -1; // must be equal to DemoUsbTunerInput
     private final TunerType mTunertype = TunerType.TUNER_TYPE_DAB;
     private final List<RadioService> mServices = new ArrayList<>();
     private final List<TunerListener> mTunerlisteners = Collections.synchronizedList(new ArrayList<>());
@@ -147,7 +148,7 @@ public class DemoTuner implements Tuner {
 
             // retrieve DAB services that are linked to the given service
             final ArrayList<RadioServiceDab> linkedDabServices =
-                    UsbHelper.getInstance().getLinkedDabServices(-1,
+                    UsbHelper.getInstance().getLinkedDabServices(DEVICE_ID,
                             (RadioServiceDab) service);
 
             if (linkedDabServices != null) {

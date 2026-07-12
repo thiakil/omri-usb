@@ -1,4 +1,3 @@
-#include "androidlogbuf.h"
 /*
  * Copyright (C) 2020 realzoulou
  *
@@ -21,7 +20,6 @@
 
 #ifndef DAB_DEMOUSBTUNERINPUT_H
 #define DAB_DEMOUSBTUNERINPUT_H
-
 #include <fstream>
 #include <thread>
 #include <memory>
@@ -32,6 +30,9 @@
 #include "jdabservice.h"
 #include "../../linkedservicedab.h"
 
+#ifndef __unused
+#define __unused __attribute__((unused))
+#endif
 
 class DemoUsbTunerInput final : public DabUsbTunerInput, DabEnsemble {
 
@@ -86,6 +87,9 @@ private:
     void readThreadProc();
     void inputStreamOpen(const std::string & filename);
     void inputStreamClose();
+
+public:
+    libusb_device * getDeviceHandle() const override;
 
 private:
     const std::string LOG_TAG{"[DemoTuner] "};
