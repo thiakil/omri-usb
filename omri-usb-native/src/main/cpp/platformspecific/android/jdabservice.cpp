@@ -143,7 +143,7 @@ void JDabService::unlinkDabService() {
     }
 
     std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
-    std::cout << m_logTag << "Un-Linking DABServices... for SId " << std::hex << m_serviceId << std::dec << std::endl;
+    std::clog << m_logTag << "Un-Linking DABServices... for SId " << std::hex << m_serviceId << std::dec << std::endl;
     if (m_linkedDabService != nullptr) {
         m_linkedDabService.reset();
         m_linkedDabService = nullptr;
@@ -261,7 +261,7 @@ std::shared_ptr<DabService> JDabService::getLinkDabService() const {
 
 jobject JDabService::getJavaDabServiceObject() const {
     if (m_linkedJavaDabServiceObject == nullptr) {
-        std::cout << m_logTag << "Returning linked Java DabService object nullptr" << std::endl;
+        std::cerr << m_logTag << "Returning linked Java DabService object nullptr" << std::endl;
     }
     return m_linkedJavaDabServiceObject;
 }

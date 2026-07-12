@@ -129,6 +129,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		synchronized (instanceGuard) {
 			INSTANCE = null;
 		}
+		LOGGER.debug("destroyInstance finished");
 	}
 
 	final boolean isServiceListReady(RadioServiceType type) {

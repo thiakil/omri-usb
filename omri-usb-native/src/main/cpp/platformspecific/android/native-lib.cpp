@@ -458,12 +458,17 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopSrv(JNIEnv* env, j
     LOG_DEBUG(LOG_TAG.c_str(),  std::format("UsbHelper stopping service on device: {}", libusbDevice));
 
     auto devIter = m_dabInputs.cbegin();
+    boolean found = false;
     while(devIter != m_dabInputs.cend()) {
         if(devIter->get() != nullptr && devIter->get()->getDeviceHandle() == device_handle) {
             (*devIter).get()->stopAllRunningServices();
+            found = true;
             break;
         }
         devIter++;
+    }
+    if (!found) {
+        LOG_ERROR(LOG_TAG.c_str(),  std::format("Device not found: {}", libusbDevice));
     }
 
     if (!JNI_DETACH(m_javaVm, wasDetached)) {

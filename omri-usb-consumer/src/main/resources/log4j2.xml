@@ -26,14 +26,14 @@
   </Appenders>
 
   <Loggers>
-    <Logger name="NativeDebug" level="INFO"/>
+    <Logger name="irtdab-Native" level="INFO"/>
     <Logger name="DabService" level="INFO"/>
     <Logger name="TunerUsb" level="INFO"/>
-    <Logger name="RadioServiceManager" level="INFO"/>
+    <Logger name="RadioServiceManager" level="DEBUG"/>
     <Logger name="RadioServiceImpl" level="INFO"/>
     <Logger name="RadioImpl" level="INFO"/>
     <Logger name="UsbHelper" level="INFO"/>
-    <Logger name="UsbHelperNative" level="INFO"/>
+    <Logger name="UsbHelperNative" level="DEBUG"/>
     <Logger name="SlideshowDecoder" level="DEBUG"/>
     <Root level="DEBUG">
       <AppenderRef ref="CONSOLE"/>
