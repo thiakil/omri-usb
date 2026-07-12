@@ -4,6 +4,9 @@ import com.thiakil.standin.Context;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,7 +33,7 @@ public class TestMe {
     public static void main(String[] args) {
         Gst.init();
         Radio instance = Radio.getInstance();
-        instance.initialize(new Context());
+        instance.initialize(new Context(), null);
         List<Tuner> availableTuners = instance.getAvailableTuners();
         LOGGER.info("Found {} tuners", availableTuners.size());
         for (Tuner tuner : availableTuners) {
@@ -60,8 +63,8 @@ public class TestMe {
                 }
 
                 @Override
-                public void tunerScanProgress(Tuner tuner, int percentScanned) {
-                    LOGGER.info("Scan progress: {}", percentScanned);
+                public void tunerScanProgress(Tuner tuner, int percentScanned, int frequencyHz) {
+                    LOGGER.info("Scan progress: {}% Freq: {}khz", percentScanned, frequencyHz/1000.0);
                 }
 
                 @Override
@@ -88,17 +91,22 @@ public class TestMe {
                 private ReceptionQuality lastQuality = null;
 
                 @Override
-                public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality) {
+                public void tunerReceptionStatistics(Tuner tuner, boolean rfLock, ReceptionQuality quality, int rawValue) {
                     if (rfLock != lastLock || quality != lastQuality) {
                         lastLock = rfLock;
                         lastQuality = quality;
-                        LOGGER.info("Reception stats - Lock: {}, quality: {}", rfLock, quality);
+                        LOGGER.info("Reception stats - Lock: {}, quality: {}, rawValue: {}", rfLock, quality, rawValue);
                     }
                 }
 
                 @Override
                 public void tunerRawData(Tuner tuner, byte[] data) {
 
+                }
+
+                @Override
+                public void dabDateTime(Tuner tuner, Date dabDateTime) {
+                    LOGGER.info("Got dabtime: {}", dabDateTime.toInstant());
                 }
             });
             tuner.initializeTuner();

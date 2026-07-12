@@ -6,6 +6,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import org.omri.radio.Radio
+import org.omri.radio.impl.RadioImpl
 import org.omri.radioservice.RadioService
 import org.omri.radioservice.RadioServiceDab
 import org.omri.tuner.Tuner
@@ -16,7 +17,7 @@ import kotlin.collections.mapOf
 
 fun Application.tunerApi() {
     val instance = Radio.getInstance()
-    instance.initialize(Context())
+    instance.initialize(Context(), null)
     instance.getAvailableTuners(TunerType.TUNER_TYPE_DAB).forEach { tuner ->
         tuner.initializeTuner()
     }
