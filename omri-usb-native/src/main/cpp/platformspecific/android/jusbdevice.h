@@ -44,8 +44,8 @@ public:
 
     virtual bool openDevice();
 
-    virtual int writeBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t> &buffer, int timeOutMs = 5000);
-    virtual int readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t>& buffer, int timeOutMs = 5000);
+    virtual int writeBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t> &buffer, int timeOutMs = 500);
+    virtual int readBulkTransferData(uint8_t endPointAddress, std::vector<uint8_t>& buffer, int timeOutMs = 500);
 
 private:
     libusb_device* m_usbDevice{nullptr};
