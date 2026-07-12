@@ -62,19 +62,15 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 		mContext = appContext;
 
-
-        boolean redirectCoutToALog = false;
 		String rawRecordingPath = "";
 		boolean demoMode = false;
 		if (bundle instanceof InitOptions initOptions) {
-			redirectCoutToALog = initOptions.verboseNativeLogs;
 			rawRecordingPath = initOptions.rawRecordingsPath != null? initOptions.rawRecordingsPath : "";
 			demoMode = initOptions.demoMode;
-			LOGGER.debug(RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS + ":" + redirectCoutToALog);
 			LOGGER.debug(RADIO_INIT_OPT_RAW_RECORDING_PATH + ":'" + rawRecordingPath + "'");
 			LOGGER.debug(RADIO_INIT_OPT_DEMO_MODE + ":" + demoMode);
 		}
-		UsbHelper.create(this, redirectCoutToALog, rawRecordingPath);
+		UsbHelper.create(this, rawRecordingPath);
 
 
 		if (!demoMode) {
@@ -448,7 +444,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 
 	}
 
-	public record InitOptions(boolean deleteServiced, boolean verboseNativeLogs, @Nullable String rawRecordingsPath, boolean demoMode){}
+	public record InitOptions(boolean deleteServiced, @Nullable String rawRecordingsPath, boolean demoMode){}
 	public final static String SERVICE_SEARCH_OPT_DELETE_SERVICES = "delete_services";
 
 	public final static String RADIO_INIT_OPT_VERBOSE_NATIVE_LOGS = "verbose_native_logs";

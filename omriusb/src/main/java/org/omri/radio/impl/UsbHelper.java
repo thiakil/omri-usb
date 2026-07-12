@@ -33,7 +33,6 @@ public class UsbHelper {
 
 	private static UsbHelper mInstance = null;
 	private static UsbHelperCallback mUsbCb = null;
-	private static boolean mRedirectCoutToALog = false;
 	private static String mRawRecordingPath = "";
 
 	static {
@@ -44,7 +43,7 @@ public class UsbHelper {
 		System.loadLibrary("irtdab");
 	}
 
-	private native void created(boolean redirectCoutToALog, String rawRecordingPath);
+	private native boolean created(String rawRecordingPath);
 	public native long[] scanDevices();
 	private native void deviceAttached(TunerUsb usbDevice, long libUsbDevice);
 	private native void detachDevice(long libUsbDevice);
@@ -66,7 +65,7 @@ public class UsbHelper {
 	
 	private UsbHelper() {
 		LOGGER.debug("Constructing UsbHelper...");
-		created(mRedirectCoutToALog, mRawRecordingPath);
+		created(mRawRecordingPath);
 	}
 
 	/*public void scanUsbDevices() {
@@ -189,11 +188,10 @@ public class UsbHelper {
 		demoServiceStop();
 	}
 
-	static void create(UsbHelperCallback cb, boolean redirectCoutToALog,
+	static void create(UsbHelperCallback cb,
 					   String rawRecordingPath) {
 		if(mInstance == null) {
 			mUsbCb = cb;
-			mRedirectCoutToALog = redirectCoutToALog;
 			mRawRecordingPath = rawRecordingPath;
 			mInstance = new UsbHelper();
 		}
@@ -202,7 +200,6 @@ public class UsbHelper {
 	void destroyInstance() {
 		LOGGER.debug("destroyInstance");
 
-		mRedirectCoutToALog = false;
 		mUsbCb = null;
 		mInstance = null;
 	}

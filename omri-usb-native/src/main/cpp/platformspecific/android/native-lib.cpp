@@ -237,7 +237,6 @@ JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
 
 
 JNIEXPORT jboolean JNICALL Java_org_omri_radio_impl_UsbHelper_created(JNIEnv *env, jobject thiz,
-                                                                  jboolean redirectCoutToALog,
                                                                   jstring rawRecordingPath = nullptr) {
     bool wasDetached;
     if (!JNI_ATTACH(m_javaVm, wasDetached)) {
@@ -448,8 +447,6 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startSrv(JNIEnv* env, 
     }
 }
 
-}
-
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopSrv(JNIEnv* env, jobject thiz, jlong libusbDevice) {
     bool wasDetached;
     if (!JNI_ATTACH(m_javaVm, wasDetached)) {
@@ -543,10 +540,8 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopServiceScan(JNIEnv
     }
 }
 
-#error "FIXME: libusb"
-
 JNIEXPORT jobject JNICALL
-Java_org_omri_radio_impl_UsbHelper_getLinkedServices(JNIEnv *env, jobject thiz, jstring deviceName,
+Java_org_omri_radio_impl_UsbHelper_getLinkedServices(JNIEnv *env, jobject thiz, jlong libusbDevice,
                                                      jobject dabService) {
 
     bool wasDetached;
@@ -557,16 +552,14 @@ Java_org_omri_radio_impl_UsbHelper_getLinkedServices(JNIEnv *env, jobject thiz, 
 
     jobject retObj = nullptr;
 
-    const char *cDeviceName = env->GetStringUTFChars(deviceName, JNI_FALSE);
-    std::string devName(cDeviceName);
-    env->ReleaseStringUTFChars(deviceName, cDeviceName);
+    auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
-    std::cout << LOG_TAG << " getting service linking services for device: " << devName
+    std::cout << LOG_TAG << " getting service linking services for device: " << device_handle
               << std::endl;
 
     auto devIter = m_dabInputs.cbegin();
     while (devIter != m_dabInputs.cend()) {
-        if (devIter->get() != nullptr && devIter->get()->getDeviceName() == devName) {
+        if (devIter->get() != nullptr && devIter->get()->getDeviceHandle() == device_handle) {
 
             // convert Java input RadioServiceDab dabService via JDabService to a LinkedServiceDab
             JDabService jDabService(m_javaVm, env, m_radioServiceDabImplClass, m_dynamicLabelClass,
@@ -630,23 +623,21 @@ Java_org_omri_radio_impl_UsbHelper_getLinkedServices(JNIEnv *env, jobject thiz, 
 
 JNIEXPORT jstring JNICALL
 Java_org_omri_radio_impl_UsbHelper_getHardwareVersion(JNIEnv *env, jobject thiz,
-                                                      jstring deviceName) {
+                                                      jlong libusbDevice) {
     bool wasDetached;
     if (!JNI_ATTACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
         return nullptr;
     }
 
-    const char *cDeviceName = env->GetStringUTFChars(deviceName, JNI_FALSE);
-    std::string devName(cDeviceName);
-    env->ReleaseStringUTFChars(deviceName, cDeviceName);
+    auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
     std::string hardwareVersion;
     auto devIter = m_dabInputs.cbegin();
     while (devIter != m_dabInputs.cend()) {
-        if (devIter->get() != nullptr && devIter->get()->getDeviceName() == devName) {
+        if (devIter->get() != nullptr && devIter->get()->getDeviceHandle() == device_handle) {
             hardwareVersion = (*devIter).get()->getHardwareVersion();
-            std::cout << LOG_TAG << " hardware version of device: " << devName << " : " << hardwareVersion << std::endl;
+            std::cout << LOG_TAG << " hardware version of device: " << device_handle << " : " << hardwareVersion << std::endl;
             break;
         }
     }
@@ -663,23 +654,21 @@ Java_org_omri_radio_impl_UsbHelper_getHardwareVersion(JNIEnv *env, jobject thiz,
 
 JNIEXPORT jstring JNICALL
 Java_org_omri_radio_impl_UsbHelper_getSoftwareVersion(JNIEnv *env, jobject thiz,
-                                                      jstring deviceName) {
+                                                      jlong libusbDevice) {
     bool wasDetached;
     if (!JNI_ATTACH(m_javaVm, wasDetached)) {
         std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
         return nullptr;
     }
 
-    const char *cDeviceName = env->GetStringUTFChars(deviceName, JNI_FALSE);
-    std::string devName(cDeviceName);
-    env->ReleaseStringUTFChars(deviceName, cDeviceName);
+    auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
     std::string softwareVersion;
     auto devIter = m_dabInputs.cbegin();
     while (devIter != m_dabInputs.cend()) {
-        if (devIter->get() != nullptr && devIter->get()->getDeviceName() == devName) {
+        if (devIter->get() != nullptr && devIter->get()->getDeviceHandle() == device_handle) {
             softwareVersion = (*devIter).get()->getSoftwareVersion();
-            std::cout << LOG_TAG << " software version of device: " << devName << " : " << softwareVersion << std::endl;
+            std::cout << LOG_TAG << " software version of device: " << device_handle << " : " << softwareVersion << std::endl;
             break;
         }
     }
