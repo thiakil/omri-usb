@@ -22,18 +22,18 @@ public class Log4jBridge {
 
     // Methods used in native
     public static void logTrace(String tag, String message) {
-        getLogger(tag).trace(message);
+        getLogger(tag).trace(message.trim());
     }
     public static void logDebug(String tag, String message) {
-        getLogger(tag).debug(message);
+        getLogger(tag).debug(message.trim());
     }
     public static void logInfo(String tag, String message) {
-        getLogger(tag).info(message);
+        getLogger(tag).info(message.trim());
     }
     public static void logWarn(String tag, String message) {
-        getLogger(tag).warn(message);
+        getLogger(tag).warn(message.trim());
     }
     public static void logError(String tag, String message) {
-        getLogger(tag).error(message);
+        getLogger(tag).error(message.trim());
     }
 }
