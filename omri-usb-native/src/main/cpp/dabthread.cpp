@@ -22,6 +22,7 @@
 
 #include "dabthread.h"
 
+#ifdef USE_DABTHREAD_IMPL
 const std::string DabJoiningThread::LOG_TAG{"[DabJoiningThread] "};
 
 DabJoiningThread::~DabJoiningThread() {
@@ -74,3 +75,5 @@ void DabJoiningThread::threadFuncException() {
     str.append("Exception thread ").append(std::to_string(mNativeThreadId));
     std::cout << str << std::endl;
 }
+
+#endif

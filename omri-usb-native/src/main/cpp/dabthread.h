@@ -32,15 +32,18 @@
 #include <exception>
 #include <iostream>
 #include <thread>
+#ifndef _WIN32
 #include <syscall.h>
+#endif
 #include <unistd.h>
 
 #define DAB_THREAD_NAME_LEN 20 // same as TASK_COMM_LEN in Linux kernel
 
 #if __cpp_lib_jthread >= 201911L
 using Base = std::jthread;
-typedef DabThread = Base;
+using DabThread = Base;
 #else
+#define USE_DABTHREAD_IMPL 1
 using Base = std::thread;
 
 class DabThreadState {
