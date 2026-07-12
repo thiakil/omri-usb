@@ -29,8 +29,16 @@
 #include <pthread.h>
 #include <time.h>
 #include <unistd.h>
-#include <syscall.h>
+#include "../../thread_id.h"
+#ifndef WIN32
+#include <__bit_reference>
 #include <sys/endian.h>
+#else
+#if defined(__MINGW32__) || defined(__MINGW64__)
+#define htonq(x) __builtin_bswap64(x)
+#define ntohq(x) __builtin_bswap64(x)
+#endif
+#endif
 #include <sys/stat.h>
 
 #include "../../ficparser.h"
@@ -435,19 +443,9 @@ bool RaonTunerInput::hasUsbIoErrors() {
         if (!mUsbIoErrorReported) {
             std::clog << LOG_TAG << "too many USB I/O failures" << std::endl;
             if (m_usbDevice != nullptr) {
-                if (m_usbDevice->getDirectBulkTransferEnabled()) {
-                    // switch from direct to JNI based bulk transfer method
-                    std::clog << LOG_TAG << "trying JNI based bulk transfer method" << std::endl;
-                    m_usbDevice->setDirectBulkTransferEnabled(false);
-                    // reset attributes
-                    mUsbReadFailure = mUsbWriteFailure = 0;
-                    // had I/O error, try again
-                    return false;
-                } else {
-                    mUsbIoErrorReported = true;
-                    m_usbDevice->callCallback(
-                            JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_FAILED);
-                }
+                mUsbIoErrorReported = true;
+                m_usbDevice->callCallback(
+                        JTunerUsbDevice::TUNER_CALLBACK_TYPE::TUNER_CALLBACK_FAILED);
             }
         }
         // slow down calling thread by 5 ms because this is called on a high frequency
@@ -1384,7 +1382,7 @@ void RaonTunerInput::closeSubchannel(uint8_t subchanId) {
 }
 
 void RaonTunerInput::threadedScanningFicRead() {
-    long tid = syscall(SYS_gettid);
+    long tid = GET_THREAD_ID;
     char threadName[TASK_COMM_LEN];
     snprintf(threadName, TASK_COMM_LEN-1, "FicR-%lx", tid);
     threadName[TASK_COMM_LEN-1] = '\0';
@@ -1551,7 +1549,9 @@ void RaonTunerInput::rawRecordFicWrite(const std::vector<uint8_t>& data) {
         if (currentTimeMillis - m_lastFlushTime >= 1000ULL) {
             m_lastFlushTime = currentTimeMillis;
             m_outFileStream.flush();
+#ifndef WIN32
             sync(); // causes all pending modifications to filesystem metadata and cached file data to be written to the underlying filesystems
+#endif
             std::cout << LOG_TAG << "rawRecordFicWrite flush " << currentTimeMillis << std::endl;
         }
     }
@@ -1584,7 +1584,9 @@ void RaonTunerInput::rawRecordMscWrite(const std::vector<uint8_t>& data) {
         if (currentTimeMillis - m_lastFlushTime >= 1000ULL) {
             m_lastFlushTime = currentTimeMillis;
             m_outFileStream.flush();
+#ifndef WIN32
             sync(); // causes all pending modifications to filesystem metadata and cached file data to be written to the underlying filesystems
+#endif
             std::cout << LOG_TAG << "rawRecordMscWrite flush " << currentTimeMillis << std::endl;
         }
     }

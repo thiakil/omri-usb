@@ -3,7 +3,7 @@
 
 # Sets the minimum version of CMake required to build the native library.
 cmake_minimum_required(VERSION  3.22.1)
-
+set(CMAKE_CXX_STANDARD 23)
 project(irtdab)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules
         CACHE STRING "CMake module path")
@@ -114,6 +114,8 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -Wno-c++14-binary-literal
         -Wno-comment
         -Wno-four-char-constants
+        #same as above but mingw64
+        -Werror=multichar
         -Wno-gnu-statement-expression
         -Wno-sign-compare
         -Wno-unused-but-set-variable

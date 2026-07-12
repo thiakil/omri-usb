@@ -24,6 +24,7 @@
 #include <memory>
 #include <vector>
 #include <algorithm>
+#include <atomic>
 
 #include <iostream>
 

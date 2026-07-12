@@ -86,7 +86,7 @@ void DynamiclabelDecoder::parseDlsData() {
 #ifdef VERBOSE
             std::string loglabel = convertToStdStringUsingCharset(
                     std::vector<uint8_t>(m_dlsFullData.cbegin(), m_dlsFullData.cend()),
-                    static_cast<const registeredtables::CHARACTER_SET>(m_currentDlsCharset));
+                    static_cast<registeredtables::CHARACTER_SET>(m_currentDlsCharset));
             std::cout << m_logTag  << " SEGMENT_TYPE::FIRST: charset=" << +m_currentDlsCharset << " '"
                 << loglabel << std::string() << "'" << std::endl;
 #endif // VERBOSE
@@ -110,7 +110,7 @@ void DynamiclabelDecoder::parseDlsData() {
 #ifdef VERBOSE
                 std::string loglabel = convertToStdStringUsingCharset(
                         std::vector<uint8_t>(m_dlsFullData.cbegin(), m_dlsFullData.cend()),
-                        static_cast<const registeredtables::CHARACTER_SET>(m_currentDlsCharset));
+                        static_cast<registeredtables::CHARACTER_SET>(m_currentDlsCharset));
                 std::cout << m_logTag  << " SEGMENT_TYPE::INTER: " << loglabel << std::endl;
 #endif // VERBOSE
             }
@@ -132,14 +132,14 @@ void DynamiclabelDecoder::parseDlsData() {
 #ifdef VERBOSE
                 std::string loglabel = convertToStdStringUsingCharset(
                         std::vector<uint8_t>(m_dlsFullData.cbegin(), m_dlsFullData.cend()),
-                        static_cast<const registeredtables::CHARACTER_SET>(m_currentDlsCharset));
+                        static_cast<registeredtables::CHARACTER_SET>(m_currentDlsCharset));
                 std::cout << m_logTag  << " SEGMENT_TYPE::LAST: length=" << +length << " " << loglabel << std::endl;
 #endif // VERBOSE
                 if(!m_isDynamicPlus || m_isFirstDL) {
                     DabDynamicLabel label;
                     label.dynamicLabel = convertToStdStringUsingCharset(
                             std::vector<uint8_t>(m_dlsFullData.cbegin(), m_dlsFullData.cend()),
-                            static_cast<const registeredtables::CHARACTER_SET>(m_currentDlsCharset));
+                            static_cast<registeredtables::CHARACTER_SET>(m_currentDlsCharset));
                     label.charset = m_currentDlsCharset;
 #ifdef VERBOSE
                     std::cout << m_logTag  << " SEGMENT_TYPE::LAST: invoke" <<  std::endl;
@@ -161,13 +161,13 @@ void DynamiclabelDecoder::parseDlsData() {
 #ifdef VERBOSE
             std::string loglabel = convertToStdStringUsingCharset(
                     std::vector<uint8_t>(m_dlsFullData.cbegin(), m_dlsFullData.cend()),
-                    static_cast<const registeredtables::CHARACTER_SET>(m_currentDlsCharset));
+                    static_cast<registeredtables::CHARACTER_SET>(m_currentDlsCharset));
             std::cout << m_logTag  << " SEGMENT_TYPE::ONE_AND_ONLY: charset=" << +m_currentDlsCharset << " '"
                       << loglabel << std::string() << "'" << std::endl;
 #endif // VERBOSE
             label.dynamicLabel = convertToStdStringUsingCharset(
                     std::vector<uint8_t>(dlIter, dlIter + length),
-                    static_cast<const registeredtables::CHARACTER_SET>(m_currentDlsCharset));
+                    static_cast<registeredtables::CHARACTER_SET>(m_currentDlsCharset));
 
             if(!m_isDynamicPlus || m_isFirstDL) {
 #ifdef VERBOSE
@@ -234,7 +234,7 @@ void DynamiclabelDecoder::parseDlsData() {
 
                         label.dynamicLabel = convertToStdStringUsingCharset(
                             std::vector<uint8_t>(m_dlsFullData.cbegin(), m_dlsFullData.cend()),
-                            static_cast<const registeredtables::CHARACTER_SET>(m_currentDlsCharset));
+                            static_cast<registeredtables::CHARACTER_SET>(m_currentDlsCharset));
                         label.charset = m_currentDlsCharset;
 
                         label.itemToggle = (*dlIter & 0x08) >> 3 != 0;
@@ -260,7 +260,7 @@ void DynamiclabelDecoder::parseDlsData() {
                                     dlItem.dlPlusTagText = convertToStdStringUsingCharset(
                                             std::vector<uint8_t>(m_dlsFullData.begin() + startMarker,
                                                                  m_dlsFullData.begin() + startMarker + lengthMarker + 1),
-                                            static_cast<const registeredtables::CHARACTER_SET>(m_currentDlsCharset));
+                                            static_cast<registeredtables::CHARACTER_SET>(m_currentDlsCharset));
 #ifdef VERBOSE
                                     std::cout << m_logTag << " DLPLUS ContentType: " << +dlItem.contentType << " Start: " << +startMarker << " Length: " << +lengthMarker << std::endl;
                                     std::cout << m_logTag << " DLPLUS: " << DynamiclabelDecoder::DL_PLUS_CONTENT_TYPE_STRING[dlItem.contentType] << " : " << dlItem.dlPlusTagText << std::endl;

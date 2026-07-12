@@ -18,7 +18,12 @@
  *
  */
 
-#ifndef __STDC_NO_THREADS__
+//todo make win32 compatible?
+#if defined(__STDC_NO_THREADS__) || defined(WIN32)
+#define NO_THREADS_JNI 1
+#endif
+
+#ifndef NO_THREADS_JNI
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -27,7 +32,7 @@
 #include <unistd.h>
 
 thread_local tss_t tss_key;
-#else
+#elif defined(__STDC_NO_THREADS__)
 #warning __STDC_NO_THREADS__ is defined
 #endif
 #include "jni-helper.h"
@@ -38,9 +43,9 @@ bool JNI_ATTACH_ENV(JavaVM * javaVmPtr, bool & wasDetached, JNIEnv* * jniEnvPtr)
         JNIEnv *enve;
         int envState = javaVmPtr->GetEnv((void **) &enve, JNI_VERSION_1_6);
         if (envState == JNI_EDETACHED) {
-            if (javaVmPtr->AttachCurrentThread(&enve, nullptr) == JNI_OK) {
+            if (javaVmPtr->AttachCurrentThread((void **) &enve, nullptr) == JNI_OK) {
                 wasDetached = true;
-#ifndef __STDC_NO_THREADS__
+#ifndef NO_THREADS_JNI
                 /** store JavaVM ptr in thread local storage
                  *  see https://developer.android.com/training/articles/perf-jni
                  */
@@ -48,7 +53,7 @@ bool JNI_ATTACH_ENV(JavaVM * javaVmPtr, bool & wasDetached, JNIEnv* * jniEnvPtr)
                 if (thrd_success == rc) {
                     tss_set(tss_key, javaVmPtr);
                 }
-#endif // __STDC_NO_THREADS__
+#endif // NO_THREADS_JNI
             } else {
                 return false;
             }
@@ -68,7 +73,7 @@ bool JNI_DETACH(JavaVM * javaVmPtr, bool wasDetached) {
     if (wasDetached) {
         if (javaVmPtr != nullptr) {
             if (javaVmPtr->DetachCurrentThread() == 0) {
-#ifndef __STDC_NO_THREADS__
+#ifndef NO_THREADS_JNI
                 tss_delete(tss_key);
 #endif
                 return true;
@@ -79,7 +84,7 @@ bool JNI_DETACH(JavaVM * javaVmPtr, bool wasDetached) {
     return true;
 }
 
-#ifndef __STDC_NO_THREADS__
+#ifndef NO_THREADS_JNI
 /**
  * @see https://developer.android.com/training/articles/perf-jni
  */

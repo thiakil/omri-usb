@@ -37,7 +37,7 @@ void Fig_01::parseLabel(std::vector<uint8_t>::const_iterator& labelIter,
     labelIter += 16;
 
     std::string labelFull = DynamiclabelDecoder::convertToStdStringUsingCharset(label16,
-        static_cast<const registeredtables::CHARACTER_SET>(m_charSet), isOk);
+        static_cast<registeredtables::CHARACTER_SET>(m_charSet), isOk);
 
     std::vector<uint8_t> label8(8, 0);
     /* Character flag field: this 16-bit flag field shall indicate which of the characters of
@@ -64,7 +64,7 @@ void Fig_01::parseLabel(std::vector<uint8_t>::const_iterator& labelIter,
     std::string labelShort(8,0);
     if (isOk) {
         labelShort = DynamiclabelDecoder::convertToStdStringUsingCharset(label8,
-            static_cast<const registeredtables::CHARACTER_SET>(m_charSet), isOk);
+            static_cast<registeredtables::CHARACTER_SET>(m_charSet), isOk);
     }
     if (!isOk) {
         std::stringstream logMsg;

@@ -119,7 +119,7 @@ private:
 
             crcVal = (*dataIter++) << 8;
             crcVal = static_cast<uint16_t>(crcVal | (*dataIter));
-        } catch(std::out_of_range oor) {
+        } catch(std::out_of_range& oor) {
             std::cout << m_logTag << " CRC iterator out of range catched..." << std::endl;
             return false;
         }

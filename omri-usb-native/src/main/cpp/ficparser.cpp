@@ -20,8 +20,8 @@
 
 #include <iostream>
 #include <pthread.h>
-#include <syscall.h>
 #include <unistd.h>
+#include "thread_id.h"
 
 #include "dabthread.h"
 #include "ficparser.h"
@@ -149,7 +149,7 @@ void FicParser::call(const std::vector<uint8_t> &data, bool rfLock) {
 
 void FicParser::processFib() {
     // give thread a name
-    long tid = syscall(SYS_gettid);
+    long tid = GET_THREAD_ID;
     char threadName[DAB_THREAD_NAME_LEN];
     snprintf(threadName, DAB_THREAD_NAME_LEN-1, "FIB-%ld", tid);
     threadName[DAB_THREAD_NAME_LEN-1] = '\0';
