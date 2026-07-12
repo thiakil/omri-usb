@@ -91,6 +91,10 @@ class DabAudioDecoder {
 
 
 	void feedData(byte[] audioData) {
+		if (mDecodeThread == null || !mDecodeThread.isAlive()) {
+			LOGGER.warn("Discarding audio data as thread is not alive");
+			return;
+		}
 		if (mConfCodec == DAB_CODEC_AAC) {
 			mDataQ.offer(audioData);
 		}//todo non-aac
@@ -101,11 +105,14 @@ class DabAudioDecoder {
 
 		closeGst();
 
+		ArrayList<DabAudioDecoderStateCallBack> currentCallbacks;
 		synchronized (mCodecStateCallbacks){
-			for (DabAudioDecoderStateCallBack cb : mCodecStateCallbacks) {
-				if (cb != null) {
-					cb.codecStopped(this);
-				}
+			currentCallbacks = new ArrayList<>(mCodecStateCallbacks);
+		}
+		//callbacks delete themselves
+		for (DabAudioDecoderStateCallBack cb : currentCallbacks) {
+			if (cb != null) {
+				cb.codecStopped(this);
 			}
 		}
 	}
@@ -136,6 +143,7 @@ class DabAudioDecoder {
 				}
 			}
 		}
+		mDataQ.clear();
 	}
 
 	boolean configure(int dabCodec, int samplingRate, int channelCnt, boolean sbr, boolean ps) {
@@ -297,15 +305,19 @@ class DabAudioDecoder {
 		public void run() {
 			LOGGER.debug("Starting DecodeThread");
 			mDecode = true;
+			THREADLOOP:
 			while (mDecode) {
 				//todo better waiting?
-				while (mDataQ.isEmpty()) {
+				while (mDecode && mDataQ.isEmpty()) {
 					try {
 						Thread.sleep(5);
 					} catch (InterruptedException e) {
 						LOGGER.error("Interrupted", e);
-						return;
+						break THREADLOOP;
 					}
+				}
+				if (!mDecode) {
+					break THREADLOOP;
 				}
 				try {
 					byte[] rawAacFrame = mDataQ.poll();
@@ -323,9 +335,9 @@ class DabAudioDecoder {
 					if (ret != FlowReturn.OK) {
 						throw new IllegalStateException("Buffer push failed: " + ret);
 					}
-					if (mDecode && pipeline.getState() != State.PLAYING) {
+					/*if (mDecode && pipeline.getState() != State.PLAYING) {
 						pipeline.play();
-					}
+					}*/
 				} catch (Exception e) {
 					LOGGER.error(e);
 				}
