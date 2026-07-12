@@ -36,10 +36,10 @@ public class UsbHelper {
 	private static String mRawRecordingPath = "";
 
 	static {
-		System.loadLibrary("libwinpthread-1");
+		/*System.loadLibrary("libwinpthread-1");
 		System.loadLibrary("libgcc_s_seh-1");
 		System.loadLibrary("libstdc++-6");
-		System.loadLibrary("libusb-1.0");
+		System.loadLibrary("libusb-1.0");*/
 		System.loadLibrary("irtdab");
 	}
 
