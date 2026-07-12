@@ -115,7 +115,7 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -Wno-comment
         -Wno-four-char-constants
         #same as above but mingw64
-        -Werror=multichar
+        -Wno-error=multichar
         -Wno-gnu-statement-expression
         -Wno-sign-compare
         -Wno-unused-but-set-variable
@@ -132,11 +132,12 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -D_FORTIFY_SOURCE=2
         -fstack-protector-strong # not using -fstack-protector-all because of execution time impact
         )
+if(!WIN32)
 target_link_options(${PROJECT_NAME} PUBLIC
         -Wl,-z,now -Wl,-z,relro  # GOT protection
         -Wl,-z,noexecstack       # mark stack not-executable
         )
-
+endif()
 
 if(IRTDAB_ADDRESS_SANITIZER STREQUAL "yes")
     target_compile_options(${PROJECT_NAME} PUBLIC -fsanitize=address)
@@ -163,6 +164,10 @@ set(JNI_GENERATED_HEADERS "${PROJECT_SOURCE_DIR}/../omriusb/build/generated/sour
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
+
+if (WIN32)
+    target_link_libraries(${PROJECT_NAME} "ws2_32")
+endif ()
 
 target_include_directories (irtdab PRIVATE ${JNI_GENERATED_HEADERS} ${JNI_INCLUDE_DIRS} ${LIBUSB_INCLUDE_DIRS})
 target_link_libraries( # Specifies the target library.

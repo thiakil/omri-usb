@@ -537,5 +537,5 @@ void DemoUsbTunerInput::inputStreamClose() {
 }
 
 libusb_device * DemoUsbTunerInput::getDeviceHandle() const {
-    return -1;
+    return (libusb_device*)-1;
 }

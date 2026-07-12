@@ -23,10 +23,12 @@ library {
 
     def generatedHeader = project(":omriusb").getLayout().buildDirectory.dir("generated/sources/headers/java/main")
 
-    binaries.configureEach {
+    binaries.configureEach {CppBinary cppBinary ->
+        def theCompileTask = cppBinary.compileTask.get()
+        theCompileTask.dependsOn(project(":omriusb").tasks.withType(JavaCompile))
 
         // Pass system-specific include directories to the C++ compiler
-        compileTask.get().compilerArgs.addAll([
+        theCompileTask.compilerArgs.addAll([
                 "-I${generatedHeader.get()}",
                 "-I${javaHome}/include",
                 "-I${javaHome}/include/linux",
@@ -43,6 +45,12 @@ library {
 
 tasks.withType(LinkSharedLibrary).configureEach {
     linkerArgs.addAll("-pthread", "-lusb-1.0", "-L${javaHome}/lib", '-ljvm')
+    linkerArgs.add(it.targetPlatform.map {
+        if (it.operatingSystem.windows) {
+            return "-lws2_32"
+        }
+        return ""
+    })
 }
 
 if (localProperties.containsKey("custom_gcc")) {
