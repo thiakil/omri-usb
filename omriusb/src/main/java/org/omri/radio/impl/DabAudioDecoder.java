@@ -101,9 +101,11 @@ class DabAudioDecoder {
 
 		closeGst();
 
-		for (DabAudioDecoderStateCallBack cb : mCodecStateCallbacks) {
-			if (cb != null) {
-				cb.codecStopped(this);
+		synchronized (mCodecStateCallbacks){
+			for (DabAudioDecoderStateCallBack cb : mCodecStateCallbacks) {
+				if (cb != null) {
+					cb.codecStopped(this);
+				}
 			}
 		}
 	}
@@ -212,7 +214,7 @@ class DabAudioDecoder {
 				}
 			}
 
-			if (mConfChans == 1/* && !mConfPs*/) {
+			if (mConfChans == 1 && !mConfPs) {
 				LOGGER.debug("Configuring ASC for Mono!");
 				ascBytes[1] = (byte) (ascBytes[1] - 8);
 			}
@@ -230,7 +232,7 @@ class DabAudioDecoder {
 			Element aacParse = ElementFactory.make("aacparse", "parser");
 			Element decoder;
 			try {
-				decoder = ElementFactory.make("fdkaacdec", "decoder");
+				decoder = ElementFactory.make("faad", "decoder");
 			} catch (Exception e) {
 				LOGGER.warn("Falling back to avdec", e);
 				decoder = ElementFactory.make("avdec_aac", "decoder");
@@ -321,7 +323,7 @@ class DabAudioDecoder {
 					if (ret != FlowReturn.OK) {
 						throw new IllegalStateException("Buffer push failed: " + ret);
 					}
-					if (pipeline.getState() != State.PLAYING) {
+					if (mDecode && pipeline.getState() != State.PLAYING) {
 						pipeline.play();
 					}
 				} catch (Exception e) {
@@ -342,13 +344,17 @@ class DabAudioDecoder {
 
 	private final ArrayList<DabAudioDecoderStateCallBack> mCodecStateCallbacks = new ArrayList<>();
 	void registerDabAudioDecoderStateCallBack(DabAudioDecoderStateCallBack stateCb) {
-		if (!mCodecStateCallbacks.contains(stateCb)) {
-			mCodecStateCallbacks.add(stateCb);
+		synchronized (mCodecStateCallbacks){
+			if (!mCodecStateCallbacks.contains(stateCb)) {
+				mCodecStateCallbacks.add(stateCb);
+			}
 		}
 	}
 
 	void unregisterDabAudioDecoderStateCallBack(DabAudioDecoderStateCallBack stateCb) {
-		mCodecStateCallbacks.remove(stateCb);
+		synchronized (mCodecStateCallbacks){
+			mCodecStateCallbacks.remove(stateCb);
+		}
 	}
 
 	interface DabAudioDecoderStateCallBack {
