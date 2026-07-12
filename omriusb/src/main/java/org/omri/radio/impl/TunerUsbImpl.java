@@ -141,6 +141,17 @@ public class TunerUsbImpl implements TunerUsb {
 			case TUNER_STATUS_INITIALIZED: {
 				if (UsbHelper.getInstance() != null) {
 					UsbHelper.getInstance().stopService(mUsbDevice);
+					if (getCurrentRunningRadioService() != null) {
+                        LOGGER.debug("Waiting for service to exit");
+						try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {
+                            LOGGER.error(e);
+                        }
+						if (getCurrentRunningRadioService() != null) {
+							LOGGER.error("Service still seems to be running");
+						}
+                    }
 					UsbHelper.getInstance().removeDevice(mUsbDevice);
 				}
 
