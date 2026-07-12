@@ -1369,12 +1369,14 @@ void RaonTunerInput::closeSubchannel(uint8_t subchanId) {
     auto & service = m_startServiceLink;
     if(service != nullptr) {
         service->decodeAudio(false);
-        service->unlinkDabService();
         if(service->getJavaDabServiceObject() != nullptr) {
             if (m_usbDevice != nullptr) {
                 m_usbDevice->serviceStopped(service->getJavaDabServiceObject());
             }
+        } else {
+            std::cerr << "No java dabservice object" << std::endl;
         }
+        service->unlinkDabService();
 
         m_startServiceLink.reset();
         m_startServiceLink = nullptr;
