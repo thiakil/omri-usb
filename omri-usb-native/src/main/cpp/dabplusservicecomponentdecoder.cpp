@@ -273,8 +273,9 @@ void DabPlusServiceComponentDecoder::processData() {
                     m_rsDec.DecodeSuperframe(m_currentSuperFrame.superFrameData.data(), m_currentSuperFrame.superFrameData.size());
 
                     if(m_currentSuperFrame.superFrameData.size() >= m_superFrameSize) {
-                        auBuff.clear();
+
                         for(int i = 0; i < m_currentSuperFrame.numAUs; i++) {
+                            auBuff.clear();
 
                             if(!m_processThreadRunning) {
                                 return;
@@ -299,12 +300,12 @@ void DabPlusServiceComponentDecoder::processData() {
                                 }
 
                                 auBuff.insert(auBuff.end(), m_currentSuperFrame.superFrameData.begin()+m_currentSuperFrame.auStarts[i], m_currentSuperFrame.superFrameData.begin() + m_currentSuperFrame.auStarts[i] + m_currentSuperFrame.auLengths[i] - 2); // -2 of length to cut off CRC
+                                m_audioDataDispatcher.invoke(auBuff, 63, m_currentSuperFrame.channels, m_currentSuperFrame.samplingRate, m_currentSuperFrame.sbrUsed, m_currentSuperFrame.psUsed);
                             } else {
                                 std::cout << m_logTag << " SuperFrame AU[" << +i << "] CRC failed, Bitrate: " << +m_subChanBitrate << std::endl;
                             }
                         }
 
-                        m_audioDataDispatcher.invoke(auBuff, 63, m_currentSuperFrame.channels, m_currentSuperFrame.samplingRate, m_currentSuperFrame.sbrUsed, m_currentSuperFrame.psUsed);
                     }
 
                     m_dabSuperFrameCount = 0;
