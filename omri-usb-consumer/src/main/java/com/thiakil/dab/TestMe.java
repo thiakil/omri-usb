@@ -1,9 +1,13 @@
 package com.thiakil.dab;
 
 import com.thiakil.standin.Context;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
@@ -12,9 +16,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.freedesktop.gstreamer.Gst;
 import org.omri.radio.Radio;
+import org.omri.radio.impl.DabAudioDecoder;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceListener;
+import org.omri.radioservice.RadioServiceMimeType;
+import org.omri.radioservice.RadioServiceRawAudiodataListener;
 import org.omri.radioservice.metadata.Textual;
 import org.omri.radioservice.metadata.TextualDabDynamicLabel;
 import org.omri.radioservice.metadata.TextualDabDynamicLabelPlusItem;
@@ -30,11 +37,12 @@ import org.omri.tuner.TunerStatus;
 public class TestMe {
     private static final Logger LOGGER = LogManager.getLogger();
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         Gst.init();
         Radio instance = Radio.getInstance();
         instance.initialize(new Context(), null);
         List<Tuner> availableTuners = instance.getAvailableTuners();
+        OutputStream audioData = new BufferedOutputStream(new FileOutputStream("raw_aac.adts"));
         LOGGER.info("Found {} tuners", availableTuners.size());
         for (Tuner tuner : availableTuners) {
             tuner.subscribe(new TunerListener() {
@@ -52,6 +60,9 @@ public class TestMe {
                                   .filter(it -> it instanceof RadioServiceDab dab && dab.getServiceId() == 4146)
                                   .findFirst().orElseThrow();
                             radioService.subscribe(new LoggingRadioServiceListener());
+                            if (audioData != null) {
+                                radioService.subscribe(new AudioLoggerListener(audioData));
+                            }
                             tuner.startRadioService(radioService);
                         }
                     }
@@ -106,7 +117,7 @@ public class TestMe {
 
                 @Override
                 public void dabDateTime(Tuner tuner, Date dabDateTime) {
-                    LOGGER.info("Got dabtime: {}", dabDateTime.toInstant());
+                    //LOGGER.info("Got dabtime: {}", dabDateTime.toInstant());
                 }
             });
             tuner.initializeTuner();
@@ -127,6 +138,7 @@ public class TestMe {
         }
         instance.deInitialize();
         Gst.quit();
+        audioData.close();
     }
 
     private static class LoggingRadioServiceListener implements RadioServiceListener, TextualMetadataListener, VisualMetadataListener {
@@ -155,6 +167,29 @@ public class TestMe {
                 }
             }
             LOGGER.info("-------");
+        }
+    }
+
+    private static class AudioLoggerListener implements RadioServiceRawAudiodataListener {
+        private final OutputStream os;
+
+        private AudioLoggerListener(OutputStream os) {
+            this.os = os;
+        }
+
+        @Override
+        public void rawAudioData(byte[] rawData, boolean sbr, boolean ps, RadioServiceMimeType type, int numChannels, int samplingRate) {
+            try {
+                int totalFrameSize = rawData.length + 7; // payload + header
+                byte[] adtsPacket = new byte[totalFrameSize];
+
+                DabAudioDecoder.addADTStoPacket(adtsPacket, totalFrameSize, 2, DabAudioDecoder.getSamplingIndex(samplingRate), numChannels);
+                // 2. Copy the actual raw AAC payload into the packet immediately following the header
+                System.arraycopy(rawData, 0, adtsPacket, 7, rawData.length);
+                os.write(adtsPacket);
+            } catch (IOException e) {
+                LOGGER.error(e);
+            }
         }
     }
 }

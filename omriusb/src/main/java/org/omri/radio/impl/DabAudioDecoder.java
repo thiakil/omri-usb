@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -31,7 +33,23 @@ import java.nio.ByteBuffer;
  * @author Fabian Sattler, IRT GmbH
  */
 
-class DabAudioDecoder {
+public class DabAudioDecoder {
+
+	public static final int[] ADTS_FREQ_INDEX = {
+		96000,
+		88200,
+		64000,
+		48000,
+		44100,
+		32000,
+		24000,
+		22050,
+		16000,
+		12000,
+		11025,
+		8000,
+		7350,
+		};
 
 	private static final Logger LOGGER = LogManager.getLogger("DabAudioDecoder");
 
@@ -95,7 +113,7 @@ class DabAudioDecoder {
 			LOGGER.warn("Discarding audio data as thread is not alive");
 			return;
 		}
-		if (mConfCodec == DAB_CODEC_AAC) {
+		if (mConfCodec == DAB_CODEC_AAC && audioData != null && audioData.length > 0) {
 			mDataQ.offer(audioData);
 		}//todo non-aac
 	}
@@ -151,6 +169,9 @@ class DabAudioDecoder {
 		if (dabCodec == DAB_CODEC_MP2) {
 			mOutputChannels = channelCnt;
 			mOutputSampling = samplingRate;
+		} else if (dabCodec == DAB_CODEC_AAC) {
+			mOutputChannels = channelCnt == 2 || ps ? 2 : 1;
+			mOutputSampling = getSamplingIndex(samplingRate);
 		}
 
 		LOGGER.debug("Reconfiguring Decoder!");
@@ -181,6 +202,43 @@ class DabAudioDecoder {
 		}
 
 		return true;
+	}
+
+	public static int getSamplingIndex(int samplingRate) {
+		int output = -1;
+		for (int i = 0; i < ADTS_FREQ_INDEX.length; i++) {
+			if (ADTS_FREQ_INDEX[i] == samplingRate) {
+				output = i;
+				break;
+			}
+		}
+		if (output == -1) {
+			LOGGER.error("Didn't find sampling index for rate: {}", samplingRate);
+			return 0;
+		}
+		return output;
+	}
+
+	public static void addADTStoPacket(byte[] packet, int packetLen, int profile, int sampleRate, int channels) {
+		// Syncword: 12 bits, all 1s (0xFFF)
+		packet[0] = (byte) 0xFF;
+		packet[1] = (byte) 0xF1; // 0xF1 implies Layer = 0, Protection Absent = 1 (No CRC)
+
+		// Profile (2 bits), Sample Rate Index (4 bits), Private bit (1 bit), Channel Config (high 1 bit)
+		packet[2] = (byte) (((profile - 1) << 6) | (sampleRate << 2) | (channels >> 2));
+
+		// Channel Config (low 2 bits), Originality (1 bit), Home (1 bit), Copyrighted (1 bit), Copyrighted Start (1 bit), Frame Length (high 2 bits)
+		packet[3] = (byte) (((channels & 3) << 6) | (packetLen >> 11));
+
+		// Frame Length (middle 8 bits)
+		packet[4] = (byte) ((packetLen >> 3) & 0xFF);
+
+		// Frame Length (low 3 bits), Buffer Fullness (high 5 bits)
+		packet[5] = (byte) (((packetLen & 7) << 5) | 0x1F);
+
+		// Buffer Fullness (low 6 bits), Number of AAC frames minus 1 (2 bits)
+		packet[6] = (byte) 0xFC; // 0xFC sets buffer fullness to Variable Bitrate (VBR) and 1 data packet
+		//LOGGER.debug("ADTS {}", toHex(packet).substring(0, 14));
 	}
 
 	private boolean creatMediaFormat() {
@@ -222,7 +280,7 @@ class DabAudioDecoder {
 				}
 			}
 
-			if (mConfChans == 1 && !mConfPs) {
+			if (mConfChans == 1) {
 				LOGGER.debug("Configuring ASC for Mono!");
 				ascBytes[1] = (byte) (ascBytes[1] - 8);
 			}
@@ -263,18 +321,20 @@ class DabAudioDecoder {
 			// 2. Set Caps for Raw AAC (Example: 44.1kHz, Stereo -> codec_data 1210)
 			// Note: codec_data must be passed as a GstBuffer containing the raw hex bytes
 
-			String capstr = "audio/mpeg, mpegversion=4, stream-format=raw, plc=true, codec_data=(buffer)" + toHex(ascBytes);
+			String capstr = "audio/mpeg, mpegversion=4, stream-format=adts, framed=true, plc=true, codec_data=(buffer)" + toHex(ascBytes, ascBytes.length);
 			LOGGER.info("using {}", capstr);
-			Caps caps = Caps.fromString(capstr);
-			appSrc.setCaps(caps);
-			appSrc.setStreamType(AppSrc.StreamType.STREAM);
+
 
 			// 3. Assemble Pipeline
 			pipeline.addMany(appSrc, aacParse, decoder, audioConvert, audioResample, audioSink);
 			if (!Element.linkMany(appSrc, aacParse, decoder, audioConvert, audioResample, audioSink)) {
 				throw new IllegalStateException("link failed");
 			}
+			Caps caps = Caps.fromString(capstr);
+			appSrc.setCaps(caps);
+			appSrc.setStreamType(AppSrc.StreamType.STREAM);
 
+			//mDataQ.offer(ascBytes);
 			// 4. Start Pipeline Playing
 			pipeline.play();
 		} catch (Exception e) {
@@ -291,11 +351,12 @@ class DabAudioDecoder {
 		return true;
 	}
 
-	private static String toHex(byte[] bytes) {
-		StringBuilder builder = new StringBuilder(bytes.length*2);
-		for (byte aByte : bytes) {
-			builder.append(String.format("%02X", aByte));
-		}
+	private static String toHex(byte[] bytes, int limit) {
+		StringBuilder builder = new StringBuilder(limit*2);
+        for (int i = 0; i < bytes.length && i < limit; i++) {
+            byte aByte = bytes[i];
+            builder.append(String.format("%02X", aByte));
+        }
 		return builder.toString();
 	}
 
@@ -322,12 +383,23 @@ class DabAudioDecoder {
 				try {
 					byte[] rawAacFrame = mDataQ.poll();
 					if (rawAacFrame == null || rawAacFrame.length == 0)
-						break;
+						continue THREADLOOP;
+
+					//LOGGER.debug("raw AAC start: {}", toHex(rawAacFrame, 7));
+
+					int totalFrameSize = rawAacFrame.length + 7; // payload + header
+					byte[] adtsPacket = new byte[totalFrameSize];
+
+					addADTStoPacket(adtsPacket, rawAacFrame.length, 2, mOutputSampling, mConfChans);
+					// 2. Copy the actual raw AAC payload into the packet immediately following the header
+					System.arraycopy(rawAacFrame, 0, adtsPacket, 7, rawAacFrame.length);
+
+					//LOGGER.debug("fixed AAC start: {}", toHex(adtsPacket, 7));
 
 					// Wrap Java byte array into a GStreamer Buffer
-					Buffer gstBuffer = new Buffer(rawAacFrame.length);
+					Buffer gstBuffer = new Buffer(adtsPacket.length);
 					ByteBuffer nativeBuffer = gstBuffer.map(true);
-					nativeBuffer.put(rawAacFrame);
+					nativeBuffer.put(adtsPacket);
 					gstBuffer.unmap();
 
 					// Push the buffer downstream
@@ -335,9 +407,9 @@ class DabAudioDecoder {
 					if (ret != FlowReturn.OK) {
 						throw new IllegalStateException("Buffer push failed: " + ret);
 					}
-					/*if (mDecode && pipeline.getState() != State.PLAYING) {
+					if (mDecode && pipeline.getState(1000) == State.READY) {
 						pipeline.play();
-					}*/
+					}
 				} catch (Exception e) {
 					LOGGER.error(e);
 				}
