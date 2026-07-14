@@ -58,6 +58,7 @@ public class TestMe {
                             RadioService radioService = tuner.getRadioServices().stream()
                                   //Nova
                                   .filter(it -> it instanceof RadioServiceDab dab && dab.getServiceId() == 4146)
+                                  //.filter(it -> it instanceof RadioServiceDab dab && dab.getServiceId() == 13317)//JJJ
                                   .findFirst().orElseThrow();
                             radioService.subscribe(new LoggingRadioServiceListener());
                             if (audioData != null) {
