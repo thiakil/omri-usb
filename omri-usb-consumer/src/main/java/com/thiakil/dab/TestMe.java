@@ -42,7 +42,7 @@ public class TestMe {
         Radio instance = Radio.getInstance();
         instance.initialize(new Context(), null);
         List<Tuner> availableTuners = instance.getAvailableTuners();
-        OutputStream audioData = new BufferedOutputStream(new FileOutputStream("raw_aac.adts"));
+        OutputStream audioData = null;//new BufferedOutputStream(new FileOutputStream("raw_aac.adts"));
         LOGGER.info("Found {} tuners", availableTuners.size());
         for (Tuner tuner : availableTuners) {
             tuner.subscribe(new TunerListener() {
@@ -138,7 +138,9 @@ public class TestMe {
         }
         instance.deInitialize();
         Gst.quit();
-        audioData.close();
+        if (audioData != null) {
+            audioData.close();
+        }
     }
 
     private static class LoggingRadioServiceListener implements RadioServiceListener, TextualMetadataListener, VisualMetadataListener {
@@ -180,13 +182,7 @@ public class TestMe {
         @Override
         public void rawAudioData(byte[] rawData, boolean sbr, boolean ps, RadioServiceMimeType type, int numChannels, int samplingRate) {
             try {
-                int totalFrameSize = rawData.length + 7; // payload + header
-                byte[] adtsPacket = new byte[totalFrameSize];
-
-                DabAudioDecoder.addADTStoPacket(adtsPacket, totalFrameSize, 2, DabAudioDecoder.getSamplingIndex(samplingRate), numChannels);
-                // 2. Copy the actual raw AAC payload into the packet immediately following the header
-                System.arraycopy(rawData, 0, adtsPacket, 7, rawData.length);
-                os.write(adtsPacket);
+                os.write(rawData);
             } catch (IOException e) {
                 LOGGER.error(e);
             }
