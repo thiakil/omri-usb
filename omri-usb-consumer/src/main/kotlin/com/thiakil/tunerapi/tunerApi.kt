@@ -31,7 +31,7 @@ fun Application.tunerApi() {
         get("/tuners") {
             call.respond(
                 instance.availableTuners.map {
-                    tunerInfo(it)
+                    TunerInfo(it)
                 }
             )
         }
@@ -39,7 +39,11 @@ fun Application.tunerApi() {
             call.respond(
                 instance.radioServices
                     .filterIsInstance<RadioServiceDab>()
-                    .map { it.info() }
+                    .map {
+                        ServiceInfo(
+                            it
+                        )
+                    }
                     .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.serviceLabel })
             )
         }
@@ -67,13 +71,21 @@ data class ErrorMessage(val message: String, val fatal: Boolean = false) : WSMes
 @Serializable
 @SerialName("tuner_state")
 data class TunerState(val status: TunerStatus, val currentService: ServiceInfo?): WSMessage() {
-    constructor(tuner: Tuner): this(tuner.tunerStatus, tuner.currentDabService?.info())
+    constructor(tuner: Tuner): this(tuner.tunerStatus, tuner.currentDabService?.let {
+        ServiceInfo(
+            it
+        )
+    })
 }
 
 @Serializable
 @SerialName("service_list")
 data class ServiceList(val services: List<ServiceInfo>): WSMessage() {
-    constructor(tuner: Tuner): this(tuner.radioServices.filterIsInstance<RadioServiceDab>().map { it.info() })
+    constructor(tuner: Tuner): this(tuner.radioServices.filterIsInstance<RadioServiceDab>().map {
+        ServiceInfo(
+            it
+        )
+    })
 }
 
 @Serializable
@@ -82,19 +94,23 @@ data class ServiceInfo(
     val ensembleLabel: String,
     val serviceLabel: String,
     val serviceId: Int,
-)
+) {
+    constructor(dab: RadioServiceDab): this(
+        dab.ensembleId,
+        dab.ensembleLabel,
+        dab.serviceLabel,
+        dab.serviceId)
+}
 @Serializable
-data class TunerInfo(val type: TunerType, val status: TunerStatus, val currentService: ServiceInfo?)
+data class TunerInfo(val type: TunerType, val status: TunerStatus, val currentService: ServiceInfo?) {
+    constructor(tuner: Tuner): this(
+        tuner.tunerType,
+        tuner.tunerStatus,
+        tuner.currentDabService?.let {
+            ServiceInfo(
+                it
+            )
+        }
+    )
+}
 
-private fun tunerInfo(tuner: Tuner) = TunerInfo(
-    tuner.tunerType,
-    tuner.tunerStatus,
-    (tuner.currentRunningRadioService as? RadioServiceDab)?.info()
-)
-
-private fun RadioServiceDab.info() = ServiceInfo(
-    ensembleId,
-    ensembleLabel,
-    serviceLabel,
-    serviceId,
-)
