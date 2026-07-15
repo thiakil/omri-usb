@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.omri.radioservice.RadioServiceDabComponent;
-import org.omri.radioservice.RadioServiceDabComponentListener;
 import org.omri.radioservice.RadioServiceDabUserApplication;
 
 /**
@@ -162,17 +161,6 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 	void addScUserApplications(List<RadioServiceDabUserApplication> uApp) {
 		this.mScUappList.addAll(uApp);
 	}
-
-	@Override
-	public void subscribe(RadioServiceDabComponentListener dabComponentListener) {
-
-	}
-
-	@Override	
-	public void unsubscribe(RadioServiceDabComponentListener dabComponentListener) {
-
-	}
-
 
 	//new additions
 	private int mMscStartAddress = -1;

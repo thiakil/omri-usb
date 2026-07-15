@@ -6,16 +6,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
-import org.omri.radioservice.RadioServiceAudiodataListener;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceFollowingListener;
 import org.omri.radioservice.RadioServiceListener;
 import org.omri.radioservice.RadioServiceMimeType;
 import org.omri.radioservice.RadioServiceRawAudiodataListener;
-import org.omri.radioservice.metadata.Group;
-import org.omri.radioservice.metadata.Location;
-import org.omri.radioservice.metadata.ProgrammeServiceMetadataListener;
-import org.omri.radioservice.metadata.TermId;
 import org.omri.radioservice.metadata.Textual;
 import org.omri.radioservice.metadata.TextualMetadataListener;
 import org.omri.radioservice.metadata.Visual;
@@ -23,7 +18,6 @@ import org.omri.radioservice.metadata.VisualDabSlideShow;
 import org.omri.radioservice.metadata.VisualMetadataListener;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -50,21 +44,13 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 	private static final Logger LOGGER = LogManager.getLogger("RadioServiceImpl");
 
-	private String mShortDescription = "";
-	private String mLongDescription = "";
 	@SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
 	private List<Visual> mLogoVisuals = new ArrayList<>();
 	private List<String> mGenreList = new ArrayList<>();
-	private List<String> mLinksList = new ArrayList<>();
-	private List<Location> mLocationList = new ArrayList<>();
-	private List<String> mKeywordsList = new ArrayList<>();
-	private List<Group> mGroupsList = new ArrayList<>();
 	private final List<RadioService> mSfServices = Collections.synchronizedList(new ArrayList<>());
 
 	final transient List<VisualMetadataListener> mSlideshowListeners = Collections.synchronizedList(new ArrayList<>());
 	final transient List<TextualMetadataListener> mLabelListeners = Collections.synchronizedList(new ArrayList<>());
-	final transient List<ProgrammeServiceMetadataListener> mSpiListeners = Collections.synchronizedList(new ArrayList<>());
-	final transient List<RadioServiceAudiodataListener> mAudiodataListeners = Collections.synchronizedList(new ArrayList<>());
 	final transient List<RadioServiceRawAudiodataListener> mRawAudiodataListeners = Collections.synchronizedList(new ArrayList<>());
 	final transient List<RadioServiceFollowingListener> mSfListeners = Collections.synchronizedList(new ArrayList<>());
 
@@ -74,46 +60,19 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	private boolean mSbrUsed = false;
 	private boolean mPsUsed = false;
 
-	private String mHradioSearchSource = "";
-
-	void setHradioSearchSource(String source) {
-		if(source != null) {
-			mHradioSearchSource = source;
-		}
-	}
-
-	@SuppressWarnings("unused")
-	public String getHradioSearchSource() {
-		return mHradioSearchSource;
-	}
-
 	//Serialization
 	private void writeObject(ObjectOutputStream stream) throws IOException {
-		stream.writeObject(mShortDescription);
-		stream.writeObject(mLongDescription);
 		stream.writeObject(mGenreList);
-		stream.writeObject(mLinksList);
-		stream.writeObject(mLocationList);
-		stream.writeObject(mKeywordsList);
-		stream.writeObject(mGroupsList);
 	}
 
 	@SuppressWarnings("unchecked")
 	private void readObject(java.io.ObjectInputStream stream) throws IOException, ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
-		mShortDescription = (String)stream.readObject();
-		mLongDescription  = (String)stream.readObject();
 		mLogoVisuals = new ArrayList<>();
 
 		mGenreList = (ArrayList<String>) stream.readObject();
-		mLinksList = (ArrayList<String>) stream.readObject();
-		mLocationList = (ArrayList<Location>) stream.readObject();
-		mKeywordsList = (ArrayList<String>) stream.readObject();
-		mGroupsList = (ArrayList<Group>) stream.readObject();
 
 		mSlideshowListeners.clear();
 		mLabelListeners.clear();
-		mSpiListeners.clear();
-		mAudiodataListeners.clear();
 		mRawAudiodataListeners.clear();
 
 		mDecodeAudio = false;
@@ -121,24 +80,6 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		mAscty = -1;
 		mSbrUsed = false;
 		mPsUsed = false;
-	}
-
-	@Override
-	public String getShortDescription() {
-		return mShortDescription;
-	}
-
-	void setShortDescription(String shortDesc) {
-		this.mShortDescription = shortDesc;
-	}
-
-	@Override
-	public String getLongDescription() {
-		return mLongDescription;
-	}
-
-	void setLongDescription(String longDesc) {
-		this.mLongDescription = longDesc;
 	}
 
 	@Override
@@ -174,61 +115,6 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	@Override
-	public List<String> getLinks() {
-		return mLinksList;
-	}
-
-	void addLink(String linkString) {
-		this.mLinksList.add(linkString);
-	}
-
-	void addLink(List<String> linkString) {
-		this.mLinksList.addAll(linkString);
-	}
-
-	@Override
-	public List<Location> getLocations() {
-		return mLocationList;
-	}
-
-	@SuppressWarnings("unused")
-	public void addLocation(Location location) {
-		this.mLocationList.add(location);
-	}
-
-	void addLocation(List<Location> location) {
-		this.mLocationList.addAll(location);
-	}
-
-	@Override
-	public List<String> getKeywords() {
-		return mKeywordsList;
-	}
-
-	void addKeyword(String keyWord) {
-		this.mKeywordsList.add(keyWord);
-	}
-
-	void addKeyword(List<String> keyWord) {
-		this.mKeywordsList.addAll(keyWord);
-	}
-
-	@Override
-	public List<Group> getMemberships() {
-		return mGroupsList;
-	}
-
-	@SuppressWarnings("unused")
-	public void addMembership(Group group) {
-		this.mGroupsList.add(group);
-	}
-
-	@SuppressWarnings("unused")
-	public void addMembership(List<Group> group) {
-		this.mGroupsList.addAll(group);
-	}
-
-	@Override
 	public void subscribe(RadioServiceListener radioServiceListener) {
 		if(radioServiceListener != null) {
 			if(radioServiceListener instanceof TextualMetadataListener) {
@@ -247,28 +133,11 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 					}
 				}
 			}
-			if(radioServiceListener instanceof RadioServiceAudiodataListener) {
-				synchronized (mAudiodataListeners) {
-					if (!mAudiodataListeners.contains(radioServiceListener)) {
-						LOGGER.debug("Subscribing RadioServiceAudiodataListener: " + radioServiceListener);
-						mDecodeAudio = true;
-						this.mAudiodataListeners.add((RadioServiceAudiodataListener) radioServiceListener);
-					}
-				}
-			}
 			if(radioServiceListener instanceof RadioServiceRawAudiodataListener) {
 				synchronized (mRawAudiodataListeners) {
 					if (!mRawAudiodataListeners.contains(radioServiceListener)) {
 						LOGGER.debug("Subscribing RadioServiceRawAudiodataListener: " + radioServiceListener);
 						this.mRawAudiodataListeners.add((RadioServiceRawAudiodataListener) radioServiceListener);
-					}
-				}
-			}
-			if(radioServiceListener instanceof ProgrammeServiceMetadataListener) {
-				synchronized (mSpiListeners) {
-					if (!mSpiListeners.contains(radioServiceListener)) {
-						LOGGER.debug("Subscribing ProgrammeServiceMetadataListener: " + radioServiceListener);
-						this.mSpiListeners.add((ProgrammeServiceMetadataListener) radioServiceListener);
 					}
 				}
 			}
@@ -304,30 +173,11 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 					}
 				}
 			}
-			if(radioServiceListener instanceof RadioServiceAudiodataListener) {
-				synchronized (this.mAudiodataListeners) {
-					if (this.mAudiodataListeners.contains(radioServiceListener)) {
-						LOGGER.debug("UnSubscribing RadioServiceAudiodataListener: " + radioServiceListener);
-						this.mAudiodataListeners.remove(radioServiceListener);
-					}
-					if (mAudiodataListeners.isEmpty()) {
-						mDecodeAudio = false;
-					}
-				}
-			}
 			if(radioServiceListener instanceof RadioServiceRawAudiodataListener) {
 				synchronized (this.mRawAudiodataListeners) {
 					if (this.mRawAudiodataListeners.contains(radioServiceListener)) {
 						LOGGER.debug("UnSubscribing RadioServiceRawAudiodataListener: " + radioServiceListener);
 						this.mRawAudiodataListeners.remove(radioServiceListener);
-					}
-				}
-			}
-			if(radioServiceListener instanceof ProgrammeServiceMetadataListener) {
-				synchronized (this.mSpiListeners) {
-					if (this.mSpiListeners.contains(radioServiceListener)) {
-						LOGGER.debug("UnSubscribing ProgrammeServiceMetadataListener: " + radioServiceListener);
-						this.mSpiListeners.remove(radioServiceListener);
 					}
 				}
 			}

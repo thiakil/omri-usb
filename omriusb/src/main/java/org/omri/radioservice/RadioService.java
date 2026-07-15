@@ -1,8 +1,5 @@
 package org.omri.radioservice;
 
-import org.omri.radioservice.metadata.Group;
-import org.omri.radioservice.metadata.Location;
-import org.omri.radioservice.metadata.TermId;
 import org.omri.radioservice.metadata.Visual;
 
 import java.util.ArrayList;
@@ -42,18 +39,6 @@ public interface RadioService {
 	public String getServiceLabel();
 
 	/**
-	 * Returns the short description of this {@link RadioService} as {@link String}
-	 * @return The short description of this {@link RadioService} as {@link String}
-	 */
-	public String getShortDescription();
-
-	/**
-	 * Returns the long description of this {@link RadioService} as {@link String}
-	 * @return The long description of this {@link RadioService} as {@link String}
-	 */
-	public String getLongDescription();
-
-	/**
 	 * Returns the available {@link Visual}s for this {@link RadioService} or an empty list
 	 * @return the available {@link Visual}s for this {@link RadioService} or an empty list
 	 */
@@ -67,34 +52,10 @@ public interface RadioService {
 	public boolean isReadyForGetLogos();
 
 	/**
-	 * Returns the available {@link TermId}s for this {@link RadioService} or an empty list
-	 * @return the available {@link TermId}s for this {@link RadioService} or an empty list
+	 * Returns the available genres for this {@link RadioService} or an empty list
+	 * @return the available genres for this {@link RadioService} or an empty list
 	 */
 	public List<String> getGenres();
-
-	/**
-	 * Returns the available Links for this {@link RadioService} or an empty list
-	 * @return the available Links for this {@link RadioService} or an empty list
-	 */
-	public List<String> getLinks();
-
-	/**
-	 * Returns the available {@link Location}s for this {@link RadioService} or an empty list
-	 * @return the available {@link Location}s for this {@link RadioService} or an empty list
-	 */
-	public List<Location> getLocations();
-
-	/**
-	 * Returns the available keywords for this {@link RadioService} or an empty list
-	 * @return the available keywords for this {@link RadioService} or an empty list
-	 */
-	public List<String> getKeywords();
-
-	/**
-	 * Returns the available {@link Group}s for this {@link RadioService} or an empty list
-	 * @return the available {@link Group}s for this {@link RadioService} or an empty list
-	 */
-	public List<Group> getMemberships();
 
 	/**
 	 * Subscribe a {@link RadioServiceListener} to receive updates from this {@link RadioService}

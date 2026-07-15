@@ -350,7 +350,7 @@ public class DemoTuner implements Tuner {
                             }
                             RadioServiceDabImpl foundService = new RadioServiceDabImpl();
                             foundService.setServiceLabel(label);
-                            foundService.setLongDescription(file.getAbsolutePath());
+                            //foundService.setLongDescription(file.getAbsolutePath());
                             foundService.setEnsembleId(eid);
                             foundService.setServiceId(sid);
                             foundService.setIsProgrammeService(true);

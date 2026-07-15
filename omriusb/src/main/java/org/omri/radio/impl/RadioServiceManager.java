@@ -16,7 +16,6 @@ import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
 import org.omri.radioservice.RadioServiceDabUserApplication;
 import org.omri.radioservice.RadioServiceType;
-import org.omri.radioservice.metadata.TermId;
 import org.omri.tuner.Tuner;
 import org.omri.tuner.TunerStatus;
 import org.omri.tuner.TunerType;
@@ -311,34 +310,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		}
 		saveSrvObj.put("genres", genreArr);
 
-		JSONArray keyWordsArr = new JSONArray();
-		for (String keyWord : service.getKeywords()) {
-			keyWordsArr.put(keyWord);
-		}
-		saveSrvObj.put("keywords", keyWordsArr);
-
-		JSONArray linkArr = new JSONArray();
-		for (String link : service.getLinks()) {
-			linkArr.put(link);
-		}
-		saveSrvObj.put("links", linkArr);
-
-		//TODO
-				/*
-				JSONArray locationArr = new JSONArray();
-				for(Location location : dabSaveSrv.getLocations()) {
-
-				}
-				*/
-
-		//TODO
-				/*
-				dabSaveSrv.getMemberships()
-				*/
-
-		saveSrvObj.put("longDescription", service.getLongDescription());
-		saveSrvObj.put("shortDescription", service.getShortDescription());
-
 		JSONArray sfServicesArr = new JSONArray();
 		for (RadioService srv : service.getFollowingServices()) {
 			JSONObject srvObj = new JSONObject();
@@ -432,7 +403,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 				uapp.setDSCTy(uappObj.getInt("dscty"));
 				uapp.setUserApplicationType(uappObj.getInt("uappType"));
 
-				//todo app data?
 				String uappDataString = uappObj.has("uappData") ? uappObj.getString("uappData") : "";
 				if (!uappDataString.isEmpty()) {
 					uapp.setUappdata(Base64.getDecoder().decode(uappDataString));
@@ -453,19 +423,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		for (int l = 0; l < genreArr.length(); l++) {
             dabSrv.addGenre(genreArr.getString(l));
 		}
-
-		JSONArray keyWordsArr = srvObj.getJSONArray("keywords");
-		for (int l = 0; l < keyWordsArr.length(); l++) {
-			dabSrv.addKeyword(keyWordsArr.getString(l));
-		}
-
-		JSONArray linksArr = srvObj.getJSONArray("links");
-		for (int l = 0; l < linksArr.length(); l++) {
-			dabSrv.addLink(linksArr.getString(l));
-		}
-
-		dabSrv.setLongDescription(srvObj.getString("longDescription"));
-		dabSrv.setShortDescription(srvObj.getString("shortDescription"));
 
 		try {
 			JSONArray sfServicesArr = srvObj.getJSONArray("followingServices");

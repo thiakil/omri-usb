@@ -1,7 +1,6 @@
 package org.omri.radioservice;
 
 import org.omri.radio.RadioListener;
-import org.omri.radioservice.metadata.ProgrammeServiceMetadataListener;
 import org.omri.radioservice.metadata.TextualMetadataListener;
 import org.omri.radioservice.metadata.VisualMetadataListener;
 
@@ -23,7 +22,6 @@ import org.omri.radioservice.metadata.VisualMetadataListener;
  * Interface to receive updates for {@link RadioService} related informations
  * @author Fabian Sattler, IRT GmbH
  *
- * @see ProgrammeServiceMetadataListener
  * @see TextualMetadataListener
  * @see VisualMetadataListener
  * @see RadioServiceRawAudiodataListener
