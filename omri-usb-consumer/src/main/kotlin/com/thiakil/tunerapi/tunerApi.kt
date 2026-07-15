@@ -1,6 +1,8 @@
 package com.thiakil.tunerapi
 
 import com.thiakil.standin.Context
+import com.thiakil.tunerapi.messages.ServiceList
+import com.thiakil.tunerapi.messages.TunerState
 import io.ktor.server.application.Application
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
@@ -9,12 +11,9 @@ import io.ktor.server.websocket.sendSerialized
 import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.CloseReason
 import io.ktor.websocket.close
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import org.omri.radio.Radio
 import org.omri.radioservice.RadioServiceDab
 import org.omri.tuner.Tuner
-import org.omri.tuner.TunerStatus
 import org.omri.tuner.TunerType
 
 fun Application.tunerApi() {
@@ -60,57 +59,4 @@ fun Application.tunerApi() {
 }
 
 val Tuner?.currentDabService get() = this?.currentRunningRadioService as? RadioServiceDab
-
-@Serializable
-sealed class WSMessage
-
-@Serializable
-@SerialName("error")
-data class ErrorMessage(val message: String, val fatal: Boolean = false) : WSMessage()
-
-@Serializable
-@SerialName("tuner_state")
-data class TunerState(val status: TunerStatus, val currentService: ServiceInfo?): WSMessage() {
-    constructor(tuner: Tuner): this(tuner.tunerStatus, tuner.currentDabService?.let {
-        ServiceInfo(
-            it
-        )
-    })
-}
-
-@Serializable
-@SerialName("service_list")
-data class ServiceList(val services: List<ServiceInfo>): WSMessage() {
-    constructor(tuner: Tuner): this(tuner.radioServices.filterIsInstance<RadioServiceDab>().map {
-        ServiceInfo(
-            it
-        )
-    })
-}
-
-@Serializable
-data class ServiceInfo(
-    val ensembleId: Int,
-    val ensembleLabel: String,
-    val serviceLabel: String,
-    val serviceId: Int,
-) {
-    constructor(dab: RadioServiceDab): this(
-        dab.ensembleId,
-        dab.ensembleLabel,
-        dab.serviceLabel,
-        dab.serviceId)
-}
-@Serializable
-data class TunerInfo(val type: TunerType, val status: TunerStatus, val currentService: ServiceInfo?) {
-    constructor(tuner: Tuner): this(
-        tuner.tunerType,
-        tuner.tunerStatus,
-        tuner.currentDabService?.let {
-            ServiceInfo(
-                it
-            )
-        }
-    )
-}
 
