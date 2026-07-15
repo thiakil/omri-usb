@@ -267,7 +267,9 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		for (RadioServiceDabComponent dabSrvComp : service.getServiceComponents()) {
 			JSONObject dabSrvCompObj = new JSONObject();
 			dabSrvCompObj.put("bitrate", dabSrvComp.getBitrate());
-			dabSrvCompObj.put("label", dabSrvComp.getLabel());
+			if (!dabSrvComp.getLabel().isEmpty()) {
+				dabSrvCompObj.put("label", dabSrvComp.getLabel());
+			}
 			dabSrvCompObj.put("mscStartAddress", dabSrvComp.getMscStartAddress());
 			dabSrvCompObj.put("packetAddress", dabSrvComp.getPacketAddress());
 			dabSrvCompObj.put("protectionLevel", dabSrvComp.getProtectionLevel());
@@ -284,47 +286,55 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 			dabSrvCompObj.put("fecApplied", dabSrvComp.isFecSchemeApplied());
 			dabSrvCompObj.put("primary", dabSrvComp.isPrimary());
 
-			JSONArray userAppsArr = new JSONArray();
-			for (RadioServiceDabUserApplication uapp : dabSrvComp.getUserApplications()) {
-				JSONObject uappObj = new JSONObject();
-				uappObj.put("caOrg", uapp.getCaOrganization());
-				uappObj.put("dscty", uapp.getDataServiceComponentType().getType());
-				uappObj.put("uappType", uapp.getType().getType());
-				uappObj.put("uappData", uapp.getUserApplicationData() != null ? Base64.getEncoder().encodeToString(uapp.getUserApplicationData()) : "");
-				uappObj.put("xpadAppType", uapp.getXpadAppType());
-				uappObj.put("caProtected", uapp.isCaProtected());
-				uappObj.put("dgUsed", uapp.isDatagroupTransportUsed());
-				uappObj.put("isXpadApp", uapp.isXpadApptype());
+			if (!dabSrvComp.getUserApplications().isEmpty()) {
+				JSONArray userAppsArr = new JSONArray();
+				for (RadioServiceDabUserApplication uapp : dabSrvComp.getUserApplications()) {
+					JSONObject uappObj = new JSONObject();
+					uappObj.put("caOrg", uapp.getCaOrganization());
+					uappObj.put("dscty", uapp.getDataServiceComponentType().getType());
+					uappObj.put("uappType", uapp.getType().getType());
+					if (uapp.getUserApplicationData() != null) {
+						uappObj.put("uappData", Base64.getEncoder().encodeToString(uapp.getUserApplicationData()));
+					}
+					uappObj.put("xpadAppType", uapp.getXpadAppType());
+					uappObj.put("caProtected", uapp.isCaProtected());
+					uappObj.put("dgUsed", uapp.isDatagroupTransportUsed());
+					uappObj.put("isXpadApp", uapp.isXpadApptype());
 
-				userAppsArr.put(uappObj);
+					userAppsArr.put(uappObj);
+				}
+				dabSrvCompObj.put("userApplications", userAppsArr);
 			}
-			dabSrvCompObj.put("userApplications", userAppsArr);
 
 			serviceComponentsArr.put(dabSrvCompObj);
 		}
 		saveSrvObj.put("serviceComponents", serviceComponentsArr);
 
-		JSONArray genreArr = new JSONArray();
-		for (String genre : service.getGenres()) {
-			genreArr.put(genre);
-		}
-		saveSrvObj.put("genres", genreArr);
-
-		JSONArray sfServicesArr = new JSONArray();
-		for (RadioService srv : service.getFollowingServices()) {
-			JSONObject srvObj = new JSONObject();
-			srvObj.put("radioServiceType", srv.getRadioServiceType().toString());
-			if (srv instanceof RadioServiceDab) {
-				RadioServiceDab srvDab = (RadioServiceDab) srv;
-				srvObj.put("ensembleEcc", srvDab.getEnsembleEcc());
-				srvObj.put("ensembleFrequency", srvDab.getEnsembleFrequency());
-				srvObj.put("ensembleId", srvDab.getEnsembleId());
-				srvObj.put("serviceId", srvDab.getServiceId());
-				srvObj.put("isProgrammeService", srvDab.isProgrammeService());
+		if (!service.getGenres().isEmpty()) {
+			JSONArray genreArr = new JSONArray();
+			for (String genre : service.getGenres()) {
+				genreArr.put(genre);
 			}
-			sfServicesArr.put(srvObj);
+			saveSrvObj.put("genres", genreArr);
 		}
-		saveSrvObj.put("followingServices", sfServicesArr);
+
+		if (!service.getFollowingServices().isEmpty()) {
+			JSONArray sfServicesArr = new JSONArray();
+			for (RadioService srv : service.getFollowingServices()) {
+				JSONObject srvObj = new JSONObject();
+				srvObj.put("radioServiceType", srv.getRadioServiceType().toString());
+				if (srv instanceof RadioServiceDab) {
+					RadioServiceDab srvDab = (RadioServiceDab) srv;
+					srvObj.put("ensembleEcc", srvDab.getEnsembleEcc());
+					srvObj.put("ensembleFrequency", srvDab.getEnsembleFrequency());
+					srvObj.put("ensembleId", srvDab.getEnsembleId());
+					srvObj.put("serviceId", srvDab.getServiceId());
+					srvObj.put("isProgrammeService", srvDab.isProgrammeService());
+				}
+				sfServicesArr.put(srvObj);
+			}
+			saveSrvObj.put("followingServices", sfServicesArr);
+		}
 
 		return saveSrvObj;
 	}
@@ -371,80 +381,90 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		dabSrv.setIsCaProtected(srvObj.getBoolean("isCaProtected"));
 		dabSrv.setIsProgrammeService(srvObj.getBoolean("isProgrammeService"));
 
-		JSONArray srvCompArr = srvObj.getJSONArray("serviceComponents");
-		for (int j = 0; j < srvCompArr.length(); j++) {
-			JSONObject dabSrvCompObj = srvCompArr.getJSONObject(j);
+		if (srvObj.has("serviceComponents")) {
+			JSONArray srvCompArr = srvObj.getJSONArray("serviceComponents");
+			for (int j = 0; j < srvCompArr.length(); j++) {
+				JSONObject dabSrvCompObj = srvCompArr.getJSONObject(j);
 
-			RadioServiceDabComponentImpl dabSrvComp = new RadioServiceDabComponentImpl();
-			dabSrvComp.setScBitrate(dabSrvCompObj.getInt("bitrate"));
-			dabSrvComp.setScLabel(dabSrvCompObj.getString("label"));
-			dabSrvComp.setMscStartAddress(dabSrvCompObj.getInt("mscStartAddress"));
-			dabSrvComp.setPacketAddress(dabSrvCompObj.getInt("packetAddress"));
-			dabSrvComp.setProtectionLevel(dabSrvCompObj.getInt("protectionLevel"));
-			dabSrvComp.setProtectionType(dabSrvCompObj.getInt("protectionType"));
-			dabSrvComp.setServiceComponentIdWithinService(dabSrvCompObj.getInt("scids"));
-			dabSrvComp.setServiceComponentType(dabSrvCompObj.getInt("compType"));
-			dabSrvComp.setServiceId(dabSrvCompObj.getInt("compServiceId"));
-			dabSrvComp.setSubchannelId(dabSrvCompObj.getInt("subChannelId"));
-			dabSrvComp.setSubchannelSize(dabSrvCompObj.getInt("subChannelSize"));
-			dabSrvComp.setTmId(dabSrvCompObj.getInt("tmId"));
-			dabSrvComp.setUepTableIndex(dabSrvCompObj.getInt("uepTblIdx"));
-			dabSrvComp.setIsScCaFlagSet(dabSrvCompObj.getBoolean("caApplied"));
-			dabSrvComp.setDatagroupTransportUsed(dabSrvCompObj.getBoolean("dgUsed"));
-			dabSrvComp.setIsFecSchemeApplied(dabSrvCompObj.getBoolean("fecApplied"));
-			dabSrvComp.setIsScPrimary(dabSrvCompObj.getBoolean("primary"));
+				RadioServiceDabComponentImpl dabSrvComp = new RadioServiceDabComponentImpl();
+				dabSrvComp.setScBitrate(dabSrvCompObj.getInt("bitrate"));
+				if (dabSrvCompObj.has("label")) {
+					dabSrvComp.setScLabel(dabSrvCompObj.getString("label"));
+				}
+				dabSrvComp.setMscStartAddress(dabSrvCompObj.getInt("mscStartAddress"));
+				dabSrvComp.setPacketAddress(dabSrvCompObj.getInt("packetAddress"));
+				dabSrvComp.setProtectionLevel(dabSrvCompObj.getInt("protectionLevel"));
+				dabSrvComp.setProtectionType(dabSrvCompObj.getInt("protectionType"));
+				dabSrvComp.setServiceComponentIdWithinService(dabSrvCompObj.getInt("scids"));
+				dabSrvComp.setServiceComponentType(dabSrvCompObj.getInt("compType"));
+				dabSrvComp.setServiceId(dabSrvCompObj.getInt("compServiceId"));
+				dabSrvComp.setSubchannelId(dabSrvCompObj.getInt("subChannelId"));
+				dabSrvComp.setSubchannelSize(dabSrvCompObj.getInt("subChannelSize"));
+				dabSrvComp.setTmId(dabSrvCompObj.getInt("tmId"));
+				dabSrvComp.setUepTableIndex(dabSrvCompObj.getInt("uepTblIdx"));
+				dabSrvComp.setIsScCaFlagSet(dabSrvCompObj.getBoolean("caApplied"));
+				dabSrvComp.setDatagroupTransportUsed(dabSrvCompObj.getBoolean("dgUsed"));
+				dabSrvComp.setIsFecSchemeApplied(dabSrvCompObj.getBoolean("fecApplied"));
+				dabSrvComp.setIsScPrimary(dabSrvCompObj.getBoolean("primary"));
 
-			JSONArray uappsArr = dabSrvCompObj.getJSONArray("userApplications");
-			for (int k = 0; k < uappsArr.length(); k++) {
-				JSONObject uappObj = uappsArr.getJSONObject(k);
+				if (dabSrvCompObj.has("userApplications")) {
+					JSONArray uappsArr = dabSrvCompObj.getJSONArray("userApplications");
+					for (int k = 0; k < uappsArr.length(); k++) {
+						JSONObject uappObj = uappsArr.getJSONObject(k);
 
-				RadioServiceDabUserApplicationImpl uapp = new RadioServiceDabUserApplicationImpl();
-				uapp.setCaOrganization(uappObj.getInt("caOrg"));
-				uapp.setDSCTy(uappObj.getInt("dscty"));
-				uapp.setUserApplicationType(uappObj.getInt("uappType"));
+						RadioServiceDabUserApplicationImpl uapp = new RadioServiceDabUserApplicationImpl();
+						uapp.setCaOrganization(uappObj.getInt("caOrg"));
+						uapp.setDSCTy(uappObj.getInt("dscty"));
+						uapp.setUserApplicationType(uappObj.getInt("uappType"));
 
-				String uappDataString = uappObj.has("uappData") ? uappObj.getString("uappData") : "";
-				if (!uappDataString.isEmpty()) {
-					uapp.setUappdata(Base64.getDecoder().decode(uappDataString));
+						String uappDataString = uappObj.has("uappData") ? uappObj.getString("uappData") : null;
+						if (uappDataString != null && !uappDataString.isEmpty()) {
+							uapp.setUappdata(Base64.getDecoder().decode(uappDataString));
+						}
+
+						uapp.setXpadApptype(uappObj.getInt("xpadAppType"));
+						uapp.setIsCaProtected(uappObj.getBoolean("caProtected"));
+						uapp.setIsDatagroupsUsed(uappObj.getBoolean("dgUsed"));
+						uapp.setIsXpadApptype(uappObj.getBoolean("isXpadApp"));
+
+						dabSrvComp.addScUserApplication(uapp);
+					}
 				}
 
-				uapp.setXpadApptype(uappObj.getInt("xpadAppType"));
-				uapp.setIsCaProtected(uappObj.getBoolean("caProtected"));
-				uapp.setIsDatagroupsUsed(uappObj.getBoolean("dgUsed"));
-				uapp.setIsXpadApptype(uappObj.getBoolean("isXpadApp"));
-
-				dabSrvComp.addScUserApplication(uapp);
+				dabSrv.addServiceComponent(dabSrvComp);
 			}
-
-			dabSrv.addServiceComponent(dabSrvComp);
 		}
 
-		JSONArray genreArr = srvObj.getJSONArray("genres");
-		for (int l = 0; l < genreArr.length(); l++) {
-            dabSrv.addGenre(genreArr.getString(l));
+		if (srvObj.has("genres")) {
+			JSONArray genreArr = srvObj.getJSONArray("genres");
+			for (int l = 0; l < genreArr.length(); l++) {
+				dabSrv.addGenre(genreArr.getString(l));
+			}
 		}
 
-		try {
-			JSONArray sfServicesArr = srvObj.getJSONArray("followingServices");
-			ArrayList<RadioService> tempSfArray = new ArrayList<>(sfServicesArr.length());
-			for (int m = 0; m < sfServicesArr.length(); m++) {
-				JSONObject dabSrvObj = sfServicesArr.getJSONObject(m);
-				String radioServiceType = dabSrvObj.getString("radioServiceType");
-				if (radioServiceType.equals(RadioServiceType.RADIOSERVICE_TYPE_DAB.toString())) {
-					RadioServiceDabImpl srvDab = new RadioServiceDabImpl();
-					srvDab.setEnsembleEcc(dabSrvObj.getInt("ensembleEcc"));
-					srvDab.setEnsembleFrequency(dabSrvObj.getInt("ensembleFrequency"));
-					srvDab.setEnsembleId(dabSrvObj.getInt("ensembleId"));
-					srvDab.setServiceId(dabSrvObj.getInt("serviceId"));
-					srvDab.setIsProgrammeService(dabSrvObj.getBoolean("isProgrammeService"));
-					tempSfArray.add(srvDab);
+		if (srvObj.has("followingServices")) {
+			try {
+				JSONArray sfServicesArr = srvObj.getJSONArray("followingServices");
+				ArrayList<RadioService> tempSfArray = new ArrayList<>(sfServicesArr.length());
+				for (int m = 0; m < sfServicesArr.length(); m++) {
+					JSONObject dabSrvObj = sfServicesArr.getJSONObject(m);
+					String radioServiceType = dabSrvObj.getString("radioServiceType");
+					if (radioServiceType.equals(RadioServiceType.RADIOSERVICE_TYPE_DAB.toString())) {
+						RadioServiceDabImpl srvDab = new RadioServiceDabImpl();
+						srvDab.setEnsembleEcc(dabSrvObj.getInt("ensembleEcc"));
+						srvDab.setEnsembleFrequency(dabSrvObj.getInt("ensembleFrequency"));
+						srvDab.setEnsembleId(dabSrvObj.getInt("ensembleId"));
+						srvDab.setServiceId(dabSrvObj.getInt("serviceId"));
+						srvDab.setIsProgrammeService(dabSrvObj.getBoolean("isProgrammeService"));
+						tempSfArray.add(srvDab);
+					}
 				}
+				if (tempSfArray.size() > 0) {
+					dabSrv.setFollowingServices(tempSfArray);
+				}
+			} catch (Exception e) {
+				LOGGER.error("error loading following service", e);
 			}
-			if (tempSfArray.size()> 0) {
-				dabSrv.setFollowingServices(tempSfArray);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
 	}
 
