@@ -83,8 +83,7 @@ add_library( # Sets the name of the library.
              src/main/cpp/platformspecific/android/jusbdevice.cpp
              src/main/cpp/platformspecific/android/jtunerusbdevice.cpp
              src/main/cpp/platformspecific/android/jdabservice.cpp
-             src/main/cpp/platformspecific/android/ediinput.cpp
-             src/main/cpp/platformspecific/android/demousbtunerinput.cpp
+        src/main/cpp/platformspecific/android/demousbtunerinput.cpp
 
         src/main/cpp/platformspecific/android/log4jbridge.cpp
         src/main/cpp/platformspecific/android/stdoutbridge.h

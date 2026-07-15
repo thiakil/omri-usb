@@ -30,7 +30,6 @@
 #include "log4jbridge.h"
 #include "stdoutbridge.h"
 #include "demousbtunerinput.h"
-#include "ediinput.h"
 #include "jni-helper.h"
 #include "jtunerusbdevice.h"
 #include "jusbdevice.h"
