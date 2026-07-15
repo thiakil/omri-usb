@@ -54,7 +54,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	private String mLongDescription = "";
 	@SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
 	private List<Visual> mLogoVisuals = new ArrayList<>();
-	private List<TermId> mGenreList = new ArrayList<>();
+	private List<String> mGenreList = new ArrayList<>();
 	private List<String> mLinksList = new ArrayList<>();
 	private List<Location> mLocationList = new ArrayList<>();
 	private List<String> mKeywordsList = new ArrayList<>();
@@ -104,7 +104,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		mLongDescription  = (String)stream.readObject();
 		mLogoVisuals = new ArrayList<>();
 
-		mGenreList = (ArrayList<TermId>) stream.readObject();
+		mGenreList = (ArrayList<String>) stream.readObject();
 		mLinksList = (ArrayList<String>) stream.readObject();
 		mLocationList = (ArrayList<Location>) stream.readObject();
 		mKeywordsList = (ArrayList<String>) stream.readObject();
@@ -161,16 +161,16 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	@Override
-	public List<TermId> getGenres() {
+	public List<String> getGenres() {
 		return mGenreList;
 	}
 
-	void addGenre(TermId genreId) {
-		this.mGenreList.add(genreId);
+	void addGenre(String genre) {
+		this.mGenreList.add(genre);
 	}
 
-	void addGenre(List<TermId> genreId) {
-		this.mGenreList.addAll(genreId);
+	void addGenre(List<String> genres) {
+		this.mGenreList.addAll(genres);
 	}
 
 	@Override

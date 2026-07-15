@@ -306,13 +306,8 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		saveSrvObj.put("serviceComponents", serviceComponentsArr);
 
 		JSONArray genreArr = new JSONArray();
-		for (TermId termId : service.getGenres()) {
-			JSONObject termIdObj = new JSONObject();
-			termIdObj.put("termId", termId.getTermId());
-			termIdObj.put("termHref", termId.getGenreHref());
-			termIdObj.put("termText", termId.getText());
-
-			genreArr.put(termIdObj);
+		for (String genre : service.getGenres()) {
+			genreArr.put(genre);
 		}
 		saveSrvObj.put("genres", genreArr);
 
@@ -456,14 +451,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 
 		JSONArray genreArr = srvObj.getJSONArray("genres");
 		for (int l = 0; l < genreArr.length(); l++) {
-			JSONObject genreObj = genreArr.getJSONObject(l);
-
-			TermIdImpl termId = new TermIdImpl();
-			termId.setTermId(genreObj.getString("termId"));
-			termId.setGenreHref(genreObj.getString("termHref"));
-			termId.setGenreText(genreObj.getString("termText"));
-
-			dabSrv.addGenre(termId);
+            dabSrv.addGenre(genreArr.getString(l));
 		}
 
 		JSONArray keyWordsArr = srvObj.getJSONArray("keywords");

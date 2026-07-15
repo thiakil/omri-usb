@@ -68,7 +68,7 @@ void JTunerUsbDevice::setJavaClassDabService(JNIEnv* env, jclass dabServiceClass
     m_dabServiceSetServiceIsProgrammeMId = env->GetMethodID(m_dabServiceClass, "setIsProgrammeService", "(Z)V");
     m_dabServiceAddServiceComponentMId = env->GetMethodID(m_dabServiceClass, "addServiceComponent", "(Lorg/omri/radioservice/RadioServiceDabComponent;)V");
 
-    m_dabServiceAddGenreTermIdMId = env->GetMethodID(m_dabServiceClass, "addGenre", "(Lorg/omri/radioservice/metadata/TermId;)V");
+    m_dabServiceAddGenreMId = env->GetMethodID(m_dabServiceClass, "addGenre", "(Ljava/lang/String;)V");
 }
 
 void JTunerUsbDevice::setJavaClassDabServiceComponent(JNIEnv *env, jclass dabServiceComponentClass) {
@@ -240,12 +240,9 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
         jstring genrePty = getSafeJniStringFromCString(enve,
                                                        srv->getProgrammeTypeFullName().c_str(),
                                                        srv->getProgrammeTypeFullName().size());
-        jobject termIdObject = enve->NewObject(m_termIdClass, m_termIdConstructorMId);
 
-        enve->CallVoidMethod(termIdObject, m_termIdSetGenreTextMId, genrePty);
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceAddGenreTermIdMId, termIdObject);
+        enve->CallVoidMethod(dabServiceObject, m_dabServiceAddGenreMId, genrePty);
         enve->DeleteLocalRef(genrePty);
-        enve->DeleteLocalRef(termIdObject);
 
         //DABServiceComponent creation
         for(const auto& srvComp : srv->getServiceComponents()) {

@@ -92,7 +92,7 @@ private:
     jmethodID m_dabServiceSetServiceIsProgrammeMId{};
     jmethodID m_dabServiceAddServiceComponentMId{};
 
-    jmethodID m_dabServiceAddGenreTermIdMId{};
+    jmethodID m_dabServiceAddGenreMId{};
 
     //DabServiceComponent
     jclass m_dabServiceComponentClass{};

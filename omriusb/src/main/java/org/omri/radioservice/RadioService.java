@@ -70,7 +70,7 @@ public interface RadioService {
 	 * Returns the available {@link TermId}s for this {@link RadioService} or an empty list
 	 * @return the available {@link TermId}s for this {@link RadioService} or an empty list
 	 */
-	public List<TermId> getGenres();
+	public List<String> getGenres();
 
 	/**
 	 * Returns the available Links for this {@link RadioService} or an empty list
