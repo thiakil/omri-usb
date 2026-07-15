@@ -58,7 +58,6 @@ static jmethodID m_radioServiceDabImpl_getServiceLabel_mId = nullptr;
 static jclass m_radioServiceImplClass = nullptr;
 static jclass m_dabServiceComponentClass = nullptr;
 static jclass m_dabServiceUserApplicationClass = nullptr;
-static jclass m_termIdClass = nullptr;
 static jclass m_dynamicLabelClass = nullptr;
 static jclass m_dynamicLabelPlusItemClass = nullptr;
 static jclass m_slideshowClass = nullptr;
@@ -121,7 +120,6 @@ static void cacheClassDefinitions(JavaVM *vm) {
             env->FindClass("org/omri/radio/impl/RadioServiceDabUserApplicationImpl"));
 
     //Metadata classes
-    m_termIdClass = (jclass) env->NewGlobalRef(env->FindClass("org/omri/radio/impl/TermIdImpl"));
     m_dynamicLabelClass = (jclass) env->NewGlobalRef(
             env->FindClass("org/omri/radio/impl/TextualDabDynamicLabelImpl"));
     m_dynamicLabelPlusItemClass = (jclass) env->NewGlobalRef(
@@ -165,7 +163,6 @@ static void cleanClassDefinitions(JavaVM *vm) {
     env->DeleteGlobalRef(m_dabServiceUserApplicationClass);
 
     //Metadata classes
-    env->DeleteGlobalRef(m_termIdClass);
     env->DeleteGlobalRef(m_dynamicLabelClass);
     env->DeleteGlobalRef(m_dynamicLabelPlusItemClass);
     env->DeleteGlobalRef(m_slideshowClass);
@@ -399,7 +396,6 @@ Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv* env, jobject thiz, job
     jusbDevice->setJavaClassDabService(env, m_radioServiceDabImplClass);
     jusbDevice->setJavaClassDabServiceComponent(env, m_dabServiceComponentClass);
     jusbDevice->setJavaClassDabServiceUserApplication(env, m_dabServiceUserApplicationClass);
-    jusbDevice->setJavaClassTermId(env, m_termIdClass);
     jusbDevice->setJavaClassDabTime(env, m_javaDateClass);
 
     m_usbDevices.push_back(jusbDevice);

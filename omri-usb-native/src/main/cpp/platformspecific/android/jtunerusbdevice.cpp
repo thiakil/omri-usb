@@ -112,14 +112,6 @@ void JTunerUsbDevice::setJavaClassDabServiceUserApplication(JNIEnv *env, jclass 
     m_dabServiceUserApplicationSetUappDataMId = env->GetMethodID(m_dabServiceUserApplicationClass, "setUappdata", "([B)V");
 }
 
-void JTunerUsbDevice::setJavaClassTermId(JNIEnv *env, jclass dabServiceClass) {
-    //local reference from GlobalRef in OnLoad
-    m_termIdClass = dabServiceClass;
-
-    m_termIdConstructorMId = env->GetMethodID(m_termIdClass, "<init>", "()V");
-    m_termIdSetGenreTextMId = env->GetMethodID(m_termIdClass, "setGenreText", "(Ljava/lang/String;)V");
-}
-
 void JTunerUsbDevice::callCallback(TUNER_CALLBACK_TYPE callbackType) {
     std::cout << m_logTag << "Calling tuner callback: " << +callbackType << std::endl;
 

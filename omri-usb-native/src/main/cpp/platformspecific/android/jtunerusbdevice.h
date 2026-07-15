@@ -51,7 +51,7 @@ public:
     virtual void setJavaClassDabService(JNIEnv* env, jclass dabServiceClass);
     virtual void setJavaClassDabServiceComponent(JNIEnv* env, jclass dabServiceComponentClass);
     virtual void setJavaClassDabServiceUserApplication(JNIEnv* env, jclass dabServiceUserAppClass);
-    virtual void setJavaClassTermId(JNIEnv* env, jclass dabServiceClass);
+
     virtual void setJavaClassDabTime(JNIEnv* env, jclass dabTimeClass);
 
 private:
@@ -127,11 +127,6 @@ private:
     jmethodID m_dabServiceUserApplicationSetIsDgUsedMId{};
     jmethodID m_dabServiceUserApplicationSetDSCTyMId{};
     jmethodID m_dabServiceUserApplicationSetUappDataMId{};
-
-    //TermId
-    jclass m_termIdClass{};
-    jmethodID m_termIdConstructorMId{};
-    jmethodID m_termIdSetGenreTextMId{};
 
     //DabTime
     jmethodID m_dabTimeUpdateMId{};
