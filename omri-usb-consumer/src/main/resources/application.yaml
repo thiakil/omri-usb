@@ -7,4 +7,4 @@ ktor:
       - com.thiakil.ShutdownUrlKt.configureShutdownUrl
       - com.thiakil.RoutingKt.configureRouting
       - com.thiakil.WebsocketsKt.configureWebsockets
-      - com.thiakil.TunerApiKt.tunerApi
+      - com.thiakil.tunerapi.TunerApiKt.tunerApi
