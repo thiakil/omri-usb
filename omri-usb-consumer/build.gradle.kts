@@ -4,6 +4,15 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+val nativeDebug = configurations.create("nativeDebug") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+val nativeRelease = configurations.create("nativeRelease") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
 group = "com.thiakil"
 version = "1.0.0-SNAPSHOT"
 
@@ -38,6 +47,17 @@ dependencies {
 
     testImplementation(kotlin("test"))
     testImplementation(ktorLibs.server.testHost)
+
+    nativeDebug(project(":omri-usb-native", "debugRuntimeElements"))
+    nativeRelease(project(":omri-usb-native", "releaseRuntimeElements"))
+
 }
 
-tasks["classes"].dependsOn(project(":omri-usb-native").tasks.filterIsInstance<LinkSharedLibrary>())
+
+sourceSets {
+    main {
+        runtimeClasspath += files(nativeDebug.artifacts.files.map { it.parentFile.toPath() })
+    }
+}
+tasks["assemble"].dependsOn(nativeRelease)
+
