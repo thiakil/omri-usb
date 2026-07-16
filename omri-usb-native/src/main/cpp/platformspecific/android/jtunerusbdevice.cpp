@@ -23,78 +23,27 @@
 #include "jni-helper.h"
 #include "jtunerusbdevice.h"
 
-JTunerUsbDevice::JTunerUsbDevice(JavaVM* javaVm, JNIEnv* env, jobject tunerUsbDevice, libusb_device* device) : JUsbDevice(device) {
+#include "jenny/proxy/RadioServiceDabComponentImplProxy.h"
+#include "jenny/proxy/RadioServiceDabImplProxy.h"
+#include "jenny/proxy/RadioServiceDabNativeProxy.h"
+#include "jenny/proxy/RadioServiceImplProxy.h"
+#include "jenny/proxy/TunerUsbProxy.h"
+
+using jenny::LocalRef;
+
+JTunerUsbDevice::JTunerUsbDevice(JavaVM* javaVm, JNIEnv* env, jobject tunerUsbDevice, libusb_device* device) : JUsbDevice(device), m_usbTunerObject(tunerUsbDevice) {
     std::cout << m_logTag << "Creating JTuner" << std::endl;
 
     m_javaVm = javaVm;
-
-    m_usbTunerObject = env->NewGlobalRef(tunerUsbDevice);
 }
 
 JTunerUsbDevice::~JTunerUsbDevice() {
-    JNIEnv* env;
-    m_javaVm->GetEnv((void **)&env, JNI_VERSION_1_6);
-    env->DeleteGlobalRef(m_usbTunerObject);
-}
 
-void JTunerUsbDevice::setJavaClassUsbTuner(JNIEnv* env, jclass usbTunerClass) {
-    //local reference from GlobalRef in OnLoad
-    m_usbTunerClass = usbTunerClass;
-
-    m_usbTunerCallbackMId = env->GetMethodID(m_usbTunerClass, "callBack", "(I)V");
-    m_usbTunerScanProgressMId = env->GetMethodID(m_usbTunerClass, "scanProgressCallback", "(II)V");
-    m_usbTunerServiceFoundMId = env->GetMethodID(m_usbTunerClass, "serviceFound", "(Lorg/omri/radioservice/RadioServiceDab;)V");
-    m_usbTunerServiceStartedMId = env->GetMethodID(m_usbTunerClass, "serviceStarted", "(Lorg/omri/radioservice/RadioServiceDab;)V");
-    m_usbTunerServiceStoppedMId = env->GetMethodID(m_usbTunerClass, "serviceStopped", "(Lorg/omri/radioservice/RadioServiceDab;)V");
-    m_usbTunerReceptionStatisticsMId = env->GetMethodID(m_usbTunerClass, "receptionStatistics", "(ZII)V");
-    m_dabTimeUpdateMId = env->GetMethodID(m_usbTunerClass, "dabTimeUpdate", "(Ljava/util/Date;)V");
-}
-
-void JTunerUsbDevice::setJavaClassDabService(JNIEnv* env, jclass dabServiceClass) {
-    //local reference from GlobalRef in OnLoad
-    m_dabServiceClass = dabServiceClass;
-
-    m_dabServiceConstructorMId = env->GetMethodID(m_dabServiceClass, "<init>", "()V");
-    m_dabServiceSetEnsembleEccMId = env->GetMethodID(m_dabServiceClass, "setEnsembleEcc", "(I)V");
-    m_dabServiceSetEnsembleIdMId = env->GetMethodID(m_dabServiceClass, "setEnsembleId", "(I)V");
-    m_dabServiceSetEnsembleLabelMId = env->GetMethodID(m_dabServiceClass, "setEnsembleLabel", "(Ljava/lang/String;)V");
-    m_dabServiceSetEnsembleShortLabelMId = env->GetMethodID(m_dabServiceClass, "setEnsembleShortLabel", "(Ljava/lang/String;)V");
-    m_dabServiceSetIsCaAppliedMId = env->GetMethodID(m_dabServiceClass, "setIsCaProtected", "(Z)V");
-    m_dabServiceSetCaIdMId = env->GetMethodID(m_dabServiceClass, "setCaId", "(I)V");
-    m_dabServiceSetEnsembleFrequencyMId = env->GetMethodID(m_dabServiceClass, "setEnsembleFrequency", "(I)V");
-    m_dabServiceSetServiceLabelMId = env->GetMethodID(m_dabServiceClass, "setServiceLabel", "(Ljava/lang/String;)V");
-    m_dabServiceSetServiceShortLabelMId = env->GetMethodID(m_dabServiceClass, "setShortLabel", "(Ljava/lang/String;)V");
-    m_dabServiceSetServiceIdMId = env->GetMethodID(m_dabServiceClass, "setServiceId", "(I)V");
-    m_dabServiceSetServiceIsProgrammeMId = env->GetMethodID(m_dabServiceClass, "setIsProgrammeService", "(Z)V");
-    m_dabServiceAddServiceComponentMId = env->GetMethodID(m_dabServiceClass, "addServiceComponent", "(Lorg/omri/radioservice/RadioServiceDabComponent;)V");
-
-    m_dabServiceAddGenreMId = env->GetMethodID(m_dabServiceClass, "addGenre", "(Ljava/lang/String;)V");
 }
 
 void JTunerUsbDevice::setJavaClassDabServiceComponent(JNIEnv *env, jclass dabServiceComponentClass) {
     //local reference from GlobalRef in OnLoad
-    m_dabServiceComponentClass = dabServiceComponentClass;
 
-    m_dabServiceComponentConstructorMId = env->GetMethodID(m_dabServiceComponentClass, "<init>", "()V");
-    m_dabServiceComponentSetBitrateMId = env->GetMethodID(m_dabServiceComponentClass, "setScBitrate", "(I)V");
-    m_dabServiceComponentSetCaFlagMId = env->GetMethodID(m_dabServiceComponentClass, "setIsScCaFlagSet", "(Z)V");
-    m_dabServiceComponentSetServiceIdMId = env->GetMethodID(m_dabServiceComponentClass, "setServiceId", "(I)V");
-    m_dabServiceComponentSetSubchannelIdMId = env->GetMethodID(m_dabServiceComponentClass, "setSubchannelId", "(I)V");
-    m_dabServiceComponentSetLabelMId = env->GetMethodID(m_dabServiceComponentClass, "setScLabel", "(Ljava/lang/String;)V");
-    m_dabServiceComponentSetPacketAddressMId = env->GetMethodID(m_dabServiceComponentClass, "setPacketAddress", "(I)V");
-    m_dabServiceComponentSetIsPrimaryMId = env->GetMethodID(m_dabServiceComponentClass, "setIsScPrimary", "(Z)V");
-    m_dabServiceComponentSetScIDsMId = env->GetMethodID(m_dabServiceComponentClass, "setServiceComponentIdWithinService", "(I)V");
-    m_dabServiceComponentSetTransportModeIdMId = env->GetMethodID(m_dabServiceComponentClass, "setTmId", "(I)V");
-    m_dabServiceComponentSetScTypeMId = env->GetMethodID(m_dabServiceComponentClass, "setServiceComponentType", "(I)V");
-    m_dabServiceComponentSetIsDgUsedMId = env->GetMethodID(m_dabServiceComponentClass, "setDatagroupTransportUsed", "(Z)V");
-    m_dabServiceComponentSetMscStartAddressMId = env->GetMethodID(m_dabServiceComponentClass, "setMscStartAddress", "(I)V");
-    m_dabServiceComponentSetSubchanSizeMId = env->GetMethodID(m_dabServiceComponentClass, "setSubchannelSize", "(I)V");
-    m_dabServiceComponentSetProtectionLvlMId = env->GetMethodID(m_dabServiceComponentClass, "setProtectionLevel", "(I)V");
-    m_dabServiceComponentSetProtectionTypeMId = env->GetMethodID(m_dabServiceComponentClass, "setProtectionType", "(I)V");
-    m_dabServiceComponentSetUepTblIdxMId = env->GetMethodID(m_dabServiceComponentClass, "setUepTableIndex", "(I)V");
-    m_dabServiceComponentSetIsFecAppliedMId = env->GetMethodID(m_dabServiceComponentClass, "setIsFecSchemeApplied", "(Z)V");
-
-    m_dabServiceComponentAddUserApplicationMId = env->GetMethodID(m_dabServiceComponentClass, "addScUserApplication", "(Lorg/omri/radioservice/RadioServiceDabUserApplication;)V");
 }
 
 void JTunerUsbDevice::setJavaClassDabServiceUserApplication(JNIEnv *env, jclass dabServiceUserAppClass) {
@@ -115,48 +64,16 @@ void JTunerUsbDevice::setJavaClassDabServiceUserApplication(JNIEnv *env, jclass 
 void JTunerUsbDevice::callCallback(TUNER_CALLBACK_TYPE callbackType) {
     std::cout << m_logTag << "Calling tuner callback: " << +callbackType << std::endl;
 
-    bool wasDetached = false;
-    JNIEnv* enve;
-
-    int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
-    if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
-            wasDetached = true;
-        } else {
-            std::cout << "jniEnv thread failed to attach!" << std::endl;
-            return;
-        }
-    }
-
-    enve->CallVoidMethod(m_usbTunerObject, m_usbTunerCallbackMId, callbackType);
-
-    if(wasDetached) {
-        m_javaVm->DetachCurrentThread();
-    }
+    jenny::Env jEnv;
+    TunerUsbProxy::callBack(jEnv.get(), m_usbTunerObject.get(), callbackType);
 }
 
 void JTunerUsbDevice::scanProgress(int percentDone, int freqHz) {
     std::cout << m_logTag << "scanProgress: " << +percentDone << "%, freq "
         << +(freqHz/1000) << " kHz" << std::endl;
 
-    bool wasDetached = false;
-    JNIEnv* enve;
-
-    int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
-    if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
-            wasDetached = true;
-        } else {
-            std::cerr << "jniEnv thread failed to attach!" << std::endl;
-            return;
-        }
-    }
-
-    enve->CallVoidMethod(m_usbTunerObject, m_usbTunerScanProgressMId, percentDone, freqHz);
-
-    if(wasDetached) {
-        m_javaVm->DetachCurrentThread();
-    }
+    jenny::Env jEnv;
+    TunerUsbProxy::scanProgressCallback(jEnv.get(), m_usbTunerObject.get(), percentDone, freqHz);
 }
 
 void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
@@ -168,77 +85,55 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
     m_dabTimeCallback = ensemble.registerDateTimeCallback(
                 std::bind(&JTunerUsbDevice::dabTimeUpdate, this, std::placeholders::_1));
 
-    bool wasDetached = false;
-    JNIEnv *enve;
+    jenny::Env env;
+    JNIEnv* enve = env.get();
 
-    int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
-    if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
-            wasDetached = true;
-        } else {
-            std::cout << "jniEnv thread failed to attach!" << std::endl;
-            return;
-        }
-    }
-
-    jstring ensembleLabel = getSafeJniStringFromCString(enve,
-                                                        ensemble.getEnsembleLabel().c_str(),
-                                                        ensemble.getEnsembleLabel().size());
-    jstring ensembleShortLabel = getSafeJniStringFromCString(enve,
-                                                            ensemble.getEnsembleShortLabel().c_str(),
-                                                            ensemble.getEnsembleShortLabel().size());
+    LocalRef<jstring> ensembleLabel = jenny::toJavaString(enve,
+                                                        ensemble.getEnsembleLabel().c_str());
+    LocalRef<jstring> ensembleShortLabel = jenny::toJavaString(enve,
+                                                            ensemble.getEnsembleShortLabel().c_str());
 
     for(const auto& srv : ensemble.getDabServices()) {
         std::cout << m_logTag << " Scan service: " << srv->getServiceLabel() << std::endl;
         const jint sid = (jint) srv->getServiceId();
-        jobject dabServiceObject = enve->NewObject(m_dabServiceClass, m_dabServiceConstructorMId);
+        LocalRef<jobject> dabServiceObject(RadioServiceDabImplProxy::newInstance(enve));
         const jint ecc = (jint) ensemble.getEnsembleEcc();
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceSetEnsembleEccMId, ecc);
+        RadioServiceDabNativeProxy::setEnsembleEcc(enve, dabServiceObject.get(), ecc);
         const jint eid = (jint) ensemble.getEnsembleId();
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceSetEnsembleIdMId, eid);
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceSetEnsembleLabelMId, ensembleLabel);
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceSetEnsembleShortLabelMId, ensembleShortLabel);
+        RadioServiceDabNativeProxy::setEnsembleId(enve, dabServiceObject.get(), eid);
+        RadioServiceDabNativeProxy::setEnsembleLabel(enve, dabServiceObject.get(), ensembleLabel.get());
+        RadioServiceDabNativeProxy::setEnsembleShortLabel(enve, dabServiceObject.get(), ensembleShortLabel.get());
         const jint freq = (jint) srv->getEnsembleFrequency();
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceSetEnsembleFrequencyMId, freq);
+        RadioServiceDabNativeProxy::setEnsembleFrequency(enve, dabServiceObject.get(), freq);
         if(srv->isCaApplied()) {
-            enve->CallVoidMethod(dabServiceObject, m_dabServiceSetIsCaAppliedMId, JNI_TRUE);
+            RadioServiceDabNativeProxy::setIsCaProtected(enve, dabServiceObject.get(), JNI_TRUE);
         } else {
-            enve->CallVoidMethod(dabServiceObject, m_dabServiceSetIsCaAppliedMId, JNI_FALSE);
+            RadioServiceDabNativeProxy::setIsCaProtected(enve, dabServiceObject.get(), JNI_FALSE);
         }
         const jint caId = (jint) srv->getCaId();
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceSetCaIdMId, caId);
+        RadioServiceDabNativeProxy::setCaId(enve, dabServiceObject.get(), caId);
 
-        jstring dabServiceLabel;
-        jstring dabServiceShortLabel;
+        LocalRef<jstring> dabServiceLabel = jenny::toJavaString(enve, srv->getServiceLabel().c_str());
+        LocalRef<jstring> dabServiceShortLabel = jenny::toJavaString(enve, srv->getServiceShortLabel().c_str());
 
-        dabServiceLabel = getSafeJniStringFromCString(enve,
-                                                      srv->getServiceLabel().c_str(),
-                                                      srv->getServiceLabel().size());
-        dabServiceShortLabel = getSafeJniStringFromCString(enve,
-                                                           srv->getServiceShortLabel().c_str(),
-                                                           srv->getServiceShortLabel().size());
+        RadioServiceDabNativeProxy::setServiceLabel(env.get(), dabServiceObject.get(), dabServiceLabel.get());
+        RadioServiceDabNativeProxy::setShortLabel(env.get(), dabServiceObject.get(), dabServiceShortLabel.get());
 
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceLabelMId, dabServiceLabel);
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceShortLabelMId, dabServiceShortLabel);
-
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceIdMId, sid);
+        RadioServiceDabNativeProxy::setServiceId(env.get(), dabServiceObject.get(), sid);
 
         if(srv->hasAudioServiceComponent()) {
-            enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceIsProgrammeMId, JNI_TRUE);
+            RadioServiceDabNativeProxy::setIsProgrammeService(env.get(), dabServiceObject.get(), JNI_TRUE);
         } else {
-            enve->CallVoidMethod(dabServiceObject, m_dabServiceSetServiceIsProgrammeMId, JNI_FALSE);
+            RadioServiceDabNativeProxy::setIsProgrammeService(env.get(), dabServiceObject.get(), JNI_FALSE);
         }
 
-        jstring genrePty = getSafeJniStringFromCString(enve,
-                                                       srv->getProgrammeTypeFullName().c_str(),
-                                                       srv->getProgrammeTypeFullName().size());
+        LocalRef<jstring> genrePty = jenny::toJavaString(enve, srv->getProgrammeTypeFullName().c_str());
 
-        enve->CallVoidMethod(dabServiceObject, m_dabServiceAddGenreMId, genrePty);
-        enve->DeleteLocalRef(genrePty);
+        RadioServiceImplProxy::addGenre(env.get(), dabServiceObject.get(), genrePty.get());
 
         //DABServiceComponent creation
         for(const auto& srvComp : srv->getServiceComponents()) {
-            jobject dabServiceComponentObject = enve->NewObject(m_dabServiceComponentClass, m_dabServiceComponentConstructorMId);
+            LocalRef<jobject> dabServiceComponentObject(RadioServiceDabComponentImplProxy::newInstance(enve));
             const jint subChannelId = (jint) srvComp->getSubChannelId();
             const jint bitrate = (jint) srvComp->getSubchannelBitrate();
             const jint mscStartAddress = (jint) srvComp->getMscStartAddress();
@@ -247,23 +142,23 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
             const jint protectionType = (jint) srvComp->getProtectionType();
             const jint uepTableIndex = (jint) srvComp->getUepTableIndex();
 
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetBitrateMId, bitrate);
-            //enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetCaFlagMId, static_cast<jboolean>(srvComp->isCaApplied()));
+            RadioServiceDabComponentImplProxy::setScBitrate(env.get(), dabServiceComponentObject.get(),  bitrate);
+            //RadioServiceDabComponentImplProxy::setCaFlag(env.get(), dabServiceComponentObject.get(),  static_cast<jboolean>(srvComp->isCaApplied()));
             if(srvComp->isCaApplied() > 0) {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetCaFlagMId, JNI_TRUE);
+                RadioServiceDabComponentImplProxy::setIsScCaFlagSet(env.get(), dabServiceComponentObject.get(),  JNI_TRUE);
             } else {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetCaFlagMId, JNI_FALSE);
+                RadioServiceDabComponentImplProxy::setIsScCaFlagSet(env.get(), dabServiceComponentObject.get(),  JNI_FALSE);
             }
 
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetServiceIdMId, sid);
+            RadioServiceDabComponentImplProxy::setServiceId(env.get(), dabServiceComponentObject.get(),  sid);
 
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetSubchannelIdMId, subChannelId);
+            RadioServiceDabComponentImplProxy::setSubchannelId(env.get(), dabServiceComponentObject.get(),  subChannelId);
 
-            jstring dabServiceComponentLabel;
-            dabServiceComponentLabel = getSafeJniStringFromCString(enve,
-                                                                   srvComp->getServiceComponentLabel().c_str(),
-                                                                   srvComp->getServiceComponentLabel().size());
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetLabelMId, dabServiceComponentLabel);
+            {
+                LocalRef<jstring> dabServiceComponentLabel;
+                dabServiceComponentLabel = jenny::toJavaString(enve, srvComp->getServiceComponentLabel().c_str());
+                RadioServiceDabComponentImplProxy::setScLabel(env.get(), dabServiceComponentObject.get(),  dabServiceComponentLabel.get());
+            }
 
             jint packetAddress;
             jint tmId;
@@ -302,31 +197,29 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
                 }
             }
 
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetPacketAddressMId, packetAddress);
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsDgUsedMId, dgUsed);
+            RadioServiceDabComponentImplProxy::setPacketAddress(env.get(), dabServiceComponentObject.get(),  packetAddress);
+            RadioServiceDabComponentImplProxy::setDatagroupTransportUsed(env.get(), dabServiceComponentObject.get(),  dgUsed);
             if(srvComp->isPrimary()) {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsPrimaryMId, JNI_TRUE);
+                RadioServiceDabComponentImplProxy::setIsScPrimary(env.get(), dabServiceComponentObject.get(),  JNI_TRUE);
             } else {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsPrimaryMId, JNI_FALSE);
+                RadioServiceDabComponentImplProxy::setIsScPrimary(env.get(), dabServiceComponentObject.get(),  JNI_FALSE);
             }
 
             const jint scIdS = (jint)srvComp->getServiceComponentIdWithinService();
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetScIDsMId, scIdS);
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetTransportModeIdMId, tmId);
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetMscStartAddressMId, mscStartAddress);
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetSubchanSizeMId, subChannelSize);
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetProtectionLvlMId, protectionLevel);
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetProtectionTypeMId, protectionType);
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetUepTblIdxMId, uepTableIndex);
+            RadioServiceDabComponentImplProxy::setServiceComponentIdWithinService(env.get(), dabServiceComponentObject.get(), scIdS);
+            RadioServiceDabComponentImplProxy::setDatagroupTransportUsed(env.get(), dabServiceComponentObject.get(),  tmId);
+            RadioServiceDabComponentImplProxy::setMscStartAddress(env.get(), dabServiceComponentObject.get(),  mscStartAddress);
+            RadioServiceDabComponentImplProxy::setSubchannelSize(env.get(), dabServiceComponentObject.get(),  subChannelSize);
+            RadioServiceDabComponentImplProxy::setProtectionLevel(env.get(), dabServiceComponentObject.get(),  protectionLevel);
+            RadioServiceDabComponentImplProxy::setProtectionType(env.get(), dabServiceComponentObject.get(),  protectionType);
+            RadioServiceDabComponentImplProxy::setUepTableIndex(env.get(), dabServiceComponentObject.get(),  uepTableIndex);
             if(srvComp->isFecSchemeApplied()) {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsFecAppliedMId, JNI_TRUE);
+                RadioServiceDabComponentImplProxy::setIsFecSchemeApplied(env.get(), dabServiceComponentObject.get(),  JNI_TRUE);
             } else {
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetIsFecAppliedMId, JNI_FALSE);
+                RadioServiceDabComponentImplProxy::setIsFecSchemeApplied(env.get(), dabServiceComponentObject.get(),  JNI_FALSE);
             }
 
-            enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentSetScTypeMId, serviceComponentType);
-
-            enve->DeleteLocalRef(dabServiceComponentLabel);
+            RadioServiceDabComponentImplProxy::setServiceComponentType(env.get(), dabServiceComponentObject.get(),  serviceComponentType);
 
             //DABUserApplication creation
             for(const auto& uApp : srvComp->getUserApplications()) {
@@ -373,97 +266,64 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
                 }
 
                 //Add Userapplication to DabServiceComponent
-                enve->CallVoidMethod(dabServiceComponentObject, m_dabServiceComponentAddUserApplicationMId, dabServiceUserApplicationObject);
+                RadioServiceDabComponentImplProxy::addScUserApplication(env.get(), dabServiceComponentObject.get(),  dabServiceUserApplicationObject);
 
                 enve->DeleteLocalRef(dabServiceUserApplicationObject);
             }
             //DABUserApplication creation END
 
             //Add DabServiceComponent to DabService
-            enve->CallVoidMethod(dabServiceObject, m_dabServiceAddServiceComponentMId, dabServiceComponentObject);
-
-            enve->DeleteLocalRef(dabServiceComponentObject);
+            RadioServiceDabNativeProxy::addServiceComponent(env.get(), dabServiceObject.get(), dabServiceComponentObject.get());
         }
         //DABServiceComponent creation END
 
-        enve->DeleteLocalRef(dabServiceLabel);
-        enve->DeleteLocalRef(dabServiceShortLabel);
-
-        enve->CallVoidMethod(m_usbTunerObject, m_usbTunerServiceFoundMId, dabServiceObject);
-
-        enve->DeleteLocalRef(dabServiceObject);
-    }
-
-    enve->DeleteLocalRef(ensembleLabel);
-    enve->DeleteLocalRef(ensembleShortLabel);
-
-    if(wasDetached) {
-        m_javaVm->DetachCurrentThread();
+        TunerUsbProxy::serviceFound(enve, m_usbTunerObject.get(), dabServiceObject.get());
     }
 }
 
 void JTunerUsbDevice::serviceStarted(jobject dabService) {
-    bool wasDetached = false;
     JNIEnv* enve;
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
-            wasDetached = true;
+        if(m_javaVm->AttachCurrentThreadAsDaemon((void**)&enve, nullptr) == 0) {
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
             return;
         }
     }
 
-    enve->CallVoidMethod(m_usbTunerObject, m_usbTunerServiceStartedMId, dabService);
-
-    if(wasDetached) {
-        m_javaVm->DetachCurrentThread();
-    }
+    TunerUsbProxy::serviceStarted(enve, m_usbTunerObject.get(), dabService);
 }
 
 void JTunerUsbDevice::serviceStopped(jobject dabService) {
-    bool wasDetached = false;
     JNIEnv* enve;
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
-            wasDetached = true;
+        if(m_javaVm->AttachCurrentThreadAsDaemon((void**)&enve, nullptr) == 0) {
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
             return;
         }
     }
 
-    enve->CallVoidMethod(m_usbTunerObject, m_usbTunerServiceStoppedMId, dabService);
-
-    if(wasDetached) {
-        m_javaVm->DetachCurrentThread();
-    }
+    TunerUsbProxy::serviceStopped(enve, m_usbTunerObject.get(), dabService);
 }
 
 void JTunerUsbDevice::receptionStatistics(bool rfLock, int level, int rawValue) {
-    bool wasDetached = false;
     JNIEnv* enve;
 
     int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(m_javaVm->AttachCurrentThread((void**)&enve, nullptr) == 0) {
-            wasDetached = true;
+        if(m_javaVm->AttachCurrentThreadAsDaemon((void**)&enve, nullptr) == 0) {
         } else {
             std::cout << "jniEnv thread failed to attach!" << std::endl;
             return;
         }
     }
 
-    enve->CallVoidMethod(m_usbTunerObject, m_usbTunerReceptionStatisticsMId,
-                         rfLock, level, rawValue);
-
-    if(wasDetached) {
-        m_javaVm->DetachCurrentThread();
-    }
+    TunerUsbProxy::receptionStatistics(enve, m_usbTunerObject.get(), rfLock, level, rawValue);
 }
 
 void JTunerUsbDevice::setJavaClassDabTime(JNIEnv *env, jclass dabTimeClass) {
@@ -490,7 +350,7 @@ void JTunerUsbDevice::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
     JNIEnv *enve;
     m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
     jobject javaDateObject = enve->NewObject(m_dabTimeClass, m_dabTimeConstructorMId, t);
-    enve->CallVoidMethod(m_usbTunerObject, m_dabTimeUpdateMId, javaDateObject);
+    enve->CallVoidMethod(m_usbTunerObject.get(), m_dabTimeUpdateMId, javaDateObject);
 
     enve->DeleteLocalRef(javaDateObject);
 

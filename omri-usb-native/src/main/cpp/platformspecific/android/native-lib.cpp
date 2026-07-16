@@ -26,6 +26,8 @@
 #include <vector>
 #include <memory>
 #include <org_omri_radio_impl_UsbHelper.h>
+#include "jenny/proxy/jenny_fusion_proxies.h"
+#include "jenny/proxy/jnihelper.h"
 
 #include "log4jbridge.h"
 #include "stdoutbridge.h"
@@ -205,6 +207,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     } else {
         std::cerr << LOG_TAG << "JNI_OnLoad: vm null" << std::endl;
     }
+    jenny::Env::attachJvm(vm);
+    jenny::initAllProxies(env);
     return JNI_VERSION_1_6;
 }
 
@@ -234,12 +238,6 @@ JNIEXPORT void JNI_OnUnload(JavaVM *vm, void *reserved) {
 
 JNIEXPORT jboolean JNICALL Java_org_omri_radio_impl_UsbHelper_created(JNIEnv *env, jobject thiz,
                                                                   jstring rawRecordingPath = nullptr) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return JNI_FALSE;
-    }
-
     int r = libusb_init(nullptr);
     if (r != 0) {
         LOG_ERROR(LOG_TAG.c_str(), std::string("error in libusb init! ") + libusb_error_name(r));
@@ -247,19 +245,13 @@ JNIEXPORT jboolean JNICALL Java_org_omri_radio_impl_UsbHelper_created(JNIEnv *en
     }
 
     if (rawRecordingPath != nullptr) {
-        const char *path = env->GetStringUTFChars(rawRecordingPath, JNI_FALSE);
-        if (path != nullptr) {
-            m_rawRecordingPath = path;
-        }
+        m_rawRecordingPath = jenny::fromJavaString(env, rawRecordingPath);
     }
     std::cout << LOG_TAG << " created (redirectCout="
               << std::boolalpha << (JNI_TRUE == m_CoutRedirectedToALog) << std::noboolalpha
               << ",rawRecordingPath=" << m_rawRecordingPath
               << ")" << std::endl;
 
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
     return JNI_TRUE;
 }
 
@@ -349,11 +341,6 @@ JNIEXPORT jlongArray JNICALL Java_org_omri_radio_impl_UsbHelper_scanDevices(JNIE
 
 JNIEXPORT void JNICALL
 Java_org_omri_radio_impl_UsbHelper_detachDevice(JNIEnv* env, jobject thiz, jlong libusbDevice) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
     auto bla = m_dabInputs.begin();
     while(bla < m_dabInputs.end()) {
@@ -375,26 +362,14 @@ Java_org_omri_radio_impl_UsbHelper_detachDevice(JNIEnv* env, jobject thiz, jlong
         }
         ++devIter;
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 JNIEXPORT void JNICALL
 Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv* env, jobject thiz, jobject usbDevice, jlong libusbDevice) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
     auto device = reinterpret_cast<libusb_device *>(libusbDevice);
     std::shared_ptr<JTunerUsbDevice> jusbDevice = std::make_shared<JTunerUsbDevice>(m_javaVm, env, usbDevice, device);
 
 
-    jusbDevice->setJavaClassUsbTuner(env, m_usbTunerClass);
-    jusbDevice->setJavaClassDabService(env, m_radioServiceDabImplClass);
-    jusbDevice->setJavaClassDabServiceComponent(env, m_dabServiceComponentClass);
     jusbDevice->setJavaClassDabServiceUserApplication(env, m_dabServiceUserApplicationClass);
     jusbDevice->setJavaClassDabTime(env, m_javaDateClass);
 
@@ -407,18 +382,9 @@ Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv* env, jobject thiz, job
         m_dabInputs.push_back(std::unique_ptr<RaonTunerInput>(
                 new RaonTunerInput(jusbDevice, m_rawRecordingPath)));
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startSrv(JNIEnv* env, jobject thiz, jlong libusbDevice, jobject dabService) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
     LOG_DEBUG(LOG_TAG.c_str(),  std::format("UsbHelper starting service for Device: {}", libusbDevice));
 
@@ -436,18 +402,9 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startSrv(JNIEnv* env, 
         }
         devIter++;
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopSrv(JNIEnv* env, jobject thiz, jlong libusbDevice) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
     LOG_DEBUG(LOG_TAG.c_str(),  std::format("UsbHelper stopping service on device: {}", libusbDevice));
@@ -465,37 +422,19 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopSrv(JNIEnv* env, j
     if (!found) {
         LOG_ERROR(LOG_TAG.c_str(),  std::format("Device not found: {}", libusbDevice));
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_tuneFreq(JNIEnv* env, jobject thiz, jlong libusbDevice, jlong freq) {
    
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
 
     std::cerr << LOG_TAG << " tuning to frequency not implemented!" << std::endl;
 
     //TODO UsbHelper.tuneFreq
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startServiceScan(JNIEnv* env, jobject thiz, jlong libusbDevice) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
 
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
@@ -509,19 +448,9 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_startServiceScan(JNIEn
         }
         devIter++;
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopServiceScan(JNIEnv* env, jobject thiz, jlong libusbDevice) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
     LOG_DEBUG(LOG_TAG.c_str(),  std::format("UsbHelper stopping serviceScan on device: {}", libusbDevice));
@@ -534,21 +463,11 @@ JNIEXPORT void JNICALL Java_org_omri_radio_impl_UsbHelper_stopServiceScan(JNIEnv
         }
         devIter++;
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 JNIEXPORT jobject JNICALL
 Java_org_omri_radio_impl_UsbHelper_getLinkedServices(JNIEnv *env, jobject thiz, jlong libusbDevice,
                                                      jobject dabService) {
-
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return nullptr;
-    }
 
     jobject retObj = nullptr;
 
@@ -615,20 +534,12 @@ Java_org_omri_radio_impl_UsbHelper_getLinkedServices(JNIEnv *env, jobject thiz, 
         }
     }
 
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
     return retObj;
 }
 
 JNIEXPORT jstring JNICALL
 Java_org_omri_radio_impl_UsbHelper_getHardwareVersion(JNIEnv *env, jobject thiz,
                                                       jlong libusbDevice) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return nullptr;
-    }
 
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
@@ -646,20 +557,12 @@ Java_org_omri_radio_impl_UsbHelper_getHardwareVersion(JNIEnv *env, jobject thiz,
                                                     hardwareVersion.c_str(),
                                                     hardwareVersion.size());
 
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
     return retString;
 }
 
 JNIEXPORT jstring JNICALL
 Java_org_omri_radio_impl_UsbHelper_getSoftwareVersion(JNIEnv *env, jobject thiz,
                                                       jlong libusbDevice) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return nullptr;
-    }
 
     auto* device_handle = reinterpret_cast<libusb_device *>(libusbDevice);
 
@@ -677,9 +580,6 @@ Java_org_omri_radio_impl_UsbHelper_getSoftwareVersion(JNIEnv *env, jobject thiz,
                                                     softwareVersion.c_str(),
                                                     softwareVersion.size());
 
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
     return retString;
 }
 
@@ -688,11 +588,6 @@ static std::unique_ptr<DemoUsbTunerInput> m_demoInput = nullptr;
 
 JNIEXPORT void JNICALL
 Java_org_omri_radio_impl_UsbHelper_demoTunerAttached(JNIEnv *env, jobject thiz, jobject demoTuner) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
 
     if (m_demoInput == nullptr) {
         std::cout << LOG_TAG << "DemoTuner attached" << std::endl;
@@ -706,19 +601,10 @@ Java_org_omri_radio_impl_UsbHelper_demoTunerAttached(JNIEnv *env, jobject thiz, 
     } else {
         std::cerr << LOG_TAG << "DemoTuner already attached" << std::endl;
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 JNIEXPORT void JNICALL
 Java_org_omri_radio_impl_UsbHelper_demoTunerDetached(JNIEnv *env, jobject thiz, jobject demoTuner) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
 
     std::cout << LOG_TAG << "DemoTuner detached" << std::endl;
 
@@ -736,20 +622,11 @@ Java_org_omri_radio_impl_UsbHelper_demoTunerDetached(JNIEnv *env, jobject thiz, 
         m_demoInput.release();
         m_demoInput = nullptr;
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 JNIEXPORT void JNICALL
 Java_org_omri_radio_impl_UsbHelper_demoServiceStart(JNIEnv *env, jobject thiz,
                                                     jobject radioService) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
 
     if (m_demoInput != nullptr) {
         std::shared_ptr<JDabService> service = std::make_shared<JDabService>(m_javaVm, env,
@@ -760,26 +637,12 @@ Java_org_omri_radio_impl_UsbHelper_demoServiceStart(JNIEnv *env, jobject thiz,
                                                                              radioService);
         m_demoInput->startService(service);
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 JNIEXPORT void JNICALL
 Java_org_omri_radio_impl_UsbHelper_demoServiceStop(JNIEnv *env, jobject thiz) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-
     if (m_demoInput != nullptr) {
         m_demoInput->stopAllRunningServices();
-    }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << LOG_TAG << "jniEnv thread failed to detach!" << std::endl;
     }
 }
 

@@ -24,6 +24,7 @@
 #include <ctime>
 #include "jusbdevice.h"
 #include "../../dabensemble.h"
+#include "jenny/proxy/jnihelper.h"
 
 class JTunerUsbDevice : public JUsbDevice {
 
@@ -47,8 +48,6 @@ public:
     virtual void serviceStopped(jobject dabService);
     virtual void receptionStatistics(bool rfLock, int level, int rawValue);
 
-    virtual void setJavaClassUsbTuner(JNIEnv* env, jclass usbTunerClass);
-    virtual void setJavaClassDabService(JNIEnv* env, jclass dabServiceClass);
     virtual void setJavaClassDabServiceComponent(JNIEnv* env, jclass dabServiceComponentClass);
     virtual void setJavaClassDabServiceUserApplication(JNIEnv* env, jclass dabServiceUserAppClass);
 
@@ -61,60 +60,7 @@ private:
     JavaVM* m_javaVm;
 
     //The existing Tuner object reference
-    jobject m_usbTunerObject;
-
-    //Tuner class definition
-    jclass m_usbTunerClass{};
-
-    //TunerUsb interface
-    jmethodID m_usbTunerCallbackMId{};
-    jmethodID m_usbTunerScanProgressMId{};
-    jmethodID m_usbTunerServiceFoundMId{};
-    jmethodID m_usbTunerServiceStartedMId{};
-    jmethodID m_usbTunerServiceStoppedMId{};
-    jmethodID m_usbTunerReceptionStatisticsMId{};
-
-    //DABService
-    jclass m_dabServiceClass{};
-    jmethodID m_dabServiceConstructorMId{};
-    jmethodID m_dabServiceSetEnsembleEccMId{};
-    jmethodID m_dabServiceSetEnsembleIdMId{};
-    jmethodID m_dabServiceSetEnsembleLabelMId{};
-
-    jmethodID m_dabServiceSetEnsembleShortLabelMId{};
-    jmethodID m_dabServiceSetIsCaAppliedMId{};
-    jmethodID m_dabServiceSetCaIdMId{};
-
-    jmethodID m_dabServiceSetEnsembleFrequencyMId{};
-    jmethodID m_dabServiceSetServiceLabelMId{};
-    jmethodID m_dabServiceSetServiceShortLabelMId{};
-    jmethodID m_dabServiceSetServiceIdMId{};
-    jmethodID m_dabServiceSetServiceIsProgrammeMId{};
-    jmethodID m_dabServiceAddServiceComponentMId{};
-
-    jmethodID m_dabServiceAddGenreMId{};
-
-    //DabServiceComponent
-    jclass m_dabServiceComponentClass{};
-    jmethodID m_dabServiceComponentConstructorMId{};
-    jmethodID m_dabServiceComponentSetBitrateMId{};
-    jmethodID m_dabServiceComponentSetCaFlagMId{};
-    jmethodID m_dabServiceComponentSetServiceIdMId{};
-    jmethodID m_dabServiceComponentSetSubchannelIdMId{};
-    jmethodID m_dabServiceComponentSetLabelMId{};
-    jmethodID m_dabServiceComponentSetPacketAddressMId{};
-    jmethodID m_dabServiceComponentSetIsPrimaryMId{};
-    jmethodID m_dabServiceComponentSetScIDsMId{};
-    jmethodID m_dabServiceComponentSetTransportModeIdMId{};
-    jmethodID m_dabServiceComponentSetScTypeMId{};
-    jmethodID m_dabServiceComponentSetIsDgUsedMId{};
-    jmethodID m_dabServiceComponentSetMscStartAddressMId{};
-    jmethodID m_dabServiceComponentSetSubchanSizeMId{};
-    jmethodID m_dabServiceComponentSetProtectionLvlMId{};
-    jmethodID m_dabServiceComponentSetProtectionTypeMId{};
-    jmethodID m_dabServiceComponentSetUepTblIdxMId{};
-    jmethodID m_dabServiceComponentSetIsFecAppliedMId{};
-    jmethodID m_dabServiceComponentAddUserApplicationMId{};
+    jenny::GlobalRef<jobject> m_usbTunerObject;
 
     //DabServiceUserApplication
     jclass m_dabServiceUserApplicationClass{};
