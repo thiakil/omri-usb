@@ -41,6 +41,19 @@ java {
     }
 }
 
+configurations {
+    nativeOutputs {
+        canBeConsumed = true
+        canBeResolved = false
+    }
+}
+
+def compileJava = tasks.named('compileJava', JavaCompile)
+artifacts {
+    nativeOutputs(compileJava.flatMap { it.options.headerOutputDirectory })
+    nativeOutputs(compileJava.flatMap { it.options.generatedSourceOutputDirectory })
+}
+
 /*application {
     applicationDefaultJvmArgs = ["-Djava.library.path=" + file("${buildDir}/libs/irtdab/shared").absolutePath]
 }*/

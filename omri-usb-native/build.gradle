@@ -3,6 +3,17 @@ plugins {
     id 'cpp-library'
 }
 
+configurations {
+    sharedCompileInputs {
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    sharedCompileInputs project(path: ':omriusb', configuration: 'nativeOutputs')
+}
+
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 
@@ -16,24 +27,20 @@ library {
     baseName = 'irtdab'
     linkage = [Linkage.SHARED]
 
-    // Target your required operating systems
-    //targetMachines.add(machines.linux.x86_64)
-    //targetMachines.add(machines.windows.x86_64)
-    //targetMachines.add(machines.macOS.x86_64)
-
-    def generatedHeader = project(":omriusb").getLayout().buildDirectory.dir("generated/sources/headers/java/main")
+    privateHeaders {
+        from(
+                configurations.sharedCompileInputs.files,
+                "${javaHome}/include",
+                "${javaHome}/include/linux",
+                "${javaHome}/include/win32",
+                "${javaHome}/include/darwin"
+        )
+    }
 
     binaries.configureEach {CppBinary cppBinary ->
         def theCompileTask = cppBinary.compileTask.get()
-        theCompileTask.dependsOn(project(":omriusb").tasks.withType(JavaCompile))
-
-        // Pass system-specific include directories to the C++ compiler
+        theCompileTask.dependsOn(configurations.sharedCompileInputs)
         theCompileTask.compilerArgs.addAll([
-                "-I${generatedHeader.get()}",
-                "-I${javaHome}/include",
-                "-I${javaHome}/include/linux",
-                "-I${javaHome}/include/win32",
-                "-I${javaHome}/include/darwin",
 				"-frtti", 
 				"-fexceptions",
                 "-fno-omit-frame-pointer",
