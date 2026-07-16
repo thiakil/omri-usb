@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import io.github.landerlyoung.jenny.NativeMethodProxy;
+import io.github.landerlyoung.jenny.NativeProxy;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +28,7 @@ import org.omri.radioservice.RadioServiceDabUserApplication;
  */
 
 //used from C
+@NativeProxy
 public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, Serializable {
 
 	private static final long serialVersionUID = -600743978196068815L;
@@ -49,12 +52,16 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 	private String mScTypeIdString = "";
 	private boolean mDataGroupsUsed = false;
 	private List<RadioServiceDabUserApplication> mScUappList = new ArrayList<RadioServiceDabUserApplication>();
-	
+
+	@NativeMethodProxy
+	public RadioServiceDabComponentImpl(){}
+
 	@Override
 	public int getBitrate() {
 		return mScBitrate;
 	}
-	
+
+	@NativeMethodProxy
 	void setScBitrate(int scBitrate) {
 		this.mScBitrate = scBitrate;
 	}
@@ -63,7 +70,8 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 	public boolean isCaApplied() {
 		return mScCaFlag;
 	}
-	
+
+	@NativeMethodProxy
 	void setIsScCaFlagSet(boolean scCaFlag) {
 		this.mScCaFlag = scCaFlag;
 	}
@@ -73,6 +81,7 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 		return mServiceId;
 	}
 
+	@NativeMethodProxy
 	void setServiceId(int scChannelId) {
 		this.mServiceId = scChannelId;
 	}
@@ -81,7 +90,8 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 	public int getSubchannelId() {
 		return mScId;
 	}
-	
+
+	@NativeMethodProxy
 	void setSubchannelId(int scId) {
 		this.mScId = scId;
 	}
@@ -90,7 +100,8 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 	public String getLabel() {
 		return mScLabel;
 	}
-	
+
+	@NativeMethodProxy
 	void setScLabel(String scLabel) {
 		this.mScLabel = scLabel.trim();
 	}
@@ -99,7 +110,8 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 	public int getPacketAddress() {
 		return mScPacketAddress;
 	}
-	
+
+	@NativeMethodProxy
 	void setPacketAddress(int scPackAdd) {
 		this.mScPacketAddress = scPackAdd;
 	}
@@ -108,7 +120,8 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 	public boolean isPrimary() {
 		return mScIsPrimary;
 	}
-	
+
+	@NativeMethodProxy
 	void setIsScPrimary(boolean scPrimary) {
 		this.mScIsPrimary = scPrimary;
 	}
@@ -117,7 +130,8 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 	public int getServiceComponentIdWithinService() {
 		return mScIDsId;
 	}
-	
+
+	@NativeMethodProxy
 	void setServiceComponentIdWithinService(int scServiceCompId) {
 		this.mScIDsId = scServiceCompId;
 	}
@@ -126,7 +140,8 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 	public int getTmId() {
 		return mScTmId;
 	}
-	
+
+	@NativeMethodProxy
 	void setTmId(int tmId) {
 		this.mScTmId = tmId;
 	}
@@ -135,7 +150,8 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 	public int getServiceComponentType() {
 		return mScTypeId;
 	}
-	
+
+	@NativeMethodProxy
 	void setServiceComponentType(int scType) {
 		this.mScTypeId = scType;
 	}
@@ -145,6 +161,7 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 		return mDataGroupsUsed;
 	}
 
+	@NativeMethodProxy
 	void setDatagroupTransportUsed(boolean dgFlag) {
 		mDataGroupsUsed = dgFlag;
 	}
@@ -154,6 +171,7 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 		return mScUappList;
 	}
 
+	@NativeMethodProxy
 	void addScUserApplication(RadioServiceDabUserApplication uApp) {
 		this.mScUappList.add(uApp);
 	}
@@ -174,6 +192,7 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 		return mMscStartAddress;
 	}
 
+	@NativeMethodProxy
 	void setMscStartAddress(int mscStart) {
 		mMscStartAddress = mscStart;
 	}
@@ -183,6 +202,7 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 		return mSubchanSize;
 	}
 
+	@NativeMethodProxy
 	void setSubchannelSize(int subChanSize) {
 		mSubchanSize = subChanSize;
 	}
@@ -192,6 +212,7 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 		return mProtLvl;
 	}
 
+	@NativeMethodProxy
 	void setProtectionLevel(int protLvl) {
 		mProtLvl = protLvl;
 	}
@@ -201,6 +222,7 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 		return mProtType;
 	}
 
+	@NativeMethodProxy
 	void setProtectionType(int protType) {
 		mProtType = protType;
 	}
@@ -210,6 +232,7 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 		return mUepIdx;
 	}
 
+	@NativeMethodProxy
 	void setUepTableIndex(int tableIdx) {
 		mUepIdx = tableIdx;
 	}
@@ -219,6 +242,7 @@ public class RadioServiceDabComponentImpl implements RadioServiceDabComponent, S
 		return mFecApplied;
 	}
 
+	@NativeMethodProxy
 	void setIsFecSchemeApplied(boolean fecApplied) {
 		mFecApplied = fecApplied;
 	}

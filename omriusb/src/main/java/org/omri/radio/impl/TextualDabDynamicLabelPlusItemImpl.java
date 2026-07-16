@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import io.github.landerlyoung.jenny.NativeMethodProxy;
+import io.github.landerlyoung.jenny.NativeProxy;
 import org.omri.radioservice.metadata.TextualDabDynamicLabelPlusContentType;
 import org.omri.radioservice.metadata.TextualDabDynamicLabelPlusItem;
 
@@ -23,18 +25,24 @@ import java.io.Serializable;
  * @author Fabian Sattler, IRT GmbH
  */
 
+@NativeProxy
 public class TextualDabDynamicLabelPlusItemImpl implements TextualDabDynamicLabelPlusItem, Serializable {
 
 	private static final long serialVersionUID = 4395469276512935565L;
 
 	private TextualDabDynamicLabelPlusContentType mContentType = TextualDabDynamicLabelPlusContentType.DUMMY;
 	private String mDlpItemText = "";
-	
+
+	@NativeMethodProxy
+	public TextualDabDynamicLabelPlusItemImpl() {
+	}
+
 	@Override
 	public TextualDabDynamicLabelPlusContentType getDynamicLabelPlusContentType() {
 		return mContentType;
 	}
-	
+
+	@NativeMethodProxy
 	void setDlPlusContentType(int contType) {
 		if(contType <= TextualDabDynamicLabelPlusContentType.values().length) {
 			mContentType = TextualDabDynamicLabelPlusContentType.values()[contType];
@@ -56,6 +64,7 @@ public class TextualDabDynamicLabelPlusItemImpl implements TextualDabDynamicLabe
 		return mDlpItemText;
 	}
 
+	@NativeMethodProxy
 	void setDlPlusContentText(String tagText) {
 		mDlpItemText = tagText;
 	}

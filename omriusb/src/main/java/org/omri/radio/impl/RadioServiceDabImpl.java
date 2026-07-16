@@ -1,11 +1,14 @@
 package org.omri.radio.impl;
 
+import io.github.landerlyoung.jenny.NativeMethodProxy;
+import io.github.landerlyoung.jenny.NativeProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
+import org.omri.radioservice.RadioServiceDabNative;
 import org.omri.radioservice.RadioServiceType;
 
 import java.io.Serializable;
@@ -32,7 +35,8 @@ import java.util.Objects;
  */
 
 //used from C
-public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServiceDab, Serializable {
+@NativeProxy
+public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServiceDab, RadioServiceDabNative, Serializable {
 
 	private static final long serialVersionUID = 4382868398713243924L;
 
@@ -51,6 +55,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	private boolean mIsProgrammeService = false;
 	final private List<RadioServiceDabComponent> mServiceComponents = new ArrayList<RadioServiceDabComponent>();
 
+	@NativeMethodProxy
 	RadioServiceDabImpl() {	}
 
 	@Override
@@ -63,7 +68,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 		return mEnsembleEcc;
 	}
 	
-	void setEnsembleEcc(int ensembleEcc) {
+	public void setEnsembleEcc(int ensembleEcc) {
 		mEnsembleEcc = ensembleEcc;
 	}
 
@@ -71,8 +76,8 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	public int getEnsembleId() {
 		return mEnsembleId;
 	}
-	
-	void setEnsembleId(int ensembleId) {
+
+	public void setEnsembleId(int ensembleId) {
 		mEnsembleId = ensembleId;
 	}
 
@@ -80,8 +85,8 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	public String getEnsembleLabel() {
 		return mEnsembleLabel;
 	}
-	
-	void setEnsembleLabel(String ensembleLabel) {
+
+	public void setEnsembleLabel(String ensembleLabel) {
 		this.mEnsembleLabel = ensembleLabel.trim();
 	}
 
@@ -90,7 +95,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 		return mEnsembleShortLabel;
 	}
 
-	void setEnsembleShortLabel(String ensembleShortLabel) {
+	public void setEnsembleShortLabel(String ensembleShortLabel) {
 		this.mEnsembleShortLabel = ensembleShortLabel.trim();
 	}
 
@@ -98,8 +103,8 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	public int getEnsembleFrequency() {
 		return mEnsembleFrequency;
 	}
-	
-	void setEnsembleFrequency(int ensembleFreq) {
+
+	public void setEnsembleFrequency(int ensembleFreq) {
 		this.mEnsembleFrequency = ensembleFreq;
 	}
 
@@ -108,7 +113,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 		return mIsCaApplied;
 	}
 
-	void setIsCaProtected(boolean ca) {
+	public void setIsCaProtected(boolean ca) {
 		mIsCaApplied = ca;
 	}
 
@@ -117,7 +122,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 		return mCaId;
 	}
 
-	void setCaId(int caId) {
+	public void setCaId(int caId) {
 		mCaId = caId;
 	}
 
@@ -125,8 +130,8 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	public String getServiceLabel() {
 		return mServiceLabel;
 	}
-	
-	void setServiceLabel(String srvLabel) {
+
+	public void setServiceLabel(String srvLabel) {
 		this.mServiceLabel = srvLabel.trim();
 	}
 
@@ -135,7 +140,7 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 		return mShortServiceLabel;
 	}
 
-	void setShortLabel(String shortLabel) {
+	public void setShortLabel(String shortLabel) {
 		mShortServiceLabel = shortLabel.trim();
 	}
 
@@ -143,8 +148,8 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	public int getServiceId() {
 		return mServiceId;
 	}
-	
-	void setServiceId(int srvId) {
+
+	public void setServiceId(int srvId) {
 		this.mServiceId = srvId;
 	}
 
@@ -152,8 +157,8 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	public boolean isProgrammeService() {
 		return mIsProgrammeService;
 	}
-	
-	void setIsProgrammeService(boolean isProg) {
+
+	public void setIsProgrammeService(boolean isProg) {
 		mIsProgrammeService = isProg;
 	}
 
@@ -162,11 +167,11 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 		return mServiceComponents;
 	}
 
-	void addServiceComponent(RadioServiceDabComponent dabComp) {
+	public void addServiceComponent(RadioServiceDabComponent dabComp) {
 		this.mServiceComponents.add(dabComp);
 	}
-	
-	void addServiceComponent(List<RadioServiceDabComponent> dabComp) {
+
+	public void addServiceComponent(List<RadioServiceDabComponent> dabComp) {
 		this.mServiceComponents.addAll(dabComp);
 	}
 

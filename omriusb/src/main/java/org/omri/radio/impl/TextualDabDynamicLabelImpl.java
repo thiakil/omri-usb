@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import io.github.landerlyoung.jenny.NativeMethodProxy;
+import io.github.landerlyoung.jenny.NativeProxy;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +29,7 @@ import org.omri.radioservice.metadata.TextualType;
  */
 
 //used from C
+@NativeProxy
 public class TextualDabDynamicLabelImpl extends TextualImpl implements TextualDabDynamicLabel, Serializable {
 
 	private static final long serialVersionUID = 342793136525104857L;
@@ -34,7 +37,11 @@ public class TextualDabDynamicLabelImpl extends TextualImpl implements TextualDa
 	private List<TextualDabDynamicLabelPlusItem> mDlpItemsList = new ArrayList<TextualDabDynamicLabelPlusItem>();
 	private boolean mItemRunning = false;
 	private boolean mItemToggled = false;
-	
+
+	@NativeMethodProxy
+	public TextualDabDynamicLabelImpl() {
+	}
+
 	@Override
 	public TextualType getType() {
 		return TextualType.METADATA_TEXTUAL_TYPE_DAB_DLS;
@@ -54,7 +61,8 @@ public class TextualDabDynamicLabelImpl extends TextualImpl implements TextualDa
 	public List<TextualDabDynamicLabelPlusItem> getDlPlusItems() {
 		return mDlpItemsList;
 	}
-	
+
+	@NativeMethodProxy
 	void addDlPlusItem(TextualDabDynamicLabelPlusItem dlpItem) {
 		this.mDlpItemsList.add(dlpItem);
 	}
@@ -68,6 +76,7 @@ public class TextualDabDynamicLabelImpl extends TextualImpl implements TextualDa
 		return mItemRunning;
 	}
 
+	@NativeMethodProxy
 	void setItemRunning(boolean itemRunning) {
 		mItemRunning = itemRunning;
 	}
@@ -77,7 +86,20 @@ public class TextualDabDynamicLabelImpl extends TextualImpl implements TextualDa
 		return mItemToggled;
 	}
 
+	@NativeMethodProxy
 	void setItemToggled(boolean itemToggled) {
 		mItemToggled = itemToggled;
+	}
+
+	@NativeMethodProxy
+	@Override
+	void setText(String text) {
+		super.setText(text);
+	}
+
+	@NativeMethodProxy
+	@Override
+	void setTextBytes(byte[] utf8bytes, int charset) {
+		super.setTextBytes(utf8bytes, charset);
 	}
 }

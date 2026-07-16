@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import io.github.landerlyoung.jenny.NativeMethodProxy;
+import io.github.landerlyoung.jenny.NativeProxy;
 import java.io.Serializable;
 
 import org.omri.radioservice.RadioServiceDabDataServiceComponentType;
@@ -25,6 +27,7 @@ import org.omri.radioservice.RadioServiceDabUserApplicationType;
  */
 
 //used from C
+@NativeProxy
 public class RadioServiceDabUserApplicationImpl implements RadioServiceDabUserApplication, Serializable {
 
 	private static final long serialVersionUID = -2789012667334731485L;
@@ -38,11 +41,15 @@ public class RadioServiceDabUserApplicationImpl implements RadioServiceDabUserAp
 	private RadioServiceDabDataServiceComponentType mDSCTy = RadioServiceDabDataServiceComponentType.UNSPECIFIED_DATA;
 	private byte[] mUappSpecificData = null;
 
+	@NativeMethodProxy
+	public RadioServiceDabUserApplicationImpl() {}
+
 	@Override
 	public RadioServiceDabUserApplicationType getType() {
 		return mApptype;
 	}
 
+	@NativeMethodProxy
 	void setUserApplicationType(int type) {
 		mApptype = RadioServiceDabUserApplicationType.getUserApplicationTypeByType(type);
 	}
@@ -52,6 +59,7 @@ public class RadioServiceDabUserApplicationImpl implements RadioServiceDabUserAp
 		return mIsCaProtected;
 	}
 
+	@NativeMethodProxy
 	void setIsCaProtected(boolean caApplied) {
 		mIsCaProtected = caApplied;
 	}
@@ -61,6 +69,7 @@ public class RadioServiceDabUserApplicationImpl implements RadioServiceDabUserAp
 		return mCaOrg;
 	}
 
+	@NativeMethodProxy
 	void setCaOrganization(int caOrg) {
 		mCaOrg = caOrg;
 	}
@@ -70,6 +79,7 @@ public class RadioServiceDabUserApplicationImpl implements RadioServiceDabUserAp
 		return mIsXpadApptype;
 	}
 
+	@NativeMethodProxy
 	void setIsXpadApptype(boolean isXpad) {
 		mIsXpadApptype = isXpad;
 	}
@@ -79,6 +89,7 @@ public class RadioServiceDabUserApplicationImpl implements RadioServiceDabUserAp
 		return mXpadApptype;
 	}
 
+	@NativeMethodProxy
 	void setXpadApptype(int xpadType) {
 		mXpadApptype = xpadType;
 	}
@@ -88,6 +99,7 @@ public class RadioServiceDabUserApplicationImpl implements RadioServiceDabUserAp
 		return mDgUsed;
 	}
 
+	@NativeMethodProxy
 	void setIsDatagroupsUsed(boolean dgUsed) {
 		mDgUsed = dgUsed;
 	}
@@ -97,6 +109,7 @@ public class RadioServiceDabUserApplicationImpl implements RadioServiceDabUserAp
 		return mDSCTy;
 	}
 
+	@NativeMethodProxy
 	void setDSCTy(int dscty) {
 		mDSCTy = RadioServiceDabDataServiceComponentType.getDSCTyByType(dscty);
 	}
@@ -106,6 +119,7 @@ public class RadioServiceDabUserApplicationImpl implements RadioServiceDabUserAp
 		return mUappSpecificData;
 	}
 
+	@NativeMethodProxy
 	void setUappdata(byte[] uAppdata) {
 		mUappSpecificData = uAppdata;
 	}

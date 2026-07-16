@@ -1,5 +1,6 @@
 package org.omri.radio.impl;
 
+import io.github.landerlyoung.jenny.NativeMethodProxy;
 import org.omri.radioservice.metadata.Textual;
 
 import java.io.Serializable;

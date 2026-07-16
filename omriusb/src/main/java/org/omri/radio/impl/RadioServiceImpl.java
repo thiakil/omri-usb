@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import io.github.landerlyoung.jenny.NativeMethodProxy;
+import io.github.landerlyoung.jenny.NativeProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -38,6 +40,7 @@ import java.util.List;
  */
 
 @SuppressWarnings({"ClassWithTooManyMethods", "OverlyComplexClass", "OverlyCoupledClass"})
+@NativeProxy
 public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 	private static final long serialVersionUID = 952156510217072036L;
@@ -106,6 +109,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		return mGenreList;
 	}
 
+	@NativeMethodProxy
 	void addGenre(String genre) {
 		this.mGenreList.add(genre);
 	}
@@ -204,7 +208,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	//callbacks from the tuner
-	@SuppressWarnings("unused")
+	@NativeMethodProxy
 	void slideshowReceived(VisualDabSlideShow slideShow) {
 		synchronized (mSlideshowListeners) {
 			for (VisualMetadataListener slsListener : mSlideshowListeners) {
@@ -213,6 +217,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		}
 	}
 
+	@NativeMethodProxy
 	void labelReceived(Textual label) {
 		synchronized (mLabelListeners) {
 			for (TextualMetadataListener dlsListener : mLabelListeners) {
@@ -221,7 +226,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		}
 	}
 
-	@SuppressWarnings("unused")
+	@NativeMethodProxy
 	void audioData(final byte[] pcmData, final int channelCount, final int samplingRate) {
 		if (/*mDecodeAudio && */mAudioDec != null) {
 			mAudioDec.feedData(pcmData);
@@ -278,7 +283,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	// called from JNI
-	@SuppressWarnings("unused")
+	@NativeMethodProxy
 	void serviceFollowingReceived(ArrayList<RadioService> sfServices) {
 		if (sfServices != null) {
 			LOGGER.debug("serviceFollowingReceived sz=" + sfServices.size() + " for " +
@@ -313,7 +318,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	private transient @Nullable DabAudioDecoder mAudioDec = null;
 	private RadioServiceMimeType mMimeType = RadioServiceMimeType.UNKNOWN;
 
-	@SuppressWarnings("unused")//native callback
+	@NativeMethodProxy
 	void audioFormatChanged(final int ascty, final int channelCount, final int samplingRate, final boolean sbrUsed, final boolean psUsed) {
         LOGGER.debug("audioFormatChanged: ASCTY:{}, SBR: {}, PS: {}", ascty, sbrUsed, psUsed);
 		mMimeType = RadioServiceMimeType.UNKNOWN;

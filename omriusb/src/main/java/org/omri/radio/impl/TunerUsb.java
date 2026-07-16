@@ -1,5 +1,6 @@
 package org.omri.radio.impl;
 
+import io.github.landerlyoung.jenny.NativeProxy;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.tuner.Tuner;
 
@@ -21,6 +22,7 @@ import org.omri.tuner.Tuner;
  * @author Fabian Sattler, IRT GmbH
  */
 
+@NativeProxy(allMethods = true)
 interface TunerUsb extends Tuner {
 
 	long getUsbDevice();

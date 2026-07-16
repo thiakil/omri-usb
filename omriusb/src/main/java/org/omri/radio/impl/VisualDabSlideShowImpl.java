@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import io.github.landerlyoung.jenny.NativeMethodProxy;
+import io.github.landerlyoung.jenny.NativeProxy;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -27,6 +29,7 @@ import org.omri.radioservice.metadata.VisualType;
  */
 
 //used from C
+@NativeProxy
 public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlideShow, Serializable {
 
 	private int mCatId = -1;
@@ -40,7 +43,11 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 	private String mCatText = "";
 	private URI mCatLink;
 	private URI mCatClickLink;
-	
+
+	@NativeMethodProxy
+	public VisualDabSlideShowImpl() {
+	}
+
 	@Override
 	public VisualType getVisualType() {
 		return VisualType.METADATA_VISUAL_TYPE_DAB_SLS;
@@ -55,7 +62,8 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 	public String getContentName() {
 		return mContentName;
 	}
-	
+
+	@NativeMethodProxy
 	void setContentName(String contName) {
 		this.mContentName = contName;
 	}
@@ -65,6 +73,7 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 		return mContentType;
 	}
 
+	@NativeMethodProxy
 	void setContentType(int contentType) {
 		mContentType = contentType;
 	}
@@ -74,6 +83,7 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 		return mContentSubType;
 	}
 
+	@NativeMethodProxy
 	void setContentSubType(int contentSubType) {
 		mContentSubType = contentSubType;
 	}
@@ -83,6 +93,7 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 		return mAltLocUri;
 	}
 
+	@NativeMethodProxy
 	void setAlternativeLocationURL(String altUrl) {
 		try {
 			mAltLocUri = URI.create(altUrl);
@@ -96,6 +107,7 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 		return mExpiryCal;
 	}
 
+	@NativeMethodProxy
 	void setExpiryTime(Calendar cal) {
 		mExpiryCal = cal;
 	}
@@ -104,7 +116,8 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 	public int getSlideId() {
 		return mSlsId;
 	}
-	
+
+	@NativeMethodProxy
 	void setSlideId(int slideId) {
 		this.mSlsId = slideId;
 	}
@@ -113,7 +126,8 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 	public Calendar getTriggerTime() {
 		return mTriggerCal;
 	}
-	
+
+	@NativeMethodProxy
 	void setTriggerTime(String triggerTime) {
 		if(triggerTime == "NOW") {
 			mTriggerCal = null;
@@ -126,7 +140,8 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 	public String getCategoryText() {
 		return mCatText;
 	}
-	
+
+	@NativeMethodProxy
 	void setCategoryText(String catText) {
 		this.mCatText = catText;
 	}
@@ -135,7 +150,8 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 	public int getCategoryId() {
 		return mCatId;
 	}
-	
+
+	@NativeMethodProxy
 	void setCategoryId(int catId) {
 		this.mCatId = catId;
 	}
@@ -158,11 +174,24 @@ public class VisualDabSlideShowImpl extends VisualImpl implements VisualDabSlide
 		return mCatClickLink;
 	}
 
+	@NativeMethodProxy
 	void setCategoryClickThroughLink(String link) {
 		try {
 			this.mCatClickLink = new URI(link);
 		} catch (URISyntaxException e) {
 			this.mCatClickLink = null;
 		}
+	}
+
+	@NativeMethodProxy
+	@Override
+	public void setVisualMimeType(int mimeTypeId) {
+		super.setVisualMimeType(mimeTypeId);
+	}
+
+	@NativeMethodProxy
+	@Override
+	void setVisualData(byte[] visData) {
+		super.setVisualData(visData);
 	}
 }

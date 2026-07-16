@@ -350,6 +350,7 @@ public class DemoTuner implements Tuner {
                             }
                             RadioServiceDabImpl foundService = new RadioServiceDabImpl();
                             foundService.setServiceLabel(label);
+                            //FIXME: getDescription used in native
                             //foundService.setLongDescription(file.getAbsolutePath());
                             foundService.setEnsembleId(eid);
                             foundService.setServiceId(sid);
