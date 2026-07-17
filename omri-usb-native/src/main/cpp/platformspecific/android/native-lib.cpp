@@ -36,6 +36,7 @@
 #include "jtunerusbdevice.h"
 #include "jusbdevice.h"
 #include "raontunerinput.h"
+#include "../../daemon-env.h"
 
 extern "C" {
 
@@ -185,6 +186,20 @@ static LogRedirector * cerrDirector;
 static LogRedirector * coutDirector;
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    JNIEnv *env;
+    if (vm != nullptr) {
+        if (vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
+            return JNI_ERR;
+        }
+    } else {
+        std::cerr << LOG_TAG << "JNI_OnLoad: vm null" << std::endl;
+        return JNI_ERR;
+    }
+    cacheClassDefinitions(m_javaVm);
+    DaemonEnv::attachJvm(vm);
+    jenny::Env::attachJvm(vm);
+    jenny::initAllProxies(env);
+    Log4JLogger::getInstance().init(vm, env);
     clogDirector = new LogRedirector(LOGLEVEL_WARN);
     cerrDirector = new LogRedirector(LOGLEVEL_ERROR);
     coutDirector = new LogRedirector(LOGLEVEL_DEBUG);
@@ -192,23 +207,6 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     std::clog.rdbuf(clogDirector);
     std::cerr.rdbuf(cerrDirector);
     std::cout.rdbuf(coutDirector);
-    
-    JNIEnv *env;
-    if (vm != nullptr) {
-        if (vm->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
-            return JNI_ERR;
-        }
-        if (env->GetJavaVM(&m_javaVm) == 0) {
-            cacheClassDefinitions(m_javaVm);
-            Log4JLogger::getInstance().init(vm, env);
-        } else {
-            std::cerr << LOG_TAG << "JNI_OnLoad: GetJavaVM failed" << std::endl;
-        }
-    } else {
-        std::cerr << LOG_TAG << "JNI_OnLoad: vm null" << std::endl;
-    }
-    jenny::Env::attachJvm(vm);
-    jenny::initAllProxies(env);
     return JNI_VERSION_1_6;
 }
 
