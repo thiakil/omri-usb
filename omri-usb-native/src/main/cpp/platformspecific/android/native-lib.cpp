@@ -371,7 +371,6 @@ Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv* env, jobject thiz, job
 
 
     jusbDevice->setJavaClassDabServiceUserApplication(env, m_dabServiceUserApplicationClass);
-    jusbDevice->setJavaClassDabTime(env, m_javaDateClass);
 
     m_usbDevices.push_back(jusbDevice);
 

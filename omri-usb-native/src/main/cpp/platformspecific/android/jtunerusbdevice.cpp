@@ -288,7 +288,7 @@ void JTunerUsbDevice::serviceStarted(jobject dabService) {
     if(envState == JNI_EDETACHED) {
         if(m_javaVm->AttachCurrentThreadAsDaemon((void**)&enve, nullptr) == 0) {
         } else {
-            std::cout << "jniEnv thread failed to attach!" << std::endl;
+            std::fprintf(stderr, "jniEnv thread failed to attach!\n");
             return;
         }
     }
@@ -303,7 +303,7 @@ void JTunerUsbDevice::serviceStopped(jobject dabService) {
     if(envState == JNI_EDETACHED) {
         if(m_javaVm->AttachCurrentThreadAsDaemon((void**)&enve, nullptr) == 0) {
         } else {
-            std::cout << "jniEnv thread failed to attach!" << std::endl;
+            std::fprintf(stderr, "jniEnv thread failed to attach!\n");
             return;
         }
     }
@@ -314,21 +314,15 @@ void JTunerUsbDevice::serviceStopped(jobject dabService) {
 void JTunerUsbDevice::receptionStatistics(bool rfLock, int level, int rawValue) {
     JNIEnv* enve;
 
-    int envState = m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
-    if(envState == JNI_EDETACHED) {
+    if(m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6) == JNI_EDETACHED) {
         if(m_javaVm->AttachCurrentThreadAsDaemon((void**)&enve, nullptr) == 0) {
         } else {
-            std::cout << "jniEnv thread failed to attach!" << std::endl;
+            std::fprintf(stderr, "jniEnv thread failed to attach!\n");
             return;
         }
     }
 
     TunerUsbProxy::receptionStatistics(enve, m_usbTunerObject.get(), rfLock, level, rawValue);
-}
-
-void JTunerUsbDevice::setJavaClassDabTime(JNIEnv *env, jclass dabTimeClass) {
-    m_dabTimeClass = dabTimeClass;
-    m_dabTimeConstructorMId = env->GetMethodID(m_dabTimeClass, "<init>", "(J)V");
 }
 
 void JTunerUsbDevice::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
@@ -341,20 +335,15 @@ void JTunerUsbDevice::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
     auto t = dabTime.unixEpoch * 1000L;
     t += dabTime.milliseconds;
 
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << "jniEnv thread failed to attach!" << std::endl;
-        return;
+    JNIEnv* enve;
+    if(m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6) == JNI_EDETACHED) {
+        if(m_javaVm->AttachCurrentThreadAsDaemon((void**)&enve, nullptr) == 0) {
+        } else {
+            std::fprintf(stderr, "jniEnv thread failed to attach!\n");
+            return;
+        }
     }
 
-    JNIEnv *enve;
-    m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
-    jobject javaDateObject = enve->NewObject(m_dabTimeClass, m_dabTimeConstructorMId, t);
-    enve->CallVoidMethod(m_usbTunerObject.get(), m_dabTimeUpdateMId, javaDateObject);
+    TunerUsbProxy::dabTimeUpdateEpoch(enve, m_usbTunerObject.get(), t);
 
-    enve->DeleteLocalRef(javaDateObject);
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << "jniEnv thread failed to detach!" << std::endl;
-    }
 }

@@ -51,8 +51,6 @@ public:
     virtual void setJavaClassDabServiceComponent(JNIEnv* env, jclass dabServiceComponentClass);
     virtual void setJavaClassDabServiceUserApplication(JNIEnv* env, jclass dabServiceUserAppClass);
 
-    virtual void setJavaClassDabTime(JNIEnv* env, jclass dabTimeClass);
-
 private:
     const std::string m_logTag{"[JTunerUsbDevice] "};
 

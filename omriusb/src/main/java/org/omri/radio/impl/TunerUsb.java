@@ -1,6 +1,7 @@
 package org.omri.radio.impl;
 
 import io.github.landerlyoung.jenny.NativeProxy;
+import java.util.Date;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.tuner.Tuner;
 
@@ -38,4 +39,10 @@ interface TunerUsb extends Tuner {
 	void serviceStopped(RadioServiceDab stoppedService);
 
 	void receptionStatistics(boolean rfLocked, int qualLevel, int rawValue);
+
+	void dabTimeUpdate(Date dabDateTime);
+
+	default void dabTimeUpdateEpoch(long epoch) {
+		dabTimeUpdate(new Date(epoch));
+	}
 }
