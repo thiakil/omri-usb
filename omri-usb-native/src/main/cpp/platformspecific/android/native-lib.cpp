@@ -369,9 +369,6 @@ Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv* env, jobject thiz, job
     auto device = reinterpret_cast<libusb_device *>(libusbDevice);
     std::shared_ptr<JTunerUsbDevice> jusbDevice = std::make_shared<JTunerUsbDevice>(m_javaVm, env, usbDevice, device);
 
-
-    jusbDevice->setJavaClassDabServiceUserApplication(env, m_dabServiceUserApplicationClass);
-
     m_usbDevices.push_back(jusbDevice);
 
     uint16_t prodId = jusbDevice->getProductId();

@@ -48,34 +48,12 @@ public:
     virtual void serviceStopped(jobject dabService);
     virtual void receptionStatistics(bool rfLock, int level, int rawValue);
 
-    virtual void setJavaClassDabServiceComponent(JNIEnv* env, jclass dabServiceComponentClass);
-    virtual void setJavaClassDabServiceUserApplication(JNIEnv* env, jclass dabServiceUserAppClass);
-
 private:
     const std::string m_logTag{"[JTunerUsbDevice] "};
 
 private:
     JavaVM* m_javaVm;
-
-    //The existing Tuner object reference
-    jenny::GlobalRef<jobject> m_usbTunerObject;
-
-    //DabServiceUserApplication
-    jclass m_dabServiceUserApplicationClass{};
-    jmethodID m_dabServiceUserApplicationConstructorMId{};
-    jmethodID m_dabServiceUserApplicationSetAppTypeMId{};
-    jmethodID m_dabServiceUserApplicationSetIsCaAppliedMId{};
-    jmethodID m_dabServiceUserApplicationSetCaOrgMId{};
-    jmethodID m_dabServiceUserApplicationSetIsXPadMId{};
-    jmethodID m_dabServiceUserApplicationSetXPadAppTypeMId{};
-    jmethodID m_dabServiceUserApplicationSetIsDgUsedMId{};
-    jmethodID m_dabServiceUserApplicationSetDSCTyMId{};
-    jmethodID m_dabServiceUserApplicationSetUappDataMId{};
-
-    //DabTime
-    jmethodID m_dabTimeUpdateMId{};
-    jclass m_dabTimeClass{};
-    jmethodID m_dabTimeConstructorMId{};
+    jenny::GlobalRef<jobject> m_usbTunerObject;//The existing Tuner object reference
     std::shared_ptr<DabEnsemble::Date_Time_Callback> m_dabTimeCallback;
     std::time_t m_lastDabTimeEpoch{0};
 };
