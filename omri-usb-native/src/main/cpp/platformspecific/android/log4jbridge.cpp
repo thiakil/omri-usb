@@ -10,14 +10,14 @@ Log4JLogger::Log4JLogger(): jvm_(nullptr), bridgeClass_(nullptr),
 Log4JLogger::~Log4JLogger() {
     // Clean up global references if the JVM is still alive
     if (bridgeClass_) {
-        if (JNIEnv* env = getJniEnv()) {
+        if (JNIEnv* env = getJniEnv(true)) {
             env->DeleteGlobalRef(bridgeClass_);
             checkDetach();
         }
     }
 }
 
-JNIEnv * Log4JLogger::getJniEnv() {
+JNIEnv * Log4JLogger::getJniEnv(bool ignoreAttachFail) {
     JNIEnv* enve;
 
     wasDetached = false;
@@ -26,7 +26,10 @@ JNIEnv * Log4JLogger::getJniEnv() {
         if(jvm_->AttachCurrentThread((void**)&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
-            std::cerr << "jniEnv thread failed to attach!" << std::endl;
+            if (!ignoreAttachFail) {
+                //can't use cerr/cout here, as it will try to redirect and stack overflow
+                std::fprintf(stderr, "jniEnv thread failed to attach!\n");
+            }
             return nullptr;
         }
     }

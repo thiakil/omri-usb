@@ -40,7 +40,7 @@ private:
 
     ~Log4JLogger();
 
-    JNIEnv* getJniEnv();
+    JNIEnv* getJniEnv(bool ignoreAttachFail = false);
 
     void checkDetach() const;
 
