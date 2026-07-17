@@ -1,5 +1,7 @@
 
 #include "log4jbridge.h"
+#include <cstdint>//jnihelper dep
+#include "jenny/proxy/jnihelper.h"
 
 #include <iostream>
 
@@ -23,7 +25,7 @@ JNIEnv * Log4JLogger::getJniEnv(bool ignoreAttachFail) {
     wasDetached = false;
     int envState = jvm_->GetEnv((void**)&enve, JNI_VERSION_1_6);
     if(envState == JNI_EDETACHED) {
-        if(jvm_->AttachCurrentThread((void**)&enve, nullptr) == 0) {
+        if(jvm_->AttachCurrentThreadAsDaemon((void**)&enve, nullptr) == 0) {
             wasDetached = true;
         } else {
             if (!ignoreAttachFail) {
@@ -46,15 +48,7 @@ void Log4JLogger::log(jmethodID logmethod, const char* tag, const std::string &m
     JNIEnv* env = getJniEnv();
     if (!env || !bridgeClass_) return;
 
-    jstring jtag = env->NewStringUTF(tag);
-    if (jtag == nullptr) return;
-
-    jstring jmsg = env->NewStringUTF(message.c_str());
-    if (jmsg == nullptr) return;
-
-    env->CallStaticVoidMethod(bridgeClass_, logmethod, jtag, jmsg);
-
-    env->DeleteLocalRef(jmsg);
+    env->CallStaticVoidMethod(bridgeClass_, logmethod, jenny::toJavaString(env, tag), jenny::toJavaString(env, message.c_str()));
 
     checkDetach();
 }
