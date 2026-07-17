@@ -42,7 +42,7 @@ public:
     const static std::string DEMO_DEVICE_NAME;
 
 public:
-    explicit DemoUsbTunerInput(JavaVM* javaVm, __unused JNIEnv* env);
+    explicit DemoUsbTunerInput(JavaVM* javaVm, jobject demoTuner);
     virtual ~DemoUsbTunerInput();
 
     //delete copy and assignment constructors
@@ -66,11 +66,6 @@ public:
     void stopServiceScan() override;
     std::string getDeviceName() override;
     std::vector<std::shared_ptr<LinkedServiceDab>> getLinkedServices(const LinkedServiceDab &service) override;
-
-public:
-    void setJavaClassDemoTuner(JNIEnv* env, jclass demoTunerClass);
-    void setJavaClassRadioService(JNIEnv* env, jclass radioService);
-    void setJavaObjectDemoTuner(JNIEnv* env, jobject demoTuner);
 
 public: // callbacks to Java code
     void serviceStarted(jobject radioService);
@@ -97,13 +92,7 @@ private:
 
     JavaVM* m_javaVm;
 
-    jclass m_demoTunerClass{nullptr};
-    jobject m_demoTunerObject{nullptr};
-    jmethodID m_demoTunerServiceStartedMId{nullptr};
-    jmethodID m_demoTunerServiceStoppedMId{nullptr};
-
-    jclass m_radioServiceClass{nullptr};
-    jmethodID m_radioServiceGetLongDescriptionMId{nullptr};
+    jenny::GlobalRef<jobject> m_demoTunerObject;
 
     bool m_isInitialized{false};
     uint32_t m_currentFrequency{0};

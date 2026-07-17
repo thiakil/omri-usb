@@ -5,6 +5,10 @@ import java.util.List;
 
 @NativeProxy(allMethods = true)
 public interface RadioServiceDabNative {
+    int getEnsembleEcc();
+    int getEnsembleId();
+    int getEnsembleFrequency();
+    int getServiceId();
     void setEnsembleEcc(int ensembleEcc);
     void setEnsembleId(int ensembleId);
     void setEnsembleLabel(String ensembleLabel);

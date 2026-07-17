@@ -21,6 +21,10 @@
 
 #include <iostream>
 #include <chrono>
+
+#include "../../daemon-env.h"
+#include "jenny/proxy/DemoTunerProxy.h"
+#include "jenny/proxy/RadioServiceDemoProxy.h"
 #ifndef WIN32
 #include <__bit_reference>
 #include <sys/endian.h>
@@ -34,7 +38,7 @@
 
 const std::string DemoUsbTunerInput::DEMO_DEVICE_NAME = "DemoDevice";
 
-DemoUsbTunerInput::DemoUsbTunerInput(JavaVM* javaVm, __unused JNIEnv* env) {
+DemoUsbTunerInput::DemoUsbTunerInput(JavaVM* javaVm, jobject demoTuner): m_demoTunerObject(demoTuner) {
     std::cout << LOG_TAG << "Constructing...." << std::endl;
     m_javaVm = javaVm;
 
@@ -45,20 +49,6 @@ DemoUsbTunerInput::~DemoUsbTunerInput() {
     std::cout << LOG_TAG << "Destructing...." << std::endl;
 
     stopAllRunningServices();
-
-    JNIEnv* env;
-    m_javaVm->GetEnv((void **)&env, JNI_VERSION_1_6);
-    if (m_demoTunerObject != nullptr) {
-        env->DeleteGlobalRef(m_demoTunerObject);
-        m_demoTunerObject = nullptr;
-    }
-
-    m_demoTunerClass = nullptr;
-    m_demoTunerServiceStartedMId = nullptr;
-    m_demoTunerServiceStoppedMId = nullptr;
-
-    m_radioServiceClass = nullptr;
-    m_radioServiceGetLongDescriptionMId = nullptr;
 
     if (m_ensembleFinishedCb != nullptr) {
         m_ensembleFinishedCb.reset();
@@ -217,107 +207,25 @@ DemoUsbTunerInput::getLinkedServices(const LinkedServiceDab &service) {
     return getLinkedDabServices(service);
 }
 
-void DemoUsbTunerInput::setJavaClassDemoTuner(JNIEnv *env, jclass demoTunerClass) {
-    // local reference from GlobalRef in OnLoad
-    m_demoTunerClass = demoTunerClass;
-    m_demoTunerServiceStartedMId = env->GetMethodID(m_demoTunerClass, "serviceStarted", "(Lorg/omri/radioservice/RadioService;)V");
-    m_demoTunerServiceStoppedMId = env->GetMethodID(m_demoTunerClass, "serviceStopped", "(Lorg/omri/radioservice/RadioService;)V");
-}
-
-void DemoUsbTunerInput::setJavaClassRadioService(JNIEnv *env, jclass radioServiceClass) {
-    // local reference from GlobalRef in OnLoad
-    m_radioServiceClass = radioServiceClass;
-    m_radioServiceGetLongDescriptionMId = env->GetMethodID(m_radioServiceClass, "getLongDescription", "()Ljava/lang/String;");
-}
-
-void DemoUsbTunerInput::setJavaObjectDemoTuner(JNIEnv* env, jobject demoTuner) {
-    m_demoTunerObject = env->NewGlobalRef(demoTuner);
-}
-
 void DemoUsbTunerInput::serviceStarted(jobject radioService) {
-    bool wasDetached = false;
-    JNIEnv *enve;
-
-    int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
-    if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread((void **) &enve, nullptr) == 0) {
-            wasDetached = true;
-        } else {
-            std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-            return;
-        }
-    }
-
-    if (m_demoTunerObject != nullptr
-        && m_demoTunerServiceStartedMId != nullptr
-        && radioService != nullptr) {
-
-        enve->CallVoidMethod(m_demoTunerObject, m_demoTunerServiceStartedMId, radioService);
-    } else {
-        std::cout << LOG_TAG << "serviceStarted unable to CallVoidMethod" << std::endl;
-    }
-
-    if (wasDetached) {
-        m_javaVm->DetachCurrentThread();
+    if (radioService != nullptr && m_demoTunerObject.get() != nullptr) {
+        JNIEnv *enve = DaemonEnv().get();
+        DemoTunerProxy::serviceStarted(enve, m_demoTunerObject.get(), radioService);
     }
 }
 
 void DemoUsbTunerInput::serviceStopped(jobject radioService) {
-    bool wasDetached = false;
-    JNIEnv *enve;
-
-    int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
-    if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread((void **) &enve, nullptr) == 0) {
-            wasDetached = true;
-        } else {
-            std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-            return;
-        }
-    }
-
-    if (m_demoTunerObject != nullptr
-        && m_demoTunerServiceStoppedMId != nullptr
-        && radioService != nullptr) {
-
-        enve->CallVoidMethod(m_demoTunerObject, m_demoTunerServiceStoppedMId, radioService);
-
-    } else {
-        std::cout << LOG_TAG << "serviceStopped unable to CallVoidMethod" << std::endl;
-    }
-
-    if (wasDetached) {
-        m_javaVm->DetachCurrentThread();
+    if (radioService != nullptr && m_demoTunerObject.get() != nullptr) {
+        JNIEnv *enve = DaemonEnv().get();
+        DemoTunerProxy::serviceStopped(enve, m_demoTunerObject.get(), radioService);
     }
 }
 
 std::string DemoUsbTunerInput::callJavaRadioServiceGetDescription(jobject radioService) {
-    bool wasDetached = false;
-    JNIEnv *enve;
-    jstring jstr;
-
-    int envState = m_javaVm->GetEnv((void **) &enve, JNI_VERSION_1_6);
-    if (envState == JNI_EDETACHED) {
-        if (m_javaVm->AttachCurrentThread((void **) &enve, nullptr) == 0) {
-            wasDetached = true;
-        } else {
-            std::cerr << LOG_TAG << "jniEnv thread failed to attach!" << std::endl;
-            return "";
-        }
-    }
-    const char *strReturn;
     std::string retString;
-    if (radioService != nullptr
-        && m_radioServiceGetLongDescriptionMId != nullptr ) {
-
-        jstr = (jstring) enve->CallObjectMethod(radioService, m_radioServiceGetLongDescriptionMId);
-        strReturn = enve->GetStringUTFChars(jstr, nullptr);
-        retString = strReturn;
-        enve->ReleaseStringUTFChars(jstr, strReturn);
-    }
-
-    if (wasDetached) {
-        m_javaVm->DetachCurrentThread();
+    if (radioService != nullptr) {
+        JNIEnv *enve = DaemonEnv().get();
+        retString = jenny::fromJavaString(enve, RadioServiceDemoProxy::filePath(enve, radioService));
     }
 
     return retString;

@@ -24,6 +24,15 @@
 #include "../../dabensemble.h"
 #include "jdabservice.h"
 #include "jni-helper.h"
+#include "../../daemon-env.h"
+#include "jenny/proxy/jnihelper.h"
+#include "jenny/proxy/NativeHelperProxy.h"
+#include "jenny/proxy/RadioServiceDabImplProxy.h"
+#include "jenny/proxy/RadioServiceDabNativeProxy.h"
+#include "jenny/proxy/RadioServiceImplProxy.h"
+#include "jenny/proxy/TextualDabDynamicLabelImplProxy.h"
+#include "jenny/proxy/TextualDabDynamicLabelPlusItemImplProxy.h"
+#include "jenny/proxy/VisualDabSlideShowImplProxy.h"
 
 static constexpr uint16_t MIME_LINK_TABLE[4] = {
         7,
@@ -32,76 +41,17 @@ static constexpr uint16_t MIME_LINK_TABLE[4] = {
         2
 };
 
-JDabService::JDabService(JavaVM* javaVm, JNIEnv* env, jclass dabserviceClass, jclass dynamicLabelClass, jclass dynamicLabelPlusItemClass, jclass slideshowClass, jobject dabserviceObject) {
+JDabService::JDabService(JavaVM* javaVm, JNIEnv* env, jobject dabserviceObject): m_linkedJavaDabServiceObject(env, dabserviceObject) {
     // Note: don't JNI_ATTACH !
     
     std::cout << m_logTag << "Constructing" << std::endl;
 
     m_javaVm = javaVm;
 
-    m_linkedJavaDabServiceObject = env->NewGlobalRef(dabserviceObject);
-
-    //Global Refs from JNI_OnLoad
-    m_javaDabServiceClass = dabserviceClass;
-    m_javaDlsClass = dynamicLabelClass;
-    m_javaDlPlusItemClass = dynamicLabelPlusItemClass;
-    m_javaSlsClass = slideshowClass;
-
-    m_ArrayListClass = (jclass)env->NewGlobalRef(env->FindClass("java/util/ArrayList"));
-    m_ArrayList_init_mId = env->GetMethodID(m_ArrayListClass, "<init>", "(I)V");
-    m_ArrayList_add_mId = env->GetMethodID(m_ArrayListClass, "add", "(Ljava/lang/Object;)Z");
-
-    m_javaDabSrvInitMId = env->GetMethodID(m_javaDabServiceClass, "<init>", "()V");
-    m_javaDabSrvGetEnsembleFrequencyMId = env->GetMethodID(m_javaDabServiceClass, "getEnsembleFrequency", "()I");
-    m_javaDabSrvGetEnsembleEccMId = env->GetMethodID(m_javaDabServiceClass, "getEnsembleEcc", "()I");
-    m_javaDabSrvGetEnsembleIdMId = env->GetMethodID(m_javaDabServiceClass, "getEnsembleId", "()I");
-    m_javaDabSrvGetServiceIdMId = env->GetMethodID(m_javaDabServiceClass, "getServiceId", "()I");
-    m_javaDabSrvSetEnsembleEccMId = env->GetMethodID(m_javaDabServiceClass, "setEnsembleEcc", "(I)V");
-    m_javaDabSrvSetEnsembleFrequencyMId = env->GetMethodID(m_javaDabServiceClass, "setEnsembleFrequency", "(I)V");
-    m_javaDabSrvSetEnsembleIdMId = env->GetMethodID(m_javaDabServiceClass, "setEnsembleId", "(I)V");
-    m_javaDabSrvSetServiceIdMId = env->GetMethodID(m_javaDabServiceClass, "setServiceId", "(I)V");
-    m_javaDabSrvSetIsProgrammeServiceMId = env->GetMethodID(m_javaDabServiceClass, "setIsProgrammeService", "(Z)V");
-
-    //Audio data callback
-    m_javaDabSrvAudioDataCallbackMId = env->GetMethodID(m_javaDabServiceClass, "audioData", "([BII)V");
-    m_javaDabSrvAudioformatChangedCallbackMId = env->GetMethodID(m_javaDabServiceClass, "audioFormatChanged", "(IIIZZ)V");
-
-    //DLS
-    m_javaDlsConstructorMId = env->GetMethodID(m_javaDlsClass, "<init>", "()V");
-    m_javaDlsSetFullTextMId = env->GetMethodID(m_javaDlsClass, "setText", "(Ljava/lang/String;)V");
-    m_javaDlsSetFulltextBytesMId = env->GetMethodID(m_javaDlsClass, "setTextBytes", "([BI)V");
-    m_javaDlsSetItemRunningMId = env->GetMethodID(m_javaDlsClass, "setItemRunning", "(Z)V");
-    m_javaDlsSetItemToggledMId = env->GetMethodID(m_javaDlsClass, "setItemToggled", "(Z)V");
-    m_javaDlsAddTagItemMId = env->GetMethodID(m_javaDlsClass, "addDlPlusItem", "(Lorg/omri/radioservice/metadata/TextualDabDynamicLabelPlusItem;)V");
-    //DLS Callback
-    m_javaDabSrvdynamicLabelReceivedCallbackMId = env->GetMethodID(m_javaDabServiceClass, "labelReceived", "(Lorg/omri/radioservice/metadata/Textual;)V");
-
-    //DLPlusItem
-    m_javaDlPlusItemConstructorMId = env->GetMethodID(m_javaDlPlusItemClass, "<init>", "()V");
-    m_javaDlPlusItemSetContentTypeMId = env->GetMethodID(m_javaDlPlusItemClass, "setDlPlusContentType", "(I)V");
-    m_javaDlPlusItemSetTextMId = env->GetMethodID(m_javaDlPlusItemClass, "setDlPlusContentText", "(Ljava/lang/String;)V");
-
-    //SLS
-    m_javaSlsConstructorMId = env->GetMethodID(m_javaSlsClass, "<init>", "()V");
-    m_javaSlsSetContentNameMId = env->GetMethodID(m_javaSlsClass, "setContentName", "(Ljava/lang/String;)V");
-    m_javaSlsSetVisualDataMId = env->GetMethodID(m_javaSlsClass, "setVisualData", "([B)V");
-    m_javaSlsSetMimeTypeMId = env->GetMethodID(m_javaSlsClass, "setVisualMimeType", "(I)V");
-    m_javaSlsSetContentTypeMId = env->GetMethodID(m_javaSlsClass, "setContentType", "(I)V");
-    m_javaSlsSetContentSubTypeMId = env->GetMethodID(m_javaSlsClass, "setContentSubType", "(I)V");
-    m_javaSlsSetAltLocUrlMId = env->GetMethodID(m_javaSlsClass, "setAlternativeLocationURL", "(Ljava/lang/String;)V");
-    m_javaSlsSetSlideIdMId = env->GetMethodID(m_javaSlsClass, "setSlideId", "(I)V");
-    m_javaSlsSetCategoryTextMId = env->GetMethodID(m_javaSlsClass, "setCategoryText", "(Ljava/lang/String;)V");
-    m_javaSlsSetCategoryIdMId = env->GetMethodID(m_javaSlsClass, "setCategoryId", "(I)V");
-    m_javaSlsSetClickThroughUrlMId = env->GetMethodID(m_javaSlsClass, "setCategoryClickThroughLink", "(Ljava/lang/String;)V");
-    //SLS Callback
-    m_javaDabSrvslideshowReceivedCallbackMId = env->GetMethodID(m_javaDabServiceClass, "slideshowReceived", "(Lorg/omri/radioservice/metadata/VisualDabSlideShow;)V");
-    // Service Following Callback
-    m_javaDabSrvServiceFollowingReceived = env->GetMethodID(m_javaDabServiceClass, "serviceFollowingReceived", "(Ljava/util/ArrayList;)V");
-
-    m_ensembleFrequency = static_cast<uint32_t >(env->CallIntMethod(m_linkedJavaDabServiceObject, m_javaDabSrvGetEnsembleFrequencyMId));
-    m_ensembleEcc = static_cast<uint8_t >(env->CallIntMethod(m_linkedJavaDabServiceObject, m_javaDabSrvGetEnsembleEccMId));
-    m_ensembleId = static_cast<uint16_t >(env->CallIntMethod(m_linkedJavaDabServiceObject, m_javaDabSrvGetEnsembleIdMId));
-    m_serviceId = static_cast<uint32_t >(env->CallIntMethod(m_linkedJavaDabServiceObject, m_javaDabSrvGetServiceIdMId));
+    m_ensembleFrequency = static_cast<uint32_t >(RadioServiceDabNativeProxy::getEnsembleFrequency(env, m_linkedJavaDabServiceObject.get()));
+    m_ensembleEcc = static_cast<uint8_t >(RadioServiceDabNativeProxy::getEnsembleEcc(env, m_linkedJavaDabServiceObject.get()));
+    m_ensembleId = static_cast<uint16_t >(RadioServiceDabNativeProxy::getEnsembleId(env, m_linkedJavaDabServiceObject.get()));
+    m_serviceId = static_cast<uint32_t >(RadioServiceDabNativeProxy::getServiceId(env, m_linkedJavaDabServiceObject.get()));
 
     m_sfServicesLastTime = std::chrono::steady_clock::now();
 
@@ -109,39 +59,19 @@ JDabService::JDabService(JavaVM* javaVm, JNIEnv* env, jclass dabserviceClass, jc
 }
 
 JDabService::~JDabService() {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
+    std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
+    // stop processing audioDataInput
+    JDabService::decodeAudio(false);
+
     JNIEnv* enve;
     m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
-
-    std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
-    std::cout << m_logTag << "Destroying SId " << std::hex << m_serviceId << std::dec << std::endl;
-
-    // stop processing audioDataInput
-    decodeAudio(false);
-
-    enve->DeleteGlobalRef(m_linkedJavaDabServiceObject);
-    m_linkedJavaDabServiceObject = nullptr;
-
-    enve->DeleteGlobalRef(m_ArrayListClass);
-    m_ArrayListClass = nullptr;
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
+    if (enve == nullptr) {
+        return;//ignore if jvm not attached
     }
     std::cout << m_logTag << "Destroyed SId " << std::hex << m_serviceId << std::dec << std::endl;
 }
 
 void JDabService::unlinkDabService() {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-
     std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
     std::clog << m_logTag << "Un-Linking DABServices... for SId " << std::hex << m_serviceId << std::dec << std::endl;
     if (m_linkedDabService != nullptr) {
@@ -164,19 +94,9 @@ void JDabService::unlinkDabService() {
         m_sfCallback.reset();
         m_sfCallback = nullptr;
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 void JDabService::setLinkDabService(std::shared_ptr<DabService> linkedDabSrv) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-
     std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
 
     if (linkedDabSrv->hasAudioServiceComponent()) {
@@ -249,10 +169,6 @@ void JDabService::setLinkDabService(std::shared_ptr<DabService> linkedDabSrv) {
         std::clog << m_logTag << "failed attempt to link non Programme Service SId "
                   << std::hex << m_serviceId << std::dec << std::endl;
     }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 std::shared_ptr<DabService> JDabService::getLinkDabService() const {
@@ -260,10 +176,10 @@ std::shared_ptr<DabService> JDabService::getLinkDabService() const {
 }
 
 jobject JDabService::getJavaDabServiceObject() const {
-    if (m_linkedJavaDabServiceObject == nullptr) {
+    if (m_linkedJavaDabServiceObject.get() == nullptr) {
         std::cerr << m_logTag << "Returning linked Java DabService object nullptr" << std::endl;
     }
-    return m_linkedJavaDabServiceObject;
+    return m_linkedJavaDabServiceObject.get();
 }
 
 uint32_t JDabService::getEnsembleFrequency() const {
@@ -288,13 +204,7 @@ void JDabService::audioDataInput(const std::vector<uint8_t>& audioData, int asct
         return;
     }
 
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-    JNIEnv* enve;
-    m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
+    JNIEnv* enve = DaemonEnv().get();
 
     if (m_ascty != ascty || m_audioChannelCount != channels || m_audioSamplingRate != sampleRate ||
         m_audioSbrUsed != sbrUsed || m_audioPsUsed != psUsed) {
@@ -308,9 +218,8 @@ void JDabService::audioDataInput(const std::vector<uint8_t>& audioData, int asct
         m_audioPsUsed = psUsed;
 
         if (m_decodeAudio) {
-            if (m_linkedJavaDabServiceObject != nullptr) {
-                enve->CallVoidMethod(m_linkedJavaDabServiceObject,
-                                     m_javaDabSrvAudioformatChangedCallbackMId, m_ascty,
+            if (m_linkedJavaDabServiceObject.get() != nullptr) {
+                RadioServiceImplProxy::audioFormatChanged(enve, m_linkedJavaDabServiceObject.get(), m_ascty,
                                      m_audioChannelCount, m_audioSamplingRate, m_audioSbrUsed,
                                      m_audioPsUsed);
             } else {
@@ -321,37 +230,21 @@ void JDabService::audioDataInput(const std::vector<uint8_t>& audioData, int asct
     }
 
     if (audioData.size() > 0) {
-        jbyteArray data = enve->NewByteArray(static_cast<jsize>(audioData.size()));
-        if (data != nullptr) {
-            enve->SetByteArrayRegion(data, 0, static_cast<jsize>(audioData.size()),
-                                     (jbyte *) audioData.data());
+        jenny::LocalRef<jbyteArray> data = jenny::makeByteArray(audioData.size(), audioData.data());
 
-            if (m_decodeAudio) {
-                if (m_linkedJavaDabServiceObject != nullptr) {
-                    enve->CallVoidMethod(m_linkedJavaDabServiceObject,
-                                         m_javaDabSrvAudioDataCallbackMId,
-                                         data, channels, sampleRate);
-                } else {
-                    std::cerr << m_logTag << "LinkedDabServiceObject is NULL at audiodata callback"
-                              << std::endl;
-                }
+        if (m_decodeAudio) {
+            if (m_linkedJavaDabServiceObject.get() != nullptr) {
+                RadioServiceImplProxy::audioData(enve, m_linkedJavaDabServiceObject.get(),
+                                     data.get(), channels, sampleRate);
+            } else {
+                std::cerr << m_logTag << "LinkedDabServiceObject is NULL at audiodata callback"
+                          << std::endl;
             }
-            enve->DeleteLocalRef(data);
         }
-    }
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
     }
 }
 
 void JDabService::decodeAudio(bool decode) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-
     std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
     m_decodeAudio = decode;
     if(!m_decodeAudio) {
@@ -365,9 +258,6 @@ void JDabService::decodeAudio(bool decode) {
             callJavaSlideshowCallback(m_lastSlideshow);
         }
     }
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 bool JDabService::isDecodingAudio() {
@@ -375,12 +265,6 @@ bool JDabService::isDecodingAudio() {
 }
 
 void JDabService::dynamicLabelInput(std::shared_ptr<void> label) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-
     std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
     m_lastDynamicLabel = std::static_pointer_cast<DabDynamicLabel>(label);
 
@@ -392,18 +276,9 @@ void JDabService::dynamicLabelInput(std::shared_ptr<void> label) {
     if(m_decodeAudio) {
         callJavaDynamiclabelCallback(m_lastDynamicLabel);
     }
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 void JDabService::slideshowInput(std::shared_ptr<void> slideShow) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-
     std::lock_guard<std::recursive_mutex> lockGuard(m_mutex);
     m_lastSlideshow = std::static_pointer_cast<DabSlideshow>(slideShow);
 
@@ -420,123 +295,87 @@ void JDabService::slideshowInput(std::shared_ptr<void> slideShow) {
     if(m_decodeAudio) {
         callJavaSlideshowCallback(m_lastSlideshow);
     }
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
-    }
 }
 
 void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>& slide) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-    JNIEnv* enve;
-    m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
+    JNIEnv* enve = DaemonEnv().get();
 
-    jobject slsObject = enve->NewObject(m_javaSlsClass, m_javaSlsConstructorMId);
+    jenny::LocalRef<jobject> slsObject(enve, VisualDabSlideShowImplProxy::newInstance(enve));
 
-    jstring slsContentName = getSafeJniStringFromCString(enve,
+    jenny::LocalRef<jstring> slsContentName(getSafeJniStringFromCString(enve,
                                                          slide->contentName.c_str(),
-                                                         slide->contentName.size());
-    jbyteArray visualData = enve->NewByteArray(static_cast<jsize>(slide->slideshowData.size()));
-    if(visualData == nullptr) {
-        return;
-    }
-    enve->SetByteArrayRegion(visualData, 0, static_cast<jsize>(slide->slideshowData.size()), (jbyte*)slide->slideshowData.data());
+                                                         slide->contentName.size()));
 
-    enve->CallVoidMethod(slsObject, m_javaSlsSetContentNameMId, slsContentName);
-    enve->CallVoidMethod(slsObject, m_javaSlsSetVisualDataMId, visualData);
-    enve->CallVoidMethod(slsObject, m_javaSlsSetMimeTypeMId, MIME_LINK_TABLE[slide->contentSubType]);
-    enve->CallVoidMethod(slsObject, m_javaSlsSetContentTypeMId, 2);
-    enve->CallVoidMethod(slsObject, m_javaSlsSetContentSubTypeMId, slide->contentSubType);
+    jenny::LocalRef<jbyteArray> visualData(jenny::makeByteArray(slide->slideshowData.size(), slide->slideshowData.data()));
+
+    VisualDabSlideShowImplProxy::setContentName(enve, slsObject.get(), slsContentName.get());
+    VisualDabSlideShowImplProxy::setVisualData(enve, slsObject.get(), visualData.get());
+    VisualDabSlideShowImplProxy::setVisualMimeType(enve, slsObject.get(), MIME_LINK_TABLE[slide->contentSubType]);
+    VisualDabSlideShowImplProxy::setContentType(enve, slsObject.get(), 2);
+    VisualDabSlideShowImplProxy::setContentSubType(enve, slsObject.get(), slide->contentSubType);
 
     if(slide->isCategorized) {
         jstring slsCategoryName = getSafeJniStringFromCString(enve,
                                                               slide->categoryTitle.c_str(),
                                                               slide->categoryTitle.size());
-        enve->CallVoidMethod(slsObject, m_javaSlsSetCategoryTextMId, slsCategoryName);
+        VisualDabSlideShowImplProxy::setCategoryText(enve, slsObject.get(), slsCategoryName);
         enve->DeleteLocalRef(slsCategoryName);
 
-        enve->CallVoidMethod(slsObject, m_javaSlsSetSlideIdMId, slide->slideId);
-        enve->CallVoidMethod(slsObject, m_javaSlsSetCategoryIdMId, slide->categoryId);
+        VisualDabSlideShowImplProxy::setSlideId(enve, slsObject.get(), slide->slideId);
+        VisualDabSlideShowImplProxy::setCategoryId(enve, slsObject.get(), slide->categoryId);
 
         if(!slide->alternativeLocationUrl.empty()) {
-            jstring slsAltLocUrl = getSafeJniStringFromCString(enve,
+            jenny::LocalRef<jstring> slsAltLocUrl(enve, getSafeJniStringFromCString(enve,
                                                                slide->alternativeLocationUrl.c_str(),
-                                                               slide->alternativeLocationUrl.size());
-            enve->CallVoidMethod(slsObject, m_javaSlsSetAltLocUrlMId, slsAltLocUrl);
-            enve->DeleteLocalRef(slsAltLocUrl);
+                                                               slide->alternativeLocationUrl.size()));
+            VisualDabSlideShowImplProxy::setAlternativeLocationURL(enve, slsObject.get(), slsAltLocUrl.get());
         }
         if(!slide->clickThroughUrl.empty()) {
-            jstring slsCtUrl = getSafeJniStringFromCString(enve,
+            jenny::LocalRef<jstring> slsCtUrl(enve, getSafeJniStringFromCString(enve,
                                                            slide->clickThroughUrl.c_str(),
-                                                           slide->clickThroughUrl.size());
-            enve->CallVoidMethod(slsObject, m_javaSlsSetClickThroughUrlMId, slsCtUrl);
-            enve->DeleteLocalRef(slsCtUrl);
+                                                           slide->clickThroughUrl.size()));
+            VisualDabSlideShowImplProxy::setCategoryClickThroughLink(enve, slsObject.get(), slsCtUrl.get());
         }
     }
 
-    if(m_linkedJavaDabServiceObject != nullptr) {
-        enve->CallVoidMethod(m_linkedJavaDabServiceObject, m_javaDabSrvslideshowReceivedCallbackMId, slsObject);
+    if(m_linkedJavaDabServiceObject.get() != nullptr) {
+        RadioServiceImplProxy::slideshowReceived(enve, m_linkedJavaDabServiceObject.get(), slsObject.get());
     } else {
         std::cerr << m_logTag << " callJavaSlideshowCallback: m_linkedJavaDabServiceObject null" << std::endl;
-    }
-
-    enve->DeleteLocalRef(visualData);
-    enve->DeleteLocalRef(slsContentName);
-    enve->DeleteLocalRef(slsObject);
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
     }
 }
 
 void JDabService::callJavaDynamiclabelCallback(const std::shared_ptr<DabDynamicLabel>& label) {
-    bool wasDetached;
-    if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to attach!" << std::endl;
-        return;
-    }
-    JNIEnv* enve;
-    m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
+    JNIEnv* enve = DaemonEnv().get();
 
-    jobject dlsObject = enve->NewObject(m_javaDlsClass, m_javaDlsConstructorMId);
+    jenny::LocalRef<jobject> dlsObject(enve, TextualDabDynamicLabelImplProxy::newInstance(enve));
 
-    jstring fullDlsString = getSafeJniStringFromCString(enve,
+    jenny::LocalRef<jstring> fullDlsString(getSafeJniStringFromCString(enve,
                                                         label->dynamicLabel.c_str(),
-                                                        label->dynamicLabel.size());
-    enve->CallVoidMethod(dlsObject, m_javaDlsSetFullTextMId, fullDlsString, label->charset);
-    enve->DeleteLocalRef(fullDlsString);
+                                                        label->dynamicLabel.size()));
+    TextualDabDynamicLabelImplProxy::setText(enve, dlsObject.get(), fullDlsString.get());
 
-    enve->CallVoidMethod(dlsObject, m_javaDlsSetItemRunningMId, label->itemRunning);
-    enve->CallVoidMethod(dlsObject, m_javaDlsSetItemToggledMId, label->itemToggle);
+    TextualDabDynamicLabelImplProxy::setItemRunning(enve, dlsObject.get(), label->itemRunning);
+    TextualDabDynamicLabelImplProxy::setItemToggled(enve, dlsObject.get(), label->itemToggle);
 
     for(const auto& tag : label->dlPlusTags) {
-        jobject dlPlusItemObject = enve->NewObject(m_javaDlPlusItemClass, m_javaDlPlusItemConstructorMId);
-        enve->CallVoidMethod(dlPlusItemObject, m_javaDlPlusItemSetContentTypeMId, (jint)tag.contentType);
+        jenny::LocalRef<jobject> dlPlusItemObject(enve, TextualDabDynamicLabelPlusItemImplProxy::newInstance(enve));
+
+        TextualDabDynamicLabelPlusItemImplProxy::setDlPlusContentType(enve, dlPlusItemObject.get(), (jint)tag.contentType);
 
         jstring tagText = getSafeJniStringFromCString(enve,
                                                       tag.dlPlusTagText.c_str(),
                                                       tag.dlPlusTagText.size());
-        enve->CallVoidMethod(dlPlusItemObject, m_javaDlPlusItemSetTextMId, tagText);
+        TextualDabDynamicLabelPlusItemImplProxy::setDlPlusContentText(enve, dlPlusItemObject.get(), tagText);
         enve->DeleteLocalRef(tagText);
 
         //add item to dls
-        enve->CallVoidMethod(dlsObject, m_javaDlsAddTagItemMId, dlPlusItemObject);
-
-        enve->DeleteLocalRef(dlPlusItemObject);
+        TextualDabDynamicLabelImplProxy::addDlPlusItem(enve, dlsObject.get(), dlPlusItemObject.get());
     }
-    if(m_linkedJavaDabServiceObject != nullptr) {
-        enve->CallVoidMethod(m_linkedJavaDabServiceObject, m_javaDabSrvdynamicLabelReceivedCallbackMId, dlsObject);
+    if(m_linkedJavaDabServiceObject.get() != nullptr) {
+        RadioServiceImplProxy::labelReceived(enve, m_linkedJavaDabServiceObject.get(), dlsObject.get());
     } else {
         std::cerr << m_logTag << " callJavaDynamiclabelCallback: m_linkedJavaDabServiceObject null" << std::endl;
-    }
-
-    enve->DeleteLocalRef(dlsObject);
-
-    if (!JNI_DETACH(m_javaVm, wasDetached)) {
-        std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
     }
 }
 
@@ -603,40 +442,25 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
             }
         }
 
-        bool wasDetached;
-        if (!JNI_ATTACH(m_javaVm, wasDetached)) {
-            std::cerr << m_logTag << "jniEnv thread failed to attach!" << std::endl;
-            return;
-        }
-        JNIEnv* enve;
-        m_javaVm->GetEnv((void**)&enve, JNI_VERSION_1_6);
-        if (enve != nullptr && m_linkedJavaDabServiceObject != nullptr) {
-            jobject arrayList = enve->NewObject(m_ArrayListClass, m_ArrayList_init_mId,
-                                               static_cast<jint>(sfServices.size()));
+        JNIEnv* enve = DaemonEnv().get();
+        if (enve != nullptr && m_linkedJavaDabServiceObject.get() != nullptr) {
+            jenny::LocalRef<jobject> arrayList(enve, NativeHelperProxy::newList(enve, sfServices.size()));
             for (const auto &s : sfServices) {
-                jobject jLinkedServiceDab = enve->NewObject(m_javaDabServiceClass,
-                                                            m_javaDabSrvInitMId);
-                enve->CallVoidMethod(jLinkedServiceDab, m_javaDabSrvSetEnsembleEccMId,
+                jenny::LocalRef<jobject> jLinkedServiceDab(enve, RadioServiceDabImplProxy::newInstance(enve));
+                RadioServiceDabNativeProxy::setEnsembleEcc(enve, jLinkedServiceDab.get(),
                                     static_cast<jint>(s.get()->getEnsembleEcc()));
-                enve->CallVoidMethod(jLinkedServiceDab, m_javaDabSrvSetEnsembleFrequencyMId,
+                RadioServiceDabNativeProxy::setEnsembleFrequency(enve, jLinkedServiceDab.get(),
                                     static_cast<jint>(s.get()->getEnsembleFrequencyKHz() * 1000));
-                enve->CallVoidMethod(jLinkedServiceDab, m_javaDabSrvSetEnsembleIdMId,
+                RadioServiceDabNativeProxy::setEnsembleId(enve, jLinkedServiceDab.get(),
                                     static_cast<jint>(s.get()->getEnsembleId()));
-                enve->CallVoidMethod(jLinkedServiceDab, m_javaDabSrvSetServiceIdMId,
+                RadioServiceDabNativeProxy::setServiceId(enve, jLinkedServiceDab.get(),
                                     static_cast<jint>(s.get()->getServiceId()));
-                enve->CallVoidMethod(jLinkedServiceDab, m_javaDabSrvSetIsProgrammeServiceMId,
-                                     static_cast<jboolean>(s.get()->getIsProgrammeService()));
+                RadioServiceDabNativeProxy::setIsProgrammeService(enve, jLinkedServiceDab.get(),
+                                     s.get()->getIsProgrammeService() ? JNI_TRUE : JNI_FALSE);
 
-                enve->CallBooleanMethod(arrayList, m_ArrayList_add_mId, jLinkedServiceDab);
-                enve->DeleteLocalRef(jLinkedServiceDab);
+                NativeHelperProxy::listAdd(enve, arrayList.get(), jLinkedServiceDab.get());
             }
-            enve->CallVoidMethod(m_linkedJavaDabServiceObject,
-                                 m_javaDabSrvServiceFollowingReceived, arrayList);
-            enve->DeleteLocalRef(arrayList);
-        }
-
-        if (!JNI_DETACH(m_javaVm, wasDetached)) {
-            std::cerr << m_logTag << "jniEnv thread failed to detach!" << std::endl;
+            RadioServiceImplProxy::serviceFollowingReceived(enve, m_linkedJavaDabServiceObject.get(), arrayList.get());
         }
     }
 

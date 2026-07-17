@@ -1,6 +1,8 @@
 package org.omri.radio.impl;
 
 import com.thiakil.standin.AsyncTask;
+import io.github.landerlyoung.jenny.NativeMethodProxy;
+import io.github.landerlyoung.jenny.NativeProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -39,6 +41,7 @@ import java.util.List;
  * @author realzoulou
  */
 
+@NativeProxy
 public class DemoTuner implements Tuner {
 
     private final static Logger LOGGER = LogManager.getLogger("DemoTuner");
@@ -280,6 +283,7 @@ public class DemoTuner implements Tuner {
     }
 
     /* callbacks from native code --------- */
+    @NativeMethodProxy
     public void serviceStarted(RadioService radioService) {
         // tell service that it was started
         ((RadioServiceImpl) radioService).serviceStarted();
@@ -288,6 +292,7 @@ public class DemoTuner implements Tuner {
         }
     }
 
+    @NativeMethodProxy
     public void serviceStopped(RadioService radioService) {
         // tell service that it was stoppped
         ((RadioServiceImpl) radioService).serviceStopped();
@@ -348,10 +353,8 @@ public class DemoTuner implements Tuner {
                             else {
                                 LOGGER.warn("split filename: " + Arrays.toString(splits));
                             }
-                            RadioServiceDabImpl foundService = new RadioServiceDabImpl();
+                            RadioServiceDemo foundService = new RadioServiceDemo(file.getAbsolutePath());
                             foundService.setServiceLabel(label);
-                            //FIXME: getDescription used in native
-                            //foundService.setLongDescription(file.getAbsolutePath());
                             foundService.setEnsembleId(eid);
                             foundService.setServiceId(sid);
                             foundService.setIsProgrammeService(true);

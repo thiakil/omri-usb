@@ -23,13 +23,14 @@
 
 #include <memory>
 #include <jni.h>
+#include "jenny/proxy/jnihelper.h"
 #include "../../dabservice.h"
 #include "../../dabservicecomponentmscstreamaudio.h"
 
 class JDabService {
 
 public:
-    explicit JDabService(JavaVM* javaVm, JNIEnv* env, jclass dabserviceClass, jclass dynamicLabelClass, jclass dynamicLabelPlusItemClass, jclass slideshowClass, jobject dabserviceObject);
+    explicit JDabService(JavaVM* javaVm, JNIEnv* env, jobject dabserviceObject);
     virtual ~JDabService();
 
     virtual void setLinkDabService(std::shared_ptr<DabService> linkedDabSrv);
@@ -59,63 +60,7 @@ private:
     //Java definitions
     JavaVM* m_javaVm;
     std::shared_ptr<DabService> m_linkedDabService{nullptr};
-
-    jclass m_ArrayListClass{nullptr};
-    jmethodID m_ArrayList_init_mId;
-    jmethodID m_ArrayList_add_mId;
-
-    jobject m_linkedJavaDabServiceObject{nullptr};
-    jclass m_javaDabServiceClass{nullptr};
-
-    jmethodID m_javaDabSrvInitMId;
-    jmethodID m_javaDabSrvGetEnsembleFrequencyMId;
-    jmethodID m_javaDabSrvGetEnsembleEccMId;
-    jmethodID m_javaDabSrvGetEnsembleIdMId;
-    jmethodID m_javaDabSrvGetServiceIdMId;
-    jmethodID m_javaDabSrvSetEnsembleEccMId;
-    jmethodID m_javaDabSrvSetEnsembleFrequencyMId;
-    jmethodID m_javaDabSrvSetEnsembleIdMId;
-    jmethodID m_javaDabSrvSetServiceIdMId;
-    jmethodID m_javaDabSrvSetIsProgrammeServiceMId;
-
-    jmethodID m_javaDabSrvAudioDataCallbackMId;
-    jmethodID m_javaDabSrvAudioformatChangedCallbackMId;
-
-    //DLS
-    jclass m_javaDlsClass{nullptr};
-    jmethodID m_javaDlsConstructorMId;
-    jmethodID m_javaDlsSetFullTextMId;
-    jmethodID m_javaDlsSetFulltextBytesMId;
-    jmethodID m_javaDlsSetItemRunningMId;
-    jmethodID m_javaDlsSetItemToggledMId;
-    jmethodID m_javaDlsAddTagItemMId;
-    //DLS Callback
-    jmethodID m_javaDabSrvdynamicLabelReceivedCallbackMId;
-
-    //DLPlusItem
-    jclass m_javaDlPlusItemClass{nullptr};
-    jmethodID m_javaDlPlusItemConstructorMId;
-    jmethodID m_javaDlPlusItemSetContentTypeMId;
-    jmethodID m_javaDlPlusItemSetTextMId;
-
-    //SLS
-    jclass m_javaSlsClass{nullptr};
-    jmethodID m_javaSlsConstructorMId;
-    jmethodID m_javaSlsSetContentNameMId;
-    jmethodID m_javaSlsSetVisualDataMId;
-    jmethodID m_javaSlsSetMimeTypeMId;
-    jmethodID m_javaSlsSetContentTypeMId;
-    jmethodID m_javaSlsSetContentSubTypeMId;
-    jmethodID m_javaSlsSetAltLocUrlMId;
-    jmethodID m_javaSlsSetSlideIdMId;
-    jmethodID m_javaSlsSetCategoryTextMId;
-    jmethodID m_javaSlsSetCategoryIdMId;
-    jmethodID m_javaSlsSetClickThroughUrlMId;
-    //SLS Callback
-    jmethodID m_javaDabSrvslideshowReceivedCallbackMId;
-
-    // Service Following Callback
-    jmethodID m_javaDabSrvServiceFollowingReceived;
+    jenny::GlobalRef<jobject> m_linkedJavaDabServiceObject;
 
     //local
     uint32_t m_serviceId{0xFFFFFFFF};

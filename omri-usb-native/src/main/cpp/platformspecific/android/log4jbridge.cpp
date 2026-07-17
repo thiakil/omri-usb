@@ -46,11 +46,13 @@ void Log4JLogger::checkDetach() const {
 
 void Log4JLogger::log(jmethodID logmethod, const char* tag, const std::string &message) {
     JNIEnv* env = getJniEnv();
-    if (!env || !bridgeClass_) return;
+    if (!env || !bridgeClass_ || !logmethod) return;
 
-    env->CallStaticVoidMethod(bridgeClass_, logmethod, jenny::toJavaString(env, tag), jenny::toJavaString(env, message.c_str()));
+    auto tagvar = jenny::toJavaString(env, tag);
+    auto msgVar = jenny::toJavaString(env, message.c_str());
+    env->CallStaticVoidMethod(bridgeClass_, logmethod, tagvar.get(), msgVar.get());
 
-    checkDetach();
+    //checkDetach();
 }
 
 Log4JLogger & Log4JLogger::getInstance() {
