@@ -1,5 +1,7 @@
 package org.omri.radio.impl;
 
+import io.github.landerlyoung.jenny.NativeMethodProxy;
+import io.github.landerlyoung.jenny.NativeProxy;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -24,6 +26,7 @@ import org.apache.logging.log4j.Logger;
  * @author realzoulou
  */
 
+@NativeProxy
 public class SafeUtf {
     private static final Logger LOGGER = LogManager.getLogger("SafeUtf");
 
@@ -34,6 +37,7 @@ public class SafeUtf {
      * @param bArr byte array
      * @return Java string, potentially an empty string if encoding is unknown
      */
+    @NativeMethodProxy
     public static String convertCStringToJniStringSafe(byte[] bArr) {
         if (bArr == null) return ""; // safely handling null pointer
         if (bArr.length == 0) return ""; // safely handling empty buffer
