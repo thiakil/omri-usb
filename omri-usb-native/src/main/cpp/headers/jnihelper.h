@@ -389,8 +389,7 @@ class ByteArrayHolder {
   }
 };
 
-inline jenny::LocalRef<jbyteArray> makeByteArray(size_t len, const void* data = nullptr) {
-  jenny::Env env;
+inline jenny::LocalRef<jbyteArray> makeByteArray(JNIEnv* env, size_t len, const void* data = nullptr) {
   jenny::LocalRef<jbyteArray> array(env->NewByteArray(len));
   if (data) {
     jboolean isCopy;
@@ -399,6 +398,9 @@ inline jenny::LocalRef<jbyteArray> makeByteArray(size_t len, const void* data = 
     env->ReleaseByteArrayElements(array.get(), ptr, JNI_COMMIT);
   }
   return array;
+}
+inline jenny::LocalRef<jbyteArray> makeByteArray(size_t len, const void* data = nullptr) {
+  return makeByteArray(jenny::Env().get(), len, data);
 }
 
 inline void copyFromByteArray(const LocalRef<jbyteArray>& array, void* dst, size_t len) {

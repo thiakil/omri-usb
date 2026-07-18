@@ -237,7 +237,7 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
                 RadioServiceDabUserApplicationImplProxy::setDSCTy(enve, dabServiceUserApplicationObject.get(), dataServiceComponentType);
 
                 if(!uApp.getUserApplicationData().empty()) {
-                    LocalRef<jbyteArray> uAppData = jenny::makeByteArray(uApp.getUserApplicationData().size(), uApp.getUserApplicationData().data());
+                    LocalRef<jbyteArray> uAppData = jenny::makeByteArray(enve, uApp.getUserApplicationData().size(), uApp.getUserApplicationData().data());
 
                     RadioServiceDabUserApplicationImplProxy::setUappdata(enve, dabServiceUserApplicationObject.get(), uAppData.get());
                 }

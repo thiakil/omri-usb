@@ -230,7 +230,7 @@ void JDabService::audioDataInput(const std::vector<uint8_t>& audioData, int asct
     }
 
     if (audioData.size() > 0) {
-        jenny::LocalRef<jbyteArray> data = jenny::makeByteArray(audioData.size(), audioData.data());
+        jenny::LocalRef<jbyteArray> data = jenny::makeByteArray(enve, audioData.size(), audioData.data());
 
         if (m_decodeAudio) {
             if (m_linkedJavaDabServiceObject.get() != nullptr) {
@@ -306,7 +306,7 @@ void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>&
                                                          slide->contentName.c_str(),
                                                          slide->contentName.size()));
 
-    jenny::LocalRef<jbyteArray> visualData(jenny::makeByteArray(slide->slideshowData.size(), slide->slideshowData.data()));
+    jenny::LocalRef<jbyteArray> visualData(jenny::makeByteArray(enve, slide->slideshowData.size(), slide->slideshowData.data()));
 
     VisualDabSlideShowImplProxy::setContentName(enve, slsObject.get(), slsContentName.get());
     VisualDabSlideShowImplProxy::setVisualData(enve, slsObject.get(), visualData.get());

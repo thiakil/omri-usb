@@ -490,7 +490,7 @@ Java_org_omri_radio_impl_UsbHelper_demoServiceStop(JNIEnv *env, jobject thiz) {
 
 jstring getSafeJniStringFromCString(JNIEnv *env, const char *cStr, const size_t cStrSize) {
     if (env != nullptr && cStr != nullptr) {
-        jenny::LocalRef<jbyteArray> bArray = jenny::makeByteArray(cStrSize, cStr);
+        jenny::LocalRef<jbyteArray> bArray = jenny::makeByteArray(env, cStrSize, cStr);
         return SafeUtfProxy::convertCStringToJniStringSafe(env, bArray.get());
     }
     return nullptr; // null in, null out
