@@ -70,44 +70,44 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
     for(const auto& srv : ensemble.getDabServices()) {
         std::cout << m_logTag << " Scan service: " << srv->getServiceLabel() << std::endl;
         const jint sid = (jint) srv->getServiceId();
-        LocalRef<jobject> dabServiceObject(RadioServiceDabNativeProxy::newInstance(enve));
+        RadioServiceDabNativeProxy dabServiceObject(RadioServiceDabNativeProxy::newInstance(enve), true);
         const jint ecc = (jint) ensemble.getEnsembleEcc();
-        RadioServiceDabNativeProxy::setEnsembleEcc(enve, dabServiceObject.get(), ecc);
+        dabServiceObject.setEnsembleEcc(ecc);
         const jint eid = (jint) ensemble.getEnsembleId();
-        RadioServiceDabNativeProxy::setEnsembleId(enve, dabServiceObject.get(), eid);
-        RadioServiceDabNativeProxy::setEnsembleLabel(enve, dabServiceObject.get(), ensembleLabel.get());
-        RadioServiceDabNativeProxy::setEnsembleShortLabel(enve, dabServiceObject.get(), ensembleShortLabel.get());
+        dabServiceObject.setEnsembleId(eid);
+        dabServiceObject.setEnsembleLabel(ensembleLabel);
+        dabServiceObject.setEnsembleShortLabel(ensembleShortLabel);
         const jint freq = (jint) srv->getEnsembleFrequency();
-        RadioServiceDabNativeProxy::setEnsembleFrequency(enve, dabServiceObject.get(), freq);
+        dabServiceObject.setEnsembleFrequency(freq);
         if(srv->isCaApplied()) {
-            RadioServiceDabNativeProxy::setIsCaProtected(enve, dabServiceObject.get(), JNI_TRUE);
+            dabServiceObject.setIsCaProtected(JNI_TRUE);
         } else {
-            RadioServiceDabNativeProxy::setIsCaProtected(enve, dabServiceObject.get(), JNI_FALSE);
+            dabServiceObject.setIsCaProtected(JNI_FALSE);
         }
         const jint caId = (jint) srv->getCaId();
-        RadioServiceDabNativeProxy::setCaId(enve, dabServiceObject.get(), caId);
+        dabServiceObject.setCaId(caId);
 
         LocalRef<jstring> dabServiceLabel = jenny::toJavaString(enve, srv->getServiceLabel().c_str());
         LocalRef<jstring> dabServiceShortLabel = jenny::toJavaString(enve, srv->getServiceShortLabel().c_str());
 
-        RadioServiceDabNativeProxy::setServiceLabel(enve, dabServiceObject.get(), dabServiceLabel.get());
-        RadioServiceDabNativeProxy::setShortLabel(enve, dabServiceObject.get(), dabServiceShortLabel.get());
+        dabServiceObject.setServiceLabel(dabServiceLabel);
+        dabServiceObject.setShortLabel(dabServiceShortLabel);
 
-        RadioServiceDabNativeProxy::setServiceId(enve, dabServiceObject.get(), sid);
+        dabServiceObject.setServiceId(sid);
 
         if(srv->hasAudioServiceComponent()) {
-            RadioServiceDabNativeProxy::setIsProgrammeService(enve, dabServiceObject.get(), JNI_TRUE);
+            dabServiceObject.setIsProgrammeService(JNI_TRUE);
         } else {
-            RadioServiceDabNativeProxy::setIsProgrammeService(enve, dabServiceObject.get(), JNI_FALSE);
+            dabServiceObject.setIsProgrammeService(JNI_FALSE);
         }
 
         LocalRef<jstring> genrePty = jenny::toJavaString(enve, srv->getProgrammeTypeFullName().c_str());
 
-        RadioServiceDabNativeProxy::addGenre(enve, dabServiceObject.get(), genrePty.get());
+        dabServiceObject.addGenre(genrePty);
 
         //DABServiceComponent creation
         for(const auto& srvComp : srv->getServiceComponents()) {
-            LocalRef<jobject> dabServiceComponentObject(RadioServiceDabComponentImplProxy::newInstance(enve));
+            auto dabServiceComponentObject = RadioServiceDabComponentImplProxy::newInstance();
             const jint subChannelId = (jint) srvComp->getSubChannelId();
             const jint bitrate = (jint) srvComp->getSubchannelBitrate();
             const jint mscStartAddress = (jint) srvComp->getMscStartAddress();
@@ -116,22 +116,22 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
             const jint protectionType = (jint) srvComp->getProtectionType();
             const jint uepTableIndex = (jint) srvComp->getUepTableIndex();
 
-            RadioServiceDabComponentImplProxy::setScBitrate(enve, dabServiceComponentObject.get(), bitrate);
-            //RadioServiceDabComponentImplProxy::setCaFlag(enve, dabServiceComponentObject.get(), static_cast<jboolean>(srvComp->isCaApplied()));
+            dabServiceComponentObject.setScBitrate(bitrate);
+            //dabServiceComponentObject.setCaFlag(static_cast<jboolean>(srvComp->isCaApplied()));
             if(srvComp->isCaApplied() > 0) {
-                RadioServiceDabComponentImplProxy::setIsScCaFlagSet(enve, dabServiceComponentObject.get(), JNI_TRUE);
+                dabServiceComponentObject.setIsScCaFlagSet(JNI_TRUE);
             } else {
-                RadioServiceDabComponentImplProxy::setIsScCaFlagSet(enve, dabServiceComponentObject.get(), JNI_FALSE);
+                dabServiceComponentObject.setIsScCaFlagSet(JNI_FALSE);
             }
 
-            RadioServiceDabComponentImplProxy::setServiceId(enve, dabServiceComponentObject.get(), sid);
+            dabServiceComponentObject.setServiceId(sid);
 
-            RadioServiceDabComponentImplProxy::setSubchannelId(enve, dabServiceComponentObject.get(), subChannelId);
+            dabServiceComponentObject.setSubchannelId(subChannelId);
 
             {
                 LocalRef<jstring> dabServiceComponentLabel;
                 dabServiceComponentLabel = jenny::toJavaString(enve, srvComp->getServiceComponentLabel().c_str());
-                RadioServiceDabComponentImplProxy::setScLabel(enve, dabServiceComponentObject.get(), dabServiceComponentLabel.get());
+                dabServiceComponentObject.setScLabel(dabServiceComponentLabel);
             }
 
             jint packetAddress;
@@ -171,29 +171,29 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
                 }
             }
 
-            RadioServiceDabComponentImplProxy::setPacketAddress(enve, dabServiceComponentObject.get(), packetAddress);
-            RadioServiceDabComponentImplProxy::setDatagroupTransportUsed(enve, dabServiceComponentObject.get(), dgUsed);
+            dabServiceComponentObject.setPacketAddress(packetAddress);
+            dabServiceComponentObject.setDatagroupTransportUsed(dgUsed);
             if(srvComp->isPrimary()) {
-                RadioServiceDabComponentImplProxy::setIsScPrimary(enve, dabServiceComponentObject.get(), JNI_TRUE);
+                dabServiceComponentObject.setIsScPrimary(JNI_TRUE);
             } else {
-                RadioServiceDabComponentImplProxy::setIsScPrimary(enve, dabServiceComponentObject.get(), JNI_FALSE);
+                dabServiceComponentObject.setIsScPrimary(JNI_FALSE);
             }
 
             const jint scIdS = (jint)srvComp->getServiceComponentIdWithinService();
-            RadioServiceDabComponentImplProxy::setServiceComponentIdWithinService(enve, dabServiceComponentObject.get(), scIdS);
-            RadioServiceDabComponentImplProxy::setDatagroupTransportUsed(enve, dabServiceComponentObject.get(), tmId);
-            RadioServiceDabComponentImplProxy::setMscStartAddress(enve, dabServiceComponentObject.get(), mscStartAddress);
-            RadioServiceDabComponentImplProxy::setSubchannelSize(enve, dabServiceComponentObject.get(), subChannelSize);
-            RadioServiceDabComponentImplProxy::setProtectionLevel(enve, dabServiceComponentObject.get(), protectionLevel);
-            RadioServiceDabComponentImplProxy::setProtectionType(enve, dabServiceComponentObject.get(), protectionType);
-            RadioServiceDabComponentImplProxy::setUepTableIndex(enve, dabServiceComponentObject.get(), uepTableIndex);
+            dabServiceComponentObject.setServiceComponentIdWithinService(scIdS);
+            dabServiceComponentObject.setDatagroupTransportUsed(tmId);
+            dabServiceComponentObject.setMscStartAddress(mscStartAddress);
+            dabServiceComponentObject.setSubchannelSize(subChannelSize);
+            dabServiceComponentObject.setProtectionLevel(protectionLevel);
+            dabServiceComponentObject.setProtectionType(protectionType);
+            dabServiceComponentObject.setUepTableIndex(uepTableIndex);
             if(srvComp->isFecSchemeApplied()) {
-                RadioServiceDabComponentImplProxy::setIsFecSchemeApplied(enve, dabServiceComponentObject.get(), JNI_TRUE);
+                dabServiceComponentObject.setIsFecSchemeApplied(JNI_TRUE);
             } else {
-                RadioServiceDabComponentImplProxy::setIsFecSchemeApplied(enve, dabServiceComponentObject.get(), JNI_FALSE);
+                dabServiceComponentObject.setIsFecSchemeApplied(JNI_FALSE);
             }
 
-            RadioServiceDabComponentImplProxy::setServiceComponentType(enve, dabServiceComponentObject.get(), serviceComponentType);
+            dabServiceComponentObject.setServiceComponentType(serviceComponentType);
 
             //DABUserApplication creation
             for(const auto& uApp : srvComp->getUserApplications()) {
@@ -206,48 +206,48 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
                 const jint xPadAppType = (jint) uApp.getXpadAppType();
                 const jint dataServiceComponentType = (jint) uApp.getDataServiceComponentType();
 
-                LocalRef<jobject> dabServiceUserApplicationObject(RadioServiceDabUserApplicationImplProxy::newInstance(enve));
-                RadioServiceDabUserApplicationImplProxy::setUserApplicationType(enve, dabServiceUserApplicationObject.get(), uAppType);
+                auto dabServiceUserApplicationObject = RadioServiceDabUserApplicationImplProxy::newInstance();
+                dabServiceUserApplicationObject.setUserApplicationType(uAppType);
                 if(uApp.isCaApplied()) {
-                    RadioServiceDabUserApplicationImplProxy::setIsCaProtected(enve, dabServiceUserApplicationObject.get(), JNI_TRUE);
+                    dabServiceUserApplicationObject.setIsCaProtected(JNI_TRUE);
                 } else {
-                    RadioServiceDabUserApplicationImplProxy::setIsCaProtected(enve, dabServiceUserApplicationObject.get(), JNI_FALSE);
+                    dabServiceUserApplicationObject.setIsCaProtected(JNI_FALSE);
                 }
 
-                RadioServiceDabUserApplicationImplProxy::setCaOrganization(enve, dabServiceUserApplicationObject.get(), caOrg);
+                dabServiceUserApplicationObject.setCaOrganization(caOrg);
                 if(uApp.isXpadApp()) {
-                    RadioServiceDabUserApplicationImplProxy::setIsXpadApptype(enve, dabServiceUserApplicationObject.get(), JNI_TRUE);
+                    dabServiceUserApplicationObject.setIsXpadApptype(JNI_TRUE);
                 } else {
-                    RadioServiceDabUserApplicationImplProxy::setIsXpadApptype(enve, dabServiceUserApplicationObject.get(), JNI_FALSE);
+                    dabServiceUserApplicationObject.setIsXpadApptype(JNI_FALSE);
                 }
 
-                RadioServiceDabUserApplicationImplProxy::setXpadApptype(enve, dabServiceUserApplicationObject.get(), xPadAppType);
+                dabServiceUserApplicationObject.setXpadApptype(xPadAppType);
 
                 if(uApp.dataGroupsUsed()) {
-                    RadioServiceDabUserApplicationImplProxy::setIsDatagroupsUsed(enve, dabServiceUserApplicationObject.get(), JNI_TRUE);
+                    dabServiceUserApplicationObject.setIsDatagroupsUsed(JNI_TRUE);
                 } else {
-                    RadioServiceDabUserApplicationImplProxy::setIsDatagroupsUsed(enve, dabServiceUserApplicationObject.get(), JNI_FALSE);
+                    dabServiceUserApplicationObject.setIsDatagroupsUsed(JNI_FALSE);
                 }
 
-                RadioServiceDabUserApplicationImplProxy::setDSCTy(enve, dabServiceUserApplicationObject.get(), dataServiceComponentType);
+                dabServiceUserApplicationObject.setDSCTy(dataServiceComponentType);
 
                 if(!uApp.getUserApplicationData().empty()) {
                     LocalRef<jbyteArray> uAppData = jenny::makeByteArray(enve, uApp.getUserApplicationData().size(), uApp.getUserApplicationData().data());
 
-                    RadioServiceDabUserApplicationImplProxy::setUappdata(enve, dabServiceUserApplicationObject.get(), uAppData.get());
+                    dabServiceUserApplicationObject.setUappdata(uAppData);
                 }
 
                 //Add Userapplication to DabServiceComponent
-                RadioServiceDabComponentImplProxy::addScUserApplication(enve, dabServiceComponentObject.get(), dabServiceUserApplicationObject.get());
+                dabServiceComponentObject.addScUserApplication(dabServiceUserApplicationObject.getThis());
             }
             //DABUserApplication creation END
 
             //Add DabServiceComponent to DabService
-            RadioServiceDabNativeProxy::addServiceComponent(enve, dabServiceObject.get(), dabServiceComponentObject.get());
+            dabServiceObject.addServiceComponent(dabServiceComponentObject.getThis());
         }
         //DABServiceComponent creation END
 
-        m_usbTunerObject.serviceFound(dabServiceObject);
+        m_usbTunerObject.serviceFound(dabServiceObject.getThis());
     }
 }
 
