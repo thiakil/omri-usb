@@ -38,17 +38,17 @@ static constexpr uint16_t MIME_LINK_TABLE[4] = {
         2
 };
 
-JDabService::JDabService(JavaVM* javaVm, JNIEnv* env, jobject dabserviceObject): m_linkedJavaDabServiceObject(env, dabserviceObject) {
+JDabService::JDabService(JavaVM* javaVm, JNIEnv* env, jobject dabserviceObject): m_linkedJavaDabServiceObject(jenny::GlobalRef(env, dabserviceObject)) {
     // Note: don't JNI_ATTACH !
     
     std::cout << m_logTag << "Constructing" << std::endl;
 
     m_javaVm = javaVm;
 
-    m_ensembleFrequency = static_cast<uint32_t >(RadioServiceDabNativeProxy::getEnsembleFrequency(env, m_linkedJavaDabServiceObject.get()));
-    m_ensembleEcc = static_cast<uint8_t >(RadioServiceDabNativeProxy::getEnsembleEcc(env, m_linkedJavaDabServiceObject.get()));
-    m_ensembleId = static_cast<uint16_t >(RadioServiceDabNativeProxy::getEnsembleId(env, m_linkedJavaDabServiceObject.get()));
-    m_serviceId = static_cast<uint32_t >(RadioServiceDabNativeProxy::getServiceId(env, m_linkedJavaDabServiceObject.get()));
+    m_ensembleFrequency = static_cast<uint32_t >(m_linkedJavaDabServiceObject.getEnsembleFrequency());
+    m_ensembleEcc = static_cast<uint8_t >(m_linkedJavaDabServiceObject.getEnsembleEcc());
+    m_ensembleId = static_cast<uint16_t >(m_linkedJavaDabServiceObject.getEnsembleId());
+    m_serviceId = static_cast<uint32_t >(m_linkedJavaDabServiceObject.getServiceId());
 
     m_sfServicesLastTime = std::chrono::steady_clock::now();
 
@@ -172,11 +172,12 @@ std::shared_ptr<DabService> JDabService::getLinkDabService() const {
     return m_linkedDabService;
 }
 
-jobject JDabService::getJavaDabServiceObject() const {
-    if (m_linkedJavaDabServiceObject.get() == nullptr) {
+jenny::LocalRef<jobject> JDabService::getJavaDabServiceObject() const {
+    auto local_ref = m_linkedJavaDabServiceObject.getThis(false);
+    if (local_ref.get() == nullptr) {
         std::cerr << m_logTag << "Returning linked Java DabService object nullptr" << std::endl;
     }
-    return m_linkedJavaDabServiceObject.get();
+    return local_ref;
 }
 
 uint32_t JDabService::getEnsembleFrequency() const {
@@ -215,14 +216,9 @@ void JDabService::audioDataInput(const std::vector<uint8_t>& audioData, int asct
         m_audioPsUsed = psUsed;
 
         if (m_decodeAudio) {
-            if (m_linkedJavaDabServiceObject.get() != nullptr) {
-                RadioServiceDabNativeProxy::audioFormatChanged(enve, m_linkedJavaDabServiceObject.get(), m_ascty,
-                                     m_audioChannelCount, m_audioSamplingRate, m_audioSbrUsed,
-                                     m_audioPsUsed);
-            } else {
-                std::cerr<< m_logTag << "LinkedDabServiceObject is NULL at changed audioparams"
-                          << std::endl;
-            }
+            m_linkedJavaDabServiceObject.audioFormatChanged(m_ascty,
+                                 m_audioChannelCount, m_audioSamplingRate, m_audioSbrUsed,
+                                 m_audioPsUsed);
         }
     }
 
@@ -230,13 +226,7 @@ void JDabService::audioDataInput(const std::vector<uint8_t>& audioData, int asct
         jenny::LocalRef<jbyteArray> data = jenny::makeByteArray(enve, audioData.size(), audioData.data());
 
         if (m_decodeAudio) {
-            if (m_linkedJavaDabServiceObject.get() != nullptr) {
-                RadioServiceDabNativeProxy::audioData(enve, m_linkedJavaDabServiceObject.get(),
-                                     data.get(), channels, sampleRate);
-            } else {
-                std::cerr << m_logTag << "LinkedDabServiceObject is NULL at audiodata callback"
-                          << std::endl;
-            }
+            m_linkedJavaDabServiceObject.audioData(data, channels, sampleRate);
         }
     }
 }
@@ -335,11 +325,8 @@ void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>&
         }
     }
 
-    if(m_linkedJavaDabServiceObject.get() != nullptr) {
-        RadioServiceDabNativeProxy::slideshowReceived(enve, m_linkedJavaDabServiceObject.get(), slsObject.get());
-    } else {
-        std::cerr << m_logTag << " callJavaSlideshowCallback: m_linkedJavaDabServiceObject null" << std::endl;
-    }
+    m_linkedJavaDabServiceObject.slideshowReceived(slsObject);
+
 }
 
 void JDabService::callJavaDynamiclabelCallback(const std::shared_ptr<DabDynamicLabel>& label) {
@@ -369,11 +356,9 @@ void JDabService::callJavaDynamiclabelCallback(const std::shared_ptr<DabDynamicL
         //add item to dls
         TextualDabDynamicLabelImplProxy::addDlPlusItem(enve, dlsObject.get(), dlPlusItemObject.get());
     }
-    if(m_linkedJavaDabServiceObject.get() != nullptr) {
-        RadioServiceDabNativeProxy::labelReceived(enve, m_linkedJavaDabServiceObject.get(), dlsObject.get());
-    } else {
-        std::cerr << m_logTag << " callJavaDynamiclabelCallback: m_linkedJavaDabServiceObject null" << std::endl;
-    }
+
+    m_linkedJavaDabServiceObject.labelReceived(dlsObject);
+
 }
 
 void JDabService::setSubchanHandle(uint8_t subChanHdl) {
@@ -440,20 +425,18 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
         }
 
         JNIEnv* enve = jenny::Env().get();
-        if (enve != nullptr && m_linkedJavaDabServiceObject.get() != nullptr) {
-            jenny::LocalRef<jobject> arrayList(enve, NativeHelperProxy::newList(enve, sfServices.size()));
-            for (const auto &s : sfServices) {
-                RadioServiceDabNativeProxy jLinkedServiceDab(RadioServiceDabNativeProxy::newInstance(enve), true);
-                jLinkedServiceDab.setEnsembleEcc(s.get()->getEnsembleEcc());
-                jLinkedServiceDab.setEnsembleFrequency(s.get()->getEnsembleFrequencyKHz() * 1000);
-                jLinkedServiceDab.setEnsembleId(s.get()->getEnsembleId());
-                jLinkedServiceDab.setServiceId(s.get()->getServiceId());
-                jLinkedServiceDab.setIsProgrammeService(s.get()->getIsProgrammeService() ? JNI_TRUE : JNI_FALSE);
+        jenny::LocalRef<jobject> arrayList(enve, NativeHelperProxy::newList(enve, sfServices.size()));
+        for (const auto &s : sfServices) {
+            RadioServiceDabNativeProxy jLinkedServiceDab(RadioServiceDabNativeProxy::newInstance(enve), true);
+            jLinkedServiceDab.setEnsembleEcc(s.get()->getEnsembleEcc());
+            jLinkedServiceDab.setEnsembleFrequency(s.get()->getEnsembleFrequencyKHz() * 1000);
+            jLinkedServiceDab.setEnsembleId(s.get()->getEnsembleId());
+            jLinkedServiceDab.setServiceId(s.get()->getServiceId());
+            jLinkedServiceDab.setIsProgrammeService(s.get()->getIsProgrammeService() ? JNI_TRUE : JNI_FALSE);
 
-                NativeHelperProxy::listAdd(arrayList, jLinkedServiceDab.getThis(false));
-            }
-            RadioServiceDabNativeProxy::serviceFollowingReceived(enve, m_linkedJavaDabServiceObject.get(), arrayList.get());
+            NativeHelperProxy::listAdd(arrayList, jLinkedServiceDab.getThis(false));
         }
+        m_linkedJavaDabServiceObject.serviceFollowingReceived(arrayList);
     }
 
 }

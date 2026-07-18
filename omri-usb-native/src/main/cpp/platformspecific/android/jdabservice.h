@@ -26,6 +26,7 @@
 #include "jnihelper.h"
 #include "../../dabservice.h"
 #include "../../dabservicecomponentmscstreamaudio.h"
+#include "jenny/proxy/RadioServiceDabNativeProxy.h"
 
 class JDabService {
 
@@ -36,7 +37,7 @@ public:
     virtual void setLinkDabService(std::shared_ptr<DabService> linkedDabSrv);
     virtual void unlinkDabService();
 
-    virtual jobject getJavaDabServiceObject() const;
+    virtual jenny::LocalRef<jobject> getJavaDabServiceObject() const;
     virtual std::shared_ptr<DabService> getLinkDabService() const;
 
     virtual uint32_t getEnsembleFrequency() const;
@@ -60,7 +61,7 @@ private:
     //Java definitions
     JavaVM* m_javaVm;
     std::shared_ptr<DabService> m_linkedDabService{nullptr};
-    jenny::GlobalRef<jobject> m_linkedJavaDabServiceObject;
+    RadioServiceDabNativeProxy m_linkedJavaDabServiceObject;
 
     //local
     uint32_t m_serviceId{0xFFFFFFFF};

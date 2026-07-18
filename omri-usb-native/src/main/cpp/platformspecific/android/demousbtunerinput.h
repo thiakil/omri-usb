@@ -68,9 +68,9 @@ public:
     std::vector<std::shared_ptr<LinkedServiceDab>> getLinkedServices(const LinkedServiceDab &service) override;
 
 public: // callbacks to Java code
-    void serviceStarted(jobject radioService);
-    void serviceStopped(jobject radioService);
-    std::string callJavaRadioServiceGetDescription(jobject radioService);
+    void serviceStarted(jenny::LocalRef<jobject>& radioService);
+    void serviceStopped(jenny::LocalRef<jobject>& radioService);
+    std::string callJavaRadioServiceGetDescription(jenny::LocalRef<jobject>& radioService);
 
 private:
     void setService();

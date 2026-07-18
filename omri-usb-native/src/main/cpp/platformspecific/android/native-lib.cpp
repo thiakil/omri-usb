@@ -231,7 +231,7 @@ Java_org_omri_radio_impl_UsbHelper_detachDevice(JNIEnv* env, jobject thiz, jlong
 JNIEXPORT void JNICALL
 Java_org_omri_radio_impl_UsbHelper_deviceAttached(JNIEnv* env, jobject thiz, jobject usbDevice, jlong libusbDevice) {
     auto device = reinterpret_cast<libusb_device *>(libusbDevice);
-    std::shared_ptr<JTunerUsbDevice> jusbDevice = std::make_shared<JTunerUsbDevice>(m_javaVm, env, usbDevice, device);
+    std::shared_ptr<JTunerUsbDevice> jusbDevice = std::make_shared<JTunerUsbDevice>(env, usbDevice, device);
 
     m_usbDevices.push_back(jusbDevice);
 

@@ -229,9 +229,10 @@ void RaonTunerInput::startServiceSync(const std::shared_ptr<JDabService>& servic
     if(service != nullptr) {
         service->decodeAudio(false);
         service->unlinkDabService();
-        if(service->getJavaDabServiceObject() != nullptr) {
+        auto dab_service = service->getJavaDabServiceObject();
+        if(dab_service.get() != nullptr) {
             if (m_usbDevice != nullptr) {
-                m_usbDevice->serviceStopped(service->getJavaDabServiceObject());
+                m_usbDevice->serviceStopped(dab_service);
             }
         }
         m_startServiceLink.reset();
@@ -484,9 +485,10 @@ void RaonTunerInput::setService() {
                         openSubChannel(srvComp->getSubChannelId());
 
                         service->decodeAudio(true);
+                        auto dab_service = service->getJavaDabServiceObject();
                         if (m_usbDevice != nullptr &&
-                                service->getJavaDabServiceObject() != nullptr) {
-                            m_usbDevice->serviceStarted(service->getJavaDabServiceObject());
+                                dab_service.get() != nullptr) {
+                            m_usbDevice->serviceStarted(dab_service);
                         }
                         foundSrvComp = true;
                         break;
@@ -1369,9 +1371,10 @@ void RaonTunerInput::closeSubchannel(uint8_t subchanId) {
     auto & service = m_startServiceLink;
     if(service != nullptr) {
         service->decodeAudio(false);
-        if(service->getJavaDabServiceObject() != nullptr) {
+        auto dab_service = service->getJavaDabServiceObject();
+        if(dab_service.get() != nullptr) {
             if (m_usbDevice != nullptr) {
-                m_usbDevice->serviceStopped(service->getJavaDabServiceObject());
+                m_usbDevice->serviceStopped(dab_service);
             }
         } else {
             std::cerr << "No java dabservice object" << std::endl;

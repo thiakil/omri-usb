@@ -102,8 +102,8 @@ void DemoUsbTunerInput::startService(std::shared_ptr<JDabService>& serviceLink) 
         // need to refer to serviceLink, otherwise it may be destroyed
         m_startServiceLink = serviceLink;
 
-        jobject javaDabServiceObject = serviceLink->getJavaDabServiceObject();
-        if (javaDabServiceObject != nullptr) {
+        jenny::LocalRef javaDabServiceObject = serviceLink->getJavaDabServiceObject();
+        if (javaDabServiceObject.get() != nullptr) {
             std::string description = callJavaRadioServiceGetDescription(javaDabServiceObject);
             std::cout << LOG_TAG << "startService " << description << std::endl;
 
@@ -178,8 +178,8 @@ void DemoUsbTunerInput::stopAllRunningServices() {
     inputStreamClose();
     auto & service = m_startServiceLink;
     if (service != nullptr) {
-        jobject radioService = service->getJavaDabServiceObject();
-        if (radioService != nullptr) {
+        auto radioService = service->getJavaDabServiceObject();
+        if (radioService.get() != nullptr) {
             serviceStopped(radioService);
         }
         service->decodeAudio(false);
@@ -206,25 +206,25 @@ DemoUsbTunerInput::getLinkedServices(const LinkedServiceDab &service) {
     return getLinkedDabServices(service);
 }
 
-void DemoUsbTunerInput::serviceStarted(jobject radioService) {
-    if (radioService != nullptr && m_demoTunerObject.get() != nullptr) {
+void DemoUsbTunerInput::serviceStarted(jenny::LocalRef<jobject>& radioService) {
+    if (radioService.get() != nullptr && m_demoTunerObject.get() != nullptr) {
         JNIEnv *enve = jenny::Env().get();
-        DemoTunerProxy::serviceStarted(enve, m_demoTunerObject.get(), radioService);
+        DemoTunerProxy::serviceStarted(enve, m_demoTunerObject.get(), radioService.get());
     }
 }
 
-void DemoUsbTunerInput::serviceStopped(jobject radioService) {
-    if (radioService != nullptr && m_demoTunerObject.get() != nullptr) {
+void DemoUsbTunerInput::serviceStopped(jenny::LocalRef<jobject>& radioService) {
+    if (radioService.get() != nullptr && m_demoTunerObject.get() != nullptr) {
         JNIEnv *enve = jenny::Env().get();
-        DemoTunerProxy::serviceStopped(enve, m_demoTunerObject.get(), radioService);
+        DemoTunerProxy::serviceStopped(enve, m_demoTunerObject.get(), radioService.get());
     }
 }
 
-std::string DemoUsbTunerInput::callJavaRadioServiceGetDescription(jobject radioService) {
+std::string DemoUsbTunerInput::callJavaRadioServiceGetDescription(jenny::LocalRef<jobject>& radioService) {
     std::string retString;
-    if (radioService != nullptr) {
+    if (radioService.get() != nullptr) {
         JNIEnv *enve = jenny::Env().get();
-        retString = jenny::fromJavaString(enve, RadioServiceDemoProxy::filePath(enve, radioService));
+        retString = jenny::fromJavaString(enve, RadioServiceDemoProxy::filePath(enve, radioService.get()));
     }
 
     return retString;
@@ -262,9 +262,9 @@ void DemoUsbTunerInput::readThreadProc() {
         std::clog << LOG_TAG << "readThreadProc: startServiceLink null" << std::endl;
         return;
     }
-    jobject radioService = m_startServiceLink->getJavaDabServiceObject();
+    jenny::LocalRef radioService = m_startServiceLink->getJavaDabServiceObject();
 
-    if (radioService == nullptr) {
+    if (radioService.get() == nullptr) {
         m_readThreadRunning = false;
         std::clog << LOG_TAG << "readThreadProc: radioService null" << std::endl;
         return;
