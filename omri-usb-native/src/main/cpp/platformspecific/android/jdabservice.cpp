@@ -443,19 +443,14 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
         if (enve != nullptr && m_linkedJavaDabServiceObject.get() != nullptr) {
             jenny::LocalRef<jobject> arrayList(enve, NativeHelperProxy::newList(enve, sfServices.size()));
             for (const auto &s : sfServices) {
-                jenny::LocalRef<jobject> jLinkedServiceDab(enve, RadioServiceDabNativeProxy::newInstance(enve));
-                RadioServiceDabNativeProxy::setEnsembleEcc(enve, jLinkedServiceDab.get(),
-                                    static_cast<jint>(s.get()->getEnsembleEcc()));
-                RadioServiceDabNativeProxy::setEnsembleFrequency(enve, jLinkedServiceDab.get(),
-                                    static_cast<jint>(s.get()->getEnsembleFrequencyKHz() * 1000));
-                RadioServiceDabNativeProxy::setEnsembleId(enve, jLinkedServiceDab.get(),
-                                    static_cast<jint>(s.get()->getEnsembleId()));
-                RadioServiceDabNativeProxy::setServiceId(enve, jLinkedServiceDab.get(),
-                                    static_cast<jint>(s.get()->getServiceId()));
-                RadioServiceDabNativeProxy::setIsProgrammeService(enve, jLinkedServiceDab.get(),
-                                     s.get()->getIsProgrammeService() ? JNI_TRUE : JNI_FALSE);
+                RadioServiceDabNativeProxy jLinkedServiceDab(RadioServiceDabNativeProxy::newInstance(enve), true);
+                jLinkedServiceDab.setEnsembleEcc(s.get()->getEnsembleEcc());
+                jLinkedServiceDab.setEnsembleFrequency(s.get()->getEnsembleFrequencyKHz() * 1000);
+                jLinkedServiceDab.setEnsembleId(s.get()->getEnsembleId());
+                jLinkedServiceDab.setServiceId(s.get()->getServiceId());
+                jLinkedServiceDab.setIsProgrammeService(s.get()->getIsProgrammeService() ? JNI_TRUE : JNI_FALSE);
 
-                NativeHelperProxy::listAdd(enve, arrayList.get(), jLinkedServiceDab.get());
+                NativeHelperProxy::listAdd(arrayList, jLinkedServiceDab.getThis(false));
             }
             RadioServiceDabNativeProxy::serviceFollowingReceived(enve, m_linkedJavaDabServiceObject.get(), arrayList.get());
         }
