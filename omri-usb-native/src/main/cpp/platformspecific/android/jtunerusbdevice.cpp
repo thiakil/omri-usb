@@ -23,7 +23,6 @@
 #include "jtunerusbdevice.h"
 
 #include "jenny/proxy/RadioServiceDabComponentImplProxy.h"
-#include "jenny/proxy/RadioServiceDabImplProxy.h"
 #include "jenny/proxy/RadioServiceDabNativeProxy.h"
 #include "jenny/proxy/RadioServiceDabUserApplicationImplProxy.h"
 #include "jenny/proxy/TunerUsbProxy.h"
@@ -73,7 +72,7 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
     for(const auto& srv : ensemble.getDabServices()) {
         std::cout << m_logTag << " Scan service: " << srv->getServiceLabel() << std::endl;
         const jint sid = (jint) srv->getServiceId();
-        LocalRef<jobject> dabServiceObject(RadioServiceDabImplProxy::newInstance(enve));
+        LocalRef<jobject> dabServiceObject(RadioServiceDabNativeProxy::newInstance(enve));
         const jint ecc = (jint) ensemble.getEnsembleEcc();
         RadioServiceDabNativeProxy::setEnsembleEcc(enve, dabServiceObject.get(), ecc);
         const jint eid = (jint) ensemble.getEnsembleId();

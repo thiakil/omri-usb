@@ -26,7 +26,6 @@
 #include "jni-helper.h"
 #include "jnihelper.h"
 #include "jenny/proxy/NativeHelperProxy.h"
-#include "jenny/proxy/RadioServiceDabImplProxy.h"
 #include "jenny/proxy/RadioServiceDabNativeProxy.h"
 #include "jenny/proxy/TextualDabDynamicLabelImplProxy.h"
 #include "jenny/proxy/TextualDabDynamicLabelPlusItemImplProxy.h"
@@ -444,7 +443,7 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
         if (enve != nullptr && m_linkedJavaDabServiceObject.get() != nullptr) {
             jenny::LocalRef<jobject> arrayList(enve, NativeHelperProxy::newList(enve, sfServices.size()));
             for (const auto &s : sfServices) {
-                jenny::LocalRef<jobject> jLinkedServiceDab(enve, RadioServiceDabImplProxy::newInstance(enve));
+                jenny::LocalRef<jobject> jLinkedServiceDab(enve, RadioServiceDabNativeProxy::newInstance(enve));
                 RadioServiceDabNativeProxy::setEnsembleEcc(enve, jLinkedServiceDab.get(),
                                     static_cast<jint>(s.get()->getEnsembleEcc()));
                 RadioServiceDabNativeProxy::setEnsembleFrequency(enve, jLinkedServiceDab.get(),

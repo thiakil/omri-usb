@@ -358,7 +358,7 @@ Java_org_omri_radio_impl_UsbHelper_getLinkedServices(JNIEnv *env, jobject thiz, 
             retObj = NativeHelperProxy::newList(env, retServices.size());
             for (const auto &s : retServices) {
 
-                jenny::LocalRef<jobject> jLinkedServiceDab(RadioServiceDabImplProxy::newInstance(env));
+                jenny::LocalRef<jobject> jLinkedServiceDab(RadioServiceDabNativeProxy::newInstance(env));
                 RadioServiceDabNativeProxy::setEnsembleEcc(env, jLinkedServiceDab.get(),
                                     static_cast<jint>(s.get()->getEnsembleEcc()));
                 RadioServiceDabNativeProxy::setEnsembleFrequency(env, jLinkedServiceDab.get(),

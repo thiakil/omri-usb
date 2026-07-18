@@ -33,8 +33,6 @@ import java.util.Objects;
  * @author Fabian Sattler, IRT GmbH
  */
 
-//used from C
-@NativeProxy
 public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServiceDab, RadioServiceDabNative, Serializable {
 
 	private static final long serialVersionUID = 4382868398713243924L;
@@ -53,9 +51,6 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	private int mServiceId = 0;
 	private boolean mIsProgrammeService = false;
 	final private List<RadioServiceDabComponent> mServiceComponents = new ArrayList<RadioServiceDabComponent>();
-
-	@NativeMethodProxy
-	RadioServiceDabImpl() {	}
 
 	@Override
 	public RadioServiceType getRadioServiceType() {
