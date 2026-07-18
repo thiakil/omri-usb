@@ -602,7 +602,7 @@ inline JNIEnv* Env::attachCurrentThreadIfNeed() {
       JNIEnv* env;
 
       explicit EnvWrapper(JavaVM* _jvm) : jvm(_jvm), env(nullptr) {
-        _jvm->AttachCurrentThread(reinterpret_cast<void**>(&env), nullptr);
+        _jvm->AttachCurrentThreadAsDaemon(reinterpret_cast<void**>(&env), nullptr);
         assert(env != nullptr);
       }
 

@@ -22,7 +22,6 @@
 #include <iostream>
 #include <chrono>
 
-#include "../../daemon-env.h"
 #include "jenny/proxy/DemoTunerProxy.h"
 #include "jenny/proxy/RadioServiceDemoProxy.h"
 #ifndef WIN32
@@ -209,14 +208,14 @@ DemoUsbTunerInput::getLinkedServices(const LinkedServiceDab &service) {
 
 void DemoUsbTunerInput::serviceStarted(jobject radioService) {
     if (radioService != nullptr && m_demoTunerObject.get() != nullptr) {
-        JNIEnv *enve = DaemonEnv().get();
+        JNIEnv *enve = jenny::Env().get();
         DemoTunerProxy::serviceStarted(enve, m_demoTunerObject.get(), radioService);
     }
 }
 
 void DemoUsbTunerInput::serviceStopped(jobject radioService) {
     if (radioService != nullptr && m_demoTunerObject.get() != nullptr) {
-        JNIEnv *enve = DaemonEnv().get();
+        JNIEnv *enve = jenny::Env().get();
         DemoTunerProxy::serviceStopped(enve, m_demoTunerObject.get(), radioService);
     }
 }
@@ -224,7 +223,7 @@ void DemoUsbTunerInput::serviceStopped(jobject radioService) {
 std::string DemoUsbTunerInput::callJavaRadioServiceGetDescription(jobject radioService) {
     std::string retString;
     if (radioService != nullptr) {
-        JNIEnv *enve = DaemonEnv().get();
+        JNIEnv *enve = jenny::Env().get();
         retString = jenny::fromJavaString(enve, RadioServiceDemoProxy::filePath(enve, radioService));
     }
 

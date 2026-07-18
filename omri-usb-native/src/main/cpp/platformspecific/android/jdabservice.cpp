@@ -24,7 +24,6 @@
 #include "../../dabensemble.h"
 #include "jdabservice.h"
 #include "jni-helper.h"
-#include "../../daemon-env.h"
 #include "jnihelper.h"
 #include "jenny/proxy/NativeHelperProxy.h"
 #include "jenny/proxy/RadioServiceDabImplProxy.h"
@@ -204,7 +203,7 @@ void JDabService::audioDataInput(const std::vector<uint8_t>& audioData, int asct
         return;
     }
 
-    JNIEnv* enve = DaemonEnv().get();
+    JNIEnv* enve = jenny::Env().get();
 
     if (m_ascty != ascty || m_audioChannelCount != channels || m_audioSamplingRate != sampleRate ||
         m_audioSbrUsed != sbrUsed || m_audioPsUsed != psUsed) {
@@ -298,7 +297,7 @@ void JDabService::slideshowInput(std::shared_ptr<void> slideShow) {
 }
 
 void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>& slide) {
-    JNIEnv* enve = DaemonEnv().get();
+    JNIEnv* enve = jenny::Env().get();
 
     jenny::LocalRef<jobject> slsObject(enve, VisualDabSlideShowImplProxy::newInstance(enve));
 
@@ -346,7 +345,7 @@ void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>&
 }
 
 void JDabService::callJavaDynamiclabelCallback(const std::shared_ptr<DabDynamicLabel>& label) {
-    JNIEnv* enve = DaemonEnv().get();
+    JNIEnv* enve = jenny::Env().get();
 
     jenny::LocalRef<jobject> dlsObject(enve, TextualDabDynamicLabelImplProxy::newInstance(enve));
 
@@ -442,7 +441,7 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
             }
         }
 
-        JNIEnv* enve = DaemonEnv().get();
+        JNIEnv* enve = jenny::Env().get();
         if (enve != nullptr && m_linkedJavaDabServiceObject.get() != nullptr) {
             jenny::LocalRef<jobject> arrayList(enve, NativeHelperProxy::newList(enve, sfServices.size()));
             for (const auto &s : sfServices) {

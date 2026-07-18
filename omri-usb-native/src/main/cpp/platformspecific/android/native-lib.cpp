@@ -36,7 +36,6 @@
 #include "jtunerusbdevice.h"
 #include "jusbdevice.h"
 #include "raontunerinput.h"
-#include "../../daemon-env.h"
 
 extern "C" {
 
@@ -66,7 +65,6 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         std::cerr << LOG_TAG << "JNI_OnLoad: vm null" << std::endl;
         return JNI_ERR;
     }
-    DaemonEnv::attachJvm(m_javaVm);
     jenny::Env::attachJvm(m_javaVm);
     jenny::initAllProxies(env);
     Log4JLogger::getInstance().init(m_javaVm, env);

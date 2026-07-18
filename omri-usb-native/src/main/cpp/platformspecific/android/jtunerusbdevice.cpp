@@ -21,7 +21,6 @@
 #include <iostream>
 
 #include "jtunerusbdevice.h"
-#include "../../daemon-env.h"
 
 #include "jenny/proxy/RadioServiceDabComponentImplProxy.h"
 #include "jenny/proxy/RadioServiceDabImplProxy.h"
@@ -45,14 +44,14 @@ JTunerUsbDevice::~JTunerUsbDevice() {
 void JTunerUsbDevice::callCallback(TUNER_CALLBACK_TYPE callbackType) {
     std::cout << m_logTag << "Calling tuner callback: " << +callbackType << std::endl;
 
-    TunerUsbProxy::callBack(DaemonEnv().get(), m_usbTunerObject.get(), callbackType);
+    TunerUsbProxy::callBack(jenny::Env().get(), m_usbTunerObject.get(), callbackType);
 }
 
 void JTunerUsbDevice::scanProgress(int percentDone, int freqHz) {
     std::cout << m_logTag << "scanProgress: " << +percentDone << "%, freq "
         << +(freqHz/1000) << " kHz" << std::endl;
 
-    TunerUsbProxy::scanProgressCallback(DaemonEnv().get(), m_usbTunerObject.get(), percentDone, freqHz);
+    TunerUsbProxy::scanProgressCallback(jenny::Env().get(), m_usbTunerObject.get(), percentDone, freqHz);
 }
 
 void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
@@ -65,7 +64,7 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
                 std::bind(&JTunerUsbDevice::dabTimeUpdate, this, std::placeholders::_1));
 
 
-    JNIEnv* enve = DaemonEnv().get();
+    JNIEnv* enve = jenny::Env().get();
 
     LocalRef<jstring> ensembleLabel = jenny::toJavaString(enve,
                                                         ensemble.getEnsembleLabel().c_str());
@@ -257,15 +256,15 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
 }
 
 void JTunerUsbDevice::serviceStarted(jobject dabService) {
-    TunerUsbProxy::serviceStarted(DaemonEnv().get(), m_usbTunerObject.get(), dabService);
+    TunerUsbProxy::serviceStarted(jenny::Env().get(), m_usbTunerObject.get(), dabService);
 }
 
 void JTunerUsbDevice::serviceStopped(jobject dabService) {
-    TunerUsbProxy::serviceStopped(DaemonEnv().get(), m_usbTunerObject.get(), dabService);
+    TunerUsbProxy::serviceStopped(jenny::Env().get(), m_usbTunerObject.get(), dabService);
 }
 
 void JTunerUsbDevice::receptionStatistics(bool rfLock, int level, int rawValue) {
-    TunerUsbProxy::receptionStatistics(DaemonEnv().get(), m_usbTunerObject.get(), rfLock, level, rawValue);
+    TunerUsbProxy::receptionStatistics(jenny::Env().get(), m_usbTunerObject.get(), rfLock, level, rawValue);
 }
 
 void JTunerUsbDevice::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
@@ -278,6 +277,6 @@ void JTunerUsbDevice::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
     auto t = dabTime.unixEpoch * 1000L;
     t += dabTime.milliseconds;
 
-    TunerUsbProxy::dabTimeUpdateEpoch(DaemonEnv().get(), m_usbTunerObject.get(), t);
+    TunerUsbProxy::dabTimeUpdateEpoch(jenny::Env().get(), m_usbTunerObject.get(), t);
 
 }
