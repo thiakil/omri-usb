@@ -287,77 +287,75 @@ void JDabService::slideshowInput(std::shared_ptr<void> slideShow) {
 void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>& slide) {
     JNIEnv* enve = jenny::Env().get();
 
-    jenny::LocalRef<jobject> slsObject(enve, VisualDabSlideShowImplProxy::newInstance(enve));
+    VisualDabSlideShowImplProxy slsObject = VisualDabSlideShowImplProxy::newInstance();
 
-    jenny::LocalRef<jstring> slsContentName(getSafeJniStringFromCString(enve,
+    jenny::LocalRef<jstring> slsContentName(enve, getSafeJniStringFromCString(enve,
                                                          slide->contentName.c_str(),
                                                          slide->contentName.size()));
 
-    jenny::LocalRef<jbyteArray> visualData(jenny::makeByteArray(enve, slide->slideshowData.size(), slide->slideshowData.data()));
+    jenny::LocalRef<jbyteArray> visualData = jenny::makeByteArray(enve, slide->slideshowData.size(), slide->slideshowData.data());
 
-    VisualDabSlideShowImplProxy::setContentName(enve, slsObject.get(), slsContentName.get());
-    VisualDabSlideShowImplProxy::setVisualData(enve, slsObject.get(), visualData.get());
-    VisualDabSlideShowImplProxy::setVisualMimeType(enve, slsObject.get(), MIME_LINK_TABLE[slide->contentSubType]);
-    VisualDabSlideShowImplProxy::setContentType(enve, slsObject.get(), 2);
-    VisualDabSlideShowImplProxy::setContentSubType(enve, slsObject.get(), slide->contentSubType);
+    slsObject.setContentName(slsContentName);
+    slsObject.setVisualData(visualData);
+    slsObject.setVisualMimeType(MIME_LINK_TABLE[slide->contentSubType]);
+    slsObject.setContentType(2);
+    slsObject.setContentSubType(slide->contentSubType);
 
     if(slide->isCategorized) {
-        jstring slsCategoryName = getSafeJniStringFromCString(enve,
+        auto slsCategoryName = jenny::LocalRef(enve, getSafeJniStringFromCString(enve,
                                                               slide->categoryTitle.c_str(),
-                                                              slide->categoryTitle.size());
-        VisualDabSlideShowImplProxy::setCategoryText(enve, slsObject.get(), slsCategoryName);
-        enve->DeleteLocalRef(slsCategoryName);
+                                                              slide->categoryTitle.size()));
+        slsObject.setCategoryText(slsCategoryName);
 
-        VisualDabSlideShowImplProxy::setSlideId(enve, slsObject.get(), slide->slideId);
-        VisualDabSlideShowImplProxy::setCategoryId(enve, slsObject.get(), slide->categoryId);
+        slsObject.setSlideId(slide->slideId);
+        slsObject.setCategoryId(slide->categoryId);
 
         if(!slide->alternativeLocationUrl.empty()) {
             jenny::LocalRef<jstring> slsAltLocUrl(enve, getSafeJniStringFromCString(enve,
                                                                slide->alternativeLocationUrl.c_str(),
                                                                slide->alternativeLocationUrl.size()));
-            VisualDabSlideShowImplProxy::setAlternativeLocationURL(enve, slsObject.get(), slsAltLocUrl.get());
+            slsObject.setAlternativeLocationURL(slsAltLocUrl);
         }
         if(!slide->clickThroughUrl.empty()) {
             jenny::LocalRef<jstring> slsCtUrl(enve, getSafeJniStringFromCString(enve,
                                                            slide->clickThroughUrl.c_str(),
                                                            slide->clickThroughUrl.size()));
-            VisualDabSlideShowImplProxy::setCategoryClickThroughLink(enve, slsObject.get(), slsCtUrl.get());
+            slsObject.setCategoryClickThroughLink(slsCtUrl);
         }
     }
 
-    m_linkedJavaDabServiceObject.slideshowReceived(slsObject);
+    m_linkedJavaDabServiceObject.slideshowReceived(slsObject.getThis());
 
 }
 
 void JDabService::callJavaDynamiclabelCallback(const std::shared_ptr<DabDynamicLabel>& label) {
     JNIEnv* enve = jenny::Env().get();
 
-    jenny::LocalRef<jobject> dlsObject(enve, TextualDabDynamicLabelImplProxy::newInstance(enve));
+    TextualDabDynamicLabelImplProxy dlsObject = TextualDabDynamicLabelImplProxy::newInstance();
 
-    jenny::LocalRef<jstring> fullDlsString(getSafeJniStringFromCString(enve,
+    jenny::LocalRef<jstring> fullDlsString(enve, getSafeJniStringFromCString(enve,
                                                         label->dynamicLabel.c_str(),
                                                         label->dynamicLabel.size()));
-    TextualDabDynamicLabelImplProxy::setText(enve, dlsObject.get(), fullDlsString.get());
+    dlsObject.setText(fullDlsString);
 
-    TextualDabDynamicLabelImplProxy::setItemRunning(enve, dlsObject.get(), label->itemRunning);
-    TextualDabDynamicLabelImplProxy::setItemToggled(enve, dlsObject.get(), label->itemToggle);
+    dlsObject.setItemRunning(label->itemRunning);
+    dlsObject.setItemToggled(label->itemToggle);
 
     for(const auto& tag : label->dlPlusTags) {
-        jenny::LocalRef<jobject> dlPlusItemObject(enve, TextualDabDynamicLabelPlusItemImplProxy::newInstance(enve));
+        TextualDabDynamicLabelPlusItemImplProxy dlPlusItemObject = TextualDabDynamicLabelPlusItemImplProxy::newInstance();
 
-        TextualDabDynamicLabelPlusItemImplProxy::setDlPlusContentType(enve, dlPlusItemObject.get(), (jint)tag.contentType);
+        dlPlusItemObject.setDlPlusContentType((jint)tag.contentType);
 
-        jstring tagText = getSafeJniStringFromCString(enve,
+        jenny::LocalRef tagText(enve, getSafeJniStringFromCString(enve,
                                                       tag.dlPlusTagText.c_str(),
-                                                      tag.dlPlusTagText.size());
-        TextualDabDynamicLabelPlusItemImplProxy::setDlPlusContentText(enve, dlPlusItemObject.get(), tagText);
-        enve->DeleteLocalRef(tagText);
+                                                      tag.dlPlusTagText.size()));
+        dlPlusItemObject.setDlPlusContentText(tagText);
 
         //add item to dls
-        TextualDabDynamicLabelImplProxy::addDlPlusItem(enve, dlsObject.get(), dlPlusItemObject.get());
+        dlsObject.addDlPlusItem(dlPlusItemObject.getThis());
     }
 
-    m_linkedJavaDabServiceObject.labelReceived(dlsObject);
+    m_linkedJavaDabServiceObject.labelReceived(dlsObject.getThis());
 
 }
 
@@ -427,14 +425,14 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
         JNIEnv* enve = jenny::Env().get();
         jenny::LocalRef<jobject> arrayList(enve, NativeHelperProxy::newList(enve, sfServices.size()));
         for (const auto &s : sfServices) {
-            RadioServiceDabNativeProxy jLinkedServiceDab(RadioServiceDabNativeProxy::newInstance(enve), true);
+            RadioServiceDabNativeProxy jLinkedServiceDab = RadioServiceDabNativeProxy::newInstance();
             jLinkedServiceDab.setEnsembleEcc(s.get()->getEnsembleEcc());
             jLinkedServiceDab.setEnsembleFrequency(s.get()->getEnsembleFrequencyKHz() * 1000);
             jLinkedServiceDab.setEnsembleId(s.get()->getEnsembleId());
             jLinkedServiceDab.setServiceId(s.get()->getServiceId());
             jLinkedServiceDab.setIsProgrammeService(s.get()->getIsProgrammeService() ? JNI_TRUE : JNI_FALSE);
 
-            NativeHelperProxy::listAdd(arrayList, jLinkedServiceDab.getThis(false));
+            NativeHelperProxy::listAdd(arrayList, jLinkedServiceDab.getThis());
         }
         m_linkedJavaDabServiceObject.serviceFollowingReceived(arrayList);
     }
