@@ -27,7 +27,7 @@
 #include <memory>
 #include <org_omri_radio_impl_UsbHelper.h>
 #include "jenny/proxy/jenny_fusion_proxies.h"
-#include "jenny/proxy/jnihelper.h"
+#include "jnihelper.h"
 
 #include "log4jbridge.h"
 #include "stdoutbridge.h"

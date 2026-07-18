@@ -25,7 +25,7 @@
 #include "jdabservice.h"
 #include "jni-helper.h"
 #include "../../daemon-env.h"
-#include "jenny/proxy/jnihelper.h"
+#include "jnihelper.h"
 #include "jenny/proxy/NativeHelperProxy.h"
 #include "jenny/proxy/RadioServiceDabImplProxy.h"
 #include "jenny/proxy/RadioServiceDabNativeProxy.h"

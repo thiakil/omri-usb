@@ -24,7 +24,7 @@
 #include <ctime>
 #include "jusbdevice.h"
 #include "../../dabensemble.h"
-#include "jenny/proxy/jnihelper.h"
+#include "jnihelper.h"
 
 class JTunerUsbDevice : public JUsbDevice {
 

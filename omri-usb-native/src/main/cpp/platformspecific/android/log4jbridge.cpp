@@ -1,7 +1,7 @@
 
 #include "log4jbridge.h"
 #include <cstdint>//jnihelper dep
-#include "jenny/proxy/jnihelper.h"
+#include "jnihelper.h"
 
 #include <iostream>
 

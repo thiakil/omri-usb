@@ -30,6 +30,7 @@ library {
     privateHeaders {
         from(
                 configurations.sharedCompileInputs.files,
+                layout.projectDirectory.dir("src/main/cpp/headers"),
                 "${javaHome}/include",
                 "${javaHome}/include/linux",
                 "${javaHome}/include/win32",

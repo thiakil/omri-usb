@@ -23,7 +23,7 @@
 
 #include <memory>
 #include <jni.h>
-#include "jenny/proxy/jnihelper.h"
+#include "jnihelper.h"
 #include "../../dabservice.h"
 #include "../../dabservicecomponentmscstreamaudio.h"
 

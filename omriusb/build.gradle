@@ -51,6 +51,13 @@ configurations {
     }
 }
 
+compileJava {
+    options.compilerArgs += [
+            "-Ajenny.useJniHelper=true",
+            "-Ajenny.outputJniHelper=false",
+    ]
+}
+
 def compileJava = tasks.named('compileJava', JavaCompile)
 artifacts {
     nativeOutputs(compileJava.flatMap { it.options.headerOutputDirectory })
