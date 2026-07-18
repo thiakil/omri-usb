@@ -8,7 +8,6 @@ import org.jetbrains.annotations.NotNull;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
-import org.omri.radioservice.RadioServiceDabNative;
 import org.omri.radioservice.RadioServiceType;
 
 import java.io.Serializable;

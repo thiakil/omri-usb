@@ -1,8 +1,9 @@
-package org.omri.radioservice;
+package org.omri.radio.impl;
 
 import io.github.landerlyoung.jenny.NativeProxy;
 import java.util.ArrayList;
-import java.util.List;
+import org.omri.radioservice.RadioService;
+import org.omri.radioservice.RadioServiceDabComponent;
 import org.omri.radioservice.metadata.Textual;
 import org.omri.radioservice.metadata.VisualDabSlideShow;
 
@@ -33,4 +34,8 @@ public interface RadioServiceDabNative {
     void audioData(final byte[] pcmData, final int channelCount, final int samplingRate);
     void serviceFollowingReceived(ArrayList<RadioService> sfServices);
     void audioFormatChanged(final int ascty, final int channelCount, final int samplingRate, final boolean sbrUsed, final boolean psUsed);
+
+    static RadioServiceDabNative newInstance(){
+        return new RadioServiceDabImpl();
+    }
 }
