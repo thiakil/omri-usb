@@ -1,9 +1,13 @@
 package org.omri.radioservice;
 
 import io.github.landerlyoung.jenny.NativeProxy;
+import java.util.ArrayList;
 import java.util.List;
+import org.omri.radioservice.metadata.Textual;
+import org.omri.radioservice.metadata.VisualDabSlideShow;
 
 @NativeProxy(allMethods = true)
+@SuppressWarnings("unused")
 public interface RadioServiceDabNative {
     int getEnsembleEcc();
     int getEnsembleId();
@@ -23,4 +27,10 @@ public interface RadioServiceDabNative {
     void setIsProgrammeService(boolean isProg);
     void addServiceComponent(RadioServiceDabComponent dabComp);
     //void addServiceComponent(List<RadioServiceDabComponent> dabComp);
+    void addGenre(String genre);
+    void slideshowReceived(VisualDabSlideShow slideShow);
+    void labelReceived(Textual label);
+    void audioData(final byte[] pcmData, final int channelCount, final int samplingRate);
+    void serviceFollowingReceived(ArrayList<RadioService> sfServices);
+    void audioFormatChanged(final int ascty, final int channelCount, final int samplingRate, final boolean sbrUsed, final boolean psUsed);
 }

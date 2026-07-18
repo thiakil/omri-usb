@@ -28,7 +28,6 @@
 #include "jenny/proxy/NativeHelperProxy.h"
 #include "jenny/proxy/RadioServiceDabImplProxy.h"
 #include "jenny/proxy/RadioServiceDabNativeProxy.h"
-#include "jenny/proxy/RadioServiceImplProxy.h"
 #include "jenny/proxy/TextualDabDynamicLabelImplProxy.h"
 #include "jenny/proxy/TextualDabDynamicLabelPlusItemImplProxy.h"
 #include "jenny/proxy/VisualDabSlideShowImplProxy.h"
@@ -218,7 +217,7 @@ void JDabService::audioDataInput(const std::vector<uint8_t>& audioData, int asct
 
         if (m_decodeAudio) {
             if (m_linkedJavaDabServiceObject.get() != nullptr) {
-                RadioServiceImplProxy::audioFormatChanged(enve, m_linkedJavaDabServiceObject.get(), m_ascty,
+                RadioServiceDabNativeProxy::audioFormatChanged(enve, m_linkedJavaDabServiceObject.get(), m_ascty,
                                      m_audioChannelCount, m_audioSamplingRate, m_audioSbrUsed,
                                      m_audioPsUsed);
             } else {
@@ -233,7 +232,7 @@ void JDabService::audioDataInput(const std::vector<uint8_t>& audioData, int asct
 
         if (m_decodeAudio) {
             if (m_linkedJavaDabServiceObject.get() != nullptr) {
-                RadioServiceImplProxy::audioData(enve, m_linkedJavaDabServiceObject.get(),
+                RadioServiceDabNativeProxy::audioData(enve, m_linkedJavaDabServiceObject.get(),
                                      data.get(), channels, sampleRate);
             } else {
                 std::cerr << m_logTag << "LinkedDabServiceObject is NULL at audiodata callback"
@@ -338,7 +337,7 @@ void JDabService::callJavaSlideshowCallback(const std::shared_ptr<DabSlideshow>&
     }
 
     if(m_linkedJavaDabServiceObject.get() != nullptr) {
-        RadioServiceImplProxy::slideshowReceived(enve, m_linkedJavaDabServiceObject.get(), slsObject.get());
+        RadioServiceDabNativeProxy::slideshowReceived(enve, m_linkedJavaDabServiceObject.get(), slsObject.get());
     } else {
         std::cerr << m_logTag << " callJavaSlideshowCallback: m_linkedJavaDabServiceObject null" << std::endl;
     }
@@ -372,7 +371,7 @@ void JDabService::callJavaDynamiclabelCallback(const std::shared_ptr<DabDynamicL
         TextualDabDynamicLabelImplProxy::addDlPlusItem(enve, dlsObject.get(), dlPlusItemObject.get());
     }
     if(m_linkedJavaDabServiceObject.get() != nullptr) {
-        RadioServiceImplProxy::labelReceived(enve, m_linkedJavaDabServiceObject.get(), dlsObject.get());
+        RadioServiceDabNativeProxy::labelReceived(enve, m_linkedJavaDabServiceObject.get(), dlsObject.get());
     } else {
         std::cerr << m_logTag << " callJavaDynamiclabelCallback: m_linkedJavaDabServiceObject null" << std::endl;
     }
@@ -459,7 +458,7 @@ void JDabService::callJavaServiceFollowingDabServicesChanged() {
 
                 NativeHelperProxy::listAdd(enve, arrayList.get(), jLinkedServiceDab.get());
             }
-            RadioServiceImplProxy::serviceFollowingReceived(enve, m_linkedJavaDabServiceObject.get(), arrayList.get());
+            RadioServiceDabNativeProxy::serviceFollowingReceived(enve, m_linkedJavaDabServiceObject.get(), arrayList.get());
         }
     }
 

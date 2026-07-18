@@ -26,7 +26,6 @@
 #include "jenny/proxy/RadioServiceDabImplProxy.h"
 #include "jenny/proxy/RadioServiceDabNativeProxy.h"
 #include "jenny/proxy/RadioServiceDabUserApplicationImplProxy.h"
-#include "jenny/proxy/RadioServiceImplProxy.h"
 #include "jenny/proxy/TunerUsbProxy.h"
 
 using jenny::LocalRef;
@@ -107,7 +106,7 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
 
         LocalRef<jstring> genrePty = jenny::toJavaString(enve, srv->getProgrammeTypeFullName().c_str());
 
-        RadioServiceImplProxy::addGenre(enve, dabServiceObject.get(), genrePty.get());
+        RadioServiceDabNativeProxy::addGenre(enve, dabServiceObject.get(), genrePty.get());
 
         //DABServiceComponent creation
         for(const auto& srvComp : srv->getServiceComponents()) {
