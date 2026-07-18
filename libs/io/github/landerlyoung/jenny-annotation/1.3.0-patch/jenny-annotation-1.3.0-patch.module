@@ -1,0 +1,80 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "io.github.landerlyoung",
+    "module": "jenny-annotation",
+    "version": "1.3.0-patch",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "jenny-annotation-1.3.0-patch.jar",
+          "url": "jenny-annotation-1.3.0-patch.jar",
+          "size": 4285,
+          "sha512": "4c6bd3a8114d55b6dec316c2c3fdffb464d7ed4735d3b7855f664753b037e51aad6a21df4c820ca7a052de1bf40c5a047a926b45e23f2b8d8432078e3affe065",
+          "sha256": "c2a24919cd51ee6f3fb4474953b89f7a3d0dc9c1388780c39bca39e3f552bcd1",
+          "sha1": "072c1a320ae4a8d19941917e92ebcd26c3783366",
+          "md5": "937db1b6f9fa54eb512e17bb359636ee"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "jenny-annotation-1.3.0-patch.jar",
+          "url": "jenny-annotation-1.3.0-patch.jar",
+          "size": 4285,
+          "sha512": "4c6bd3a8114d55b6dec316c2c3fdffb464d7ed4735d3b7855f664753b037e51aad6a21df4c820ca7a052de1bf40c5a047a926b45e23f2b8d8432078e3affe065",
+          "sha256": "c2a24919cd51ee6f3fb4474953b89f7a3d0dc9c1388780c39bca39e3f552bcd1",
+          "sha1": "072c1a320ae4a8d19941917e92ebcd26c3783366",
+          "md5": "937db1b6f9fa54eb512e17bb359636ee"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "jenny-annotation-1.3.0-patch-sources.jar",
+          "url": "jenny-annotation-1.3.0-patch-sources.jar",
+          "size": 7310,
+          "sha512": "193b983bbc0ce5e75eccb9a193c89d3e2f5889298fc98f0a4f631a8f7b5fbed6e5ba46a91eb19f495bf2233baabbfea549eefb77670320c913b8a1b5ea141aef",
+          "sha256": "a9bddf945bfa5410f97c0f4d64a5b6595d2712ba2fb570a306c8b235e01bca00",
+          "sha1": "d82c4c864c713c485d883ae96e883bd42a7e29a8",
+          "md5": "c3f3c7e9894fc9075733ec2ca86f6464"
+        }
+      ]
+    }
+  ]
+}

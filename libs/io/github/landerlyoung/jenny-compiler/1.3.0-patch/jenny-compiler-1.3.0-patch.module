@@ -1,0 +1,100 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "io.github.landerlyoung",
+    "module": "jenny-compiler",
+    "version": "1.3.0-patch",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "files": [
+        {
+          "name": "jenny-compiler-1.3.0-patch.jar",
+          "url": "jenny-compiler-1.3.0-patch.jar",
+          "size": 116647,
+          "sha512": "1e93451a6cbea16c25d8d62dadf53a95c47b70e9033c501c63d271b5293566d3cf2238a696c1c04dde17a1b39a82f342c681c28a39e19297b1fb50825c9b9940",
+          "sha256": "5b0030fa18c21ce9e3f708a17ca2c6b0c77b3f49b14f1e12116807cb9bdd7707",
+          "sha1": "d1bf586e938bca547365afe9a32c401d2b2ebc02",
+          "md5": "10357335a395857634ee05491dfeb753"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "io.github.landerlyoung",
+          "module": "jenny-annotation",
+          "version": {
+            "requires": "1.3.0-patch"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.9.23"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "jenny-compiler-1.3.0-patch.jar",
+          "url": "jenny-compiler-1.3.0-patch.jar",
+          "size": 116647,
+          "sha512": "1e93451a6cbea16c25d8d62dadf53a95c47b70e9033c501c63d271b5293566d3cf2238a696c1c04dde17a1b39a82f342c681c28a39e19297b1fb50825c9b9940",
+          "sha256": "5b0030fa18c21ce9e3f708a17ca2c6b0c77b3f49b14f1e12116807cb9bdd7707",
+          "sha1": "d1bf586e938bca547365afe9a32c401d2b2ebc02",
+          "md5": "10357335a395857634ee05491dfeb753"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "jenny-compiler-1.3.0-patch-sources.jar",
+          "url": "jenny-compiler-1.3.0-patch-sources.jar",
+          "size": 29651,
+          "sha512": "73477e462bf9230d02026473ff8cc9106754db660c46dbbdf1f7dc48ce0adeacac1335eef82ab1f50014121613184c6cb55c53fe43a554e27e5ab5ceb434895f",
+          "sha256": "ea9464127a7f6775d8a13c75023cc12d0ca4bebb55286335fe69f7a98b5f10ef",
+          "sha1": "cad3396287bea026729ae03beb183fc8e5524045",
+          "md5": "da083d3cf06a100f654f74834632099f"
+        }
+      ]
+    }
+  ]
+}
