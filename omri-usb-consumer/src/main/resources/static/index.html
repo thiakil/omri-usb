@@ -1,7 +1,119 @@
 <html>
- <head>
- </head>
- <body>
-   <h1>Hello Ktor!</h1>
- </body>
+<head>
+  <title>WebSocket Client</title>
+  <script>
+    let serverURL;
+    let socket;
+
+    function setupSocket() {
+      serverURL = `ws://${window.location.host}/socket`;
+      socket = new WebSocket(serverURL);
+
+      socket.onopen = logOpenToConsole;
+      socket.onclose = logCloseToConsole;
+      socket.onmessage = readAndDisplayMessage;
+    }
+
+    function readAndDisplayMessage(event) {
+      let message = JSON.parse(event.data);
+      console.log('received message', message)
+      if (message.type === 'service_list') {
+        if (message.services?.length) {
+          for (let service of message.services) {
+            addServiceToTable(service)
+          }
+        }
+      }
+    }
+
+    function logCloseToConsole(e) {
+      console.log("Web socket connection closed", e);
+    }
+
+    function logOpenToConsole(e) {
+      console.log("Web socket connection opened", e);
+    }
+
+    function tableBody() {
+      return document.getElementById("serviceTableBody");
+    }
+
+    function addServiceToTable(service) {
+      tableBody().appendChild(serviceRow(service));
+    }
+
+    function serviceRow(service) {
+      return tr([
+        td(service.serviceLabel),
+        td(service.ensembleLabel),
+        actionTd('Start', event=>{
+          //alert(`ensemble: ${service.ensembleId}, sid: ${service.serviceId}`)
+          event.preventDefault()
+          socket.send(JSON.stringify({
+            type: 'start_service',
+            ensembleId: service.ensembleId,
+            serviceId: service.serviceId,
+          }))
+        })
+      ]);
+    }
+
+    function tr(children) {
+      const node = document.createElement("tr");
+      children.forEach(child => node.appendChild(child));
+      return node;
+    }
+
+    function td(text) {
+      const node = document.createElement("td");
+      node.appendChild(document.createTextNode(text));
+      return node;
+    }
+
+    function actionTd(label, action) {
+      const td = document.createElement("td");
+      const a = document.createElement("a")
+      a.setAttribute("href", "#")
+      a.appendChild(document.createTextNode(label))
+      a.addEventListener('click', action)
+      td.appendChild(a);
+      return td;
+    }
+
+    function logSendingToConsole(data) {
+      console.log("About to send",data);
+    }
+
+    function sendTaskViaSocket(data) {
+      socket.send(JSON.stringify(data));
+    }
+
+    function sendTaskToServer() {
+      let data = buildTaskFromForm();
+      logSendingToConsole(data);
+      sendTaskViaSocket(data);
+      //prevent form submission
+      return false;
+    }
+
+    function stopService() {
+      socket.send(JSON.stringify({type: 'stop_service'}))
+    }
+  </script>
+</head>
+<body onload="setupSocket()">
+<h1>Radio test</h1>
+<div>
+  <a href="#" onclick="stopService(); return false">Stop</a>
+</div>
+<table rules="all">
+  <thead>
+  <tr>
+    <th>Name</th><th>Ensemble</th><th>action</th>
+  </tr>
+  </thead>
+  <tbody id="serviceTableBody">
+  </tbody>
+</table>
+</body>
 </html>

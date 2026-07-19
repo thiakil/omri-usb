@@ -15,6 +15,7 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.freedesktop.gstreamer.Gst;
+import org.jspecify.annotations.NullMarked;
 import org.omri.radio.Radio;
 import org.omri.radio.impl.DabAudioDecoder;
 import org.omri.radioservice.RadioService;
@@ -34,6 +35,7 @@ import org.omri.tuner.Tuner;
 import org.omri.tuner.TunerListener;
 import org.omri.tuner.TunerStatus;
 
+@NullMarked
 public class TestMe {
     private static final Logger LOGGER = LogManager.getLogger();
 
