@@ -1,5 +1,6 @@
 package org.omri.tuner;
 
+import org.jspecify.annotations.NullMarked;
 import org.omri.radio.RadioListener;
 import org.omri.radioservice.RadioService;
 
@@ -23,6 +24,7 @@ import java.util.Date;
  * The {@link Tuner} listener interface
  * @author Fabian Sattler, IRT GmbH
  */
+@NullMarked
 public interface TunerListener extends RadioListener {
 
 	/**

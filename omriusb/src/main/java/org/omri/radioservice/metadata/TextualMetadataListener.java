@@ -1,5 +1,6 @@
 package org.omri.radioservice.metadata;
 
+import org.jetbrains.annotations.NotNull;
 import org.omri.radioservice.RadioServiceListener;
 
 /**
@@ -27,5 +28,5 @@ public interface TextualMetadataListener extends RadioServiceListener {
 	 * New {@link Textual} metadata was received
 	 * @param textualMetadata the {@link Textual} received
 	 */
-	public void newTextualMetadata(Textual textualMetadata);
+	public void newTextualMetadata(@NotNull Textual textualMetadata);
 }

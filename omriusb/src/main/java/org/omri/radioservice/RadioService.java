@@ -1,5 +1,6 @@
 package org.omri.radioservice;
 
+import org.jspecify.annotations.NullMarked;
 import org.omri.radioservice.metadata.Visual;
 
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.List;
  * @author Fabian Sattler, IRT GmbH
  * @author Erk, IRT GmbH
  */
+@NullMarked
 public interface RadioService {
 
 	/**

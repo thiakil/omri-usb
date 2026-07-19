@@ -299,7 +299,7 @@ public class DabAudioDecoder {
 					try {
 						Thread.sleep(5);
 					} catch (InterruptedException e) {
-						LOGGER.error("Interrupted", e);
+						//LOGGER.error("Interrupted", e);
 						break THREADLOOP;
 					}
 				}

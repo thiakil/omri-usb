@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.omri.radio.Radio;
 import org.omri.radio.RadioErrorCode;
 import org.omri.radio.RadioStatus;
@@ -37,6 +38,7 @@ import java.util.List;
  *
  * @author Fabian Sattler, IRT GmbH
  */
+@NullMarked
 public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelperCallback {
 
 	private static final Logger LOGGER = LogManager.getLogger("RadioImpl");
@@ -47,16 +49,17 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	private final List<RadioService> mRadioserviceList = new ArrayList<RadioService>();
 	private final List<RadioStatusListener> mRadioStatusListeners = new ArrayList<>();
 
+	@Nullable
 	private Context mContext;
 
-	Context getContext() {
+	@Nullable Context getContext() {
 		return mContext;
 	}
 
 	public RadioImpl() {
 	}
 
-	@Override//TODO not null context annotation
+	@Override
 	public RadioErrorCode initialize(Context appContext, Object bundle) {
 		LOGGER.debug("Initializing with Context!");
 

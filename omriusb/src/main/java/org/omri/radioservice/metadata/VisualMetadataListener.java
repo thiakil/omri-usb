@@ -1,5 +1,6 @@
 package org.omri.radioservice.metadata;
 
+import org.jetbrains.annotations.NotNull;
 import org.omri.radioservice.RadioServiceListener;
 
 /**
@@ -27,5 +28,5 @@ public interface VisualMetadataListener extends RadioServiceListener {
 	 * New {@link Visual} metadata was received
 	 * @param visualMetadata the {@link Visual} received
 	 */
-	public void newVisualMetadata(Visual visualMetadata);
+	public void newVisualMetadata(@NotNull Visual visualMetadata);
 }

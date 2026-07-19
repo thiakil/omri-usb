@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NullMarked;
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
@@ -40,6 +41,7 @@ import java.util.List;
  */
 
 @SuppressWarnings({"ClassWithTooManyMethods", "OverlyComplexClass", "OverlyCoupledClass"})
+@NullMarked
 public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 	private static final long serialVersionUID = 952156510217072036L;
