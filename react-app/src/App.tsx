@@ -1,67 +1,30 @@
-import React from 'react';
+import React, {useState} from 'react';
 import './App.css';
-import { useState } from 'react';
-import useWebSocket, { ReadyState } from 'react-use-websocket';
-
-interface ServiceInfo {
-  ensembleId: number,
-  ensembleLabel: string,
-  serviceLabel: string,
-  serviceId: number,
-}
-
-interface CurPlayProps {
-  service: ServiceInfo|null;
-  currentText: string|null;
-  onStop: ()=>void
-}
-function CurrentlyPlaying(props: CurPlayProps){
-  if (props.service) {
-    return (<div>
-      <h1>{props.service.serviceLabel}</h1>
-      <h3>{props.currentText}</h3>
-      <button onClick={props.onStop}>Stop</button>
-    </div>);
-  } else {
-    return (<div>no service</div>);
-  }
-}
-
-interface ServiceListProps {
-  services: Array<ServiceInfo>;
-  startService: (svc: ServiceInfo)=>void
-}
-function ServiceList(props: ServiceListProps) {
-  return (<div className="servicesList">
-    {props.services.map(svc=>(
-        <div className="serviceEntry"
-             key={svc.ensembleId+'-'+svc.serviceId}
-        >
-          {svc.serviceLabel}
-          <small>{svc.ensembleLabel}</small>
-          <button onClick={()=>props.startService(svc)}><span className="material-symbols-outlined">play</span> </button>
-        </div>
-    ))}
-  </div> )
-}
+import useWebSocket from 'react-use-websocket';
+import {ServiceInfo, TunerStatus, WSMessage} from './websocketTypes'
+import CurrentlyPlaying from "./CurrentlyPlaying"
+import ServiceList from "./ServiceList";
 
 function App() {
 
-  const [services, setServices] = useState([]);
-  const [currentService, setCurrentService] = useState(null);
-  const [currentDls, setCurrentDls] = useState(null)
+  const [services, setServices] = useState<ServiceInfo[]>([]);
+  const [currentService, setCurrentService] = useState<ServiceInfo|null>(null);
+  const [currentDls, setCurrentDls] = useState<string|null>(null)
+  const [tunerStatus, setTunerStatus] = useState<TunerStatus>(TunerStatus.TUNER_STATUS_NOT_INITIALIZED)
+  const [serviceListActive, setServiceListActive] = useState(false)
 
   const { sendJsonMessage/*, lastJsonMessage, readyState */} = useWebSocket(`ws://${window.location.host}/socket`, {
     shouldReconnect: (closeEvent) => true, // Auto-reconnect on server drops
     onOpen: () => console.log('Connection established!'),
     onClose: e=> console.log("Web socket connection closed", e),
     onMessage: event => {
-      let message = JSON.parse(event.data);
+      let message: WSMessage = JSON.parse(event.data);
       console.log('received message', message)
       if (message.type === 'service_list') {
         setServices(message.services || [])
       } else if (message.type === 'tuner_state') {
         setCurrentService(message.currentService)
+        //setTunerStatus(message.status)
         if (!message.currentService && currentDls) {
           setCurrentDls(null);
         }
@@ -83,17 +46,33 @@ function App() {
     })
   }
 
-
-  return (
-      <div id="container">
-        <div className="columns">
-          <div><CurrentlyPlaying
+  let content;
+  if (serviceListActive) {
+    content = (<ServiceList services={services} startService={startService}></ServiceList>);
+  } else {
+    content = (<>
+          <header>
+            <button className="iconOnlyButton" onClick={()=> window.close() }>close</button>
+            <div>
+              <span className="material-symbols-outlined">cell_tower</span>
+              <span>&nbsp;DAB Radio</span>
+            </div>
+          </header>
+          <main>
+          <CurrentlyPlaying
               service={currentService}
               currentText={currentDls}
               onStop={stopService}
-          ></CurrentlyPlaying></div>
-          <div><ServiceList services={services} startService={startService}></ServiceList></div>
-        </div>
+          ></CurrentlyPlaying>
+          </main>
+          <footer>buttons go here</footer>
+        </>
+    )
+  }
+
+  return (
+      <div id="container">
+        {content}
       </div>
   );
 }
