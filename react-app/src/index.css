@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 @font-face {
   font-family: 'Roboto';
   src: url('fonts/Roboto-Regular.ttf') format('truetype');
@@ -12,15 +14,8 @@
   src: url(fonts/MaterialSymbolsOutlined.ttf) format('truetype');
 }
 
-/* 1. Scale the root font size to a 10px baseline */
 html {
-  font-size: 62.5%; /* 62.5% of 16px = 10px */
-}
-
-/* 2. Reset the body to the default readable size */
-body {
-  font-size: 2.6rem; /* 16px */
-  line-height: 1.5;
+  font-size: 150%;
 }
 
 .material-symbols-outlined {
@@ -128,4 +123,48 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+:root {
+  --md-sys-color-background: var(--hudiy-background);
+  --md-sys-color-on-background: var(--hudiy-onBackground);
+  --md-sys-color-surface: var(--hudiy-surface);
+  --md-sys-color-surface-dim: var(--hudiy-surfaceDim);
+  --md-sys-color-surface-bright: var(--hudiy-surfaceBright);
+  --md-sys-color-surface-container-lowest: var(--hudiy-surfaceContainerLowest);
+  --md-sys-color-surface-container-low: var(--hudiy-surfaceContainerLow);
+  --md-sys-color-surface-container: var(--hudiy-surfaceContainer);
+  --md-sys-color-surface-container-high: var(--hudiy-surfaceContainerHigh);
+  --md-sys-color-surface-container-highest: var(--hudiy-surfaceContainerHighest);
+  --md-sys-color-on-surface: var(--hudiy-onSurface);
+  --md-sys-color-surface-variant: var(--hudiy-surfaceVariant);
+  --md-sys-color-on-surface-variant: var(--hudiy-onSurfaceVariant);
+  --md-sys-color-inverse-surface: var(--hudiy-inverseSurface);
+  --md-sys-color-inverse-on-surface: var(--hudiy-inverseOnSurface);
+  --md-sys-color-outline: var(--hudiy-outline);
+  --md-sys-color-outline-variant: var(--hudiy-outlineVariant);
+  --md-sys-color-shadow: var(--hudiy-shadow);
+  --md-sys-color-scrim: var(--hudiy-scrim);
+  --md-sys-color-surface-tint: var(--hudiy-surfaceTint);
+  --md-sys-color-primary: var(--hudiy-primary);
+  --md-sys-color-on-primary: var(--hudiy-onPrimary);
+  --md-sys-color-primary-container: var(--hudiy-primaryContainer);
+  --md-sys-color-on-primary-container: var(--hudiy-onPrimaryContainer);
+  --md-sys-color-inverse-primary: var(--hudiy-inversePrimary);
+  --md-sys-color-secondary: var(--hudiy-secondary);
+  --md-sys-color-on-secondary: var(--hudiy-onSecondary);
+  --md-sys-color-secondary-container: var(--hudiy-secondaryContainer);
+  --md-sys-color-on-secondary-container: var(--hudiy-onSecondaryContainer);
+  --md-sys-color-tertiary: var(--hudiy-tertiary);
+  --md-sys-color-on-tertiary: var(--hudiy-onTertiary);
+  --md-sys-color-tertiary-container: var(--hudiy-tertiaryContainer);
+  --md-sys-color-on-tertiary-container: var(--hudiy-onTertiaryContainer);
+  --md-sys-color-error: var(--hudiy-error);
+  --md-sys-color-on-error: var(--hudiy-onError);
+  --md-sys-color-error-container: var(--hudiy-errorContainer);
+  --md-sys-color-on-error-container: var(--hudiy-onErrorContainer);
+
+  /*fix it not scaling*/
+  --md-elevated-button-container-height: 2.5rem;
+  --md-icon-size: 1.5rem;
 }

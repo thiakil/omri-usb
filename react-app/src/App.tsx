@@ -4,6 +4,7 @@ import useWebSocket from 'react-use-websocket';
 import {ServiceInfo, TunerStatus, WSMessage} from './websocketTypes'
 import CurrentlyPlaying from "./CurrentlyPlaying"
 import ServiceList from "./ServiceList";
+import {Button, Icon, IconButton, TopAppBar} from 'actify'
 
 function App() {
 
@@ -52,13 +53,15 @@ function App() {
   } else {
     content = (<>
           <header>
-            <button className="iconOnlyButton" onClick={()=> window.close() }>close</button>
+            <IconButton>
+              <Icon>close</Icon>
+            </IconButton>
             <div>
-              <span className="material-symbols-outlined">cell_tower</span>
+              <Icon fill>cell_tower</Icon>
               <span>&nbsp;DAB Radio</span>
             </div>
           </header>
-          <main>
+          <main><Button>Hello Actify</Button>
           <CurrentlyPlaying
               service={currentService}
               currentText={currentDls}

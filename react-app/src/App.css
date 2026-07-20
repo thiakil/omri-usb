@@ -20,11 +20,11 @@
   font-size: 5vh;
 }
 
-#container > header span {
+/*#container > header span {
   vertical-align: middle;
   display: inline-block;
   line-height: 1;
-}
+}*/
 
 #container > main {
   flex-grow: 1;
