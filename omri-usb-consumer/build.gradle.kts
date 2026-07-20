@@ -28,6 +28,15 @@ java {
         languageVersion.set(JavaLanguageVersion.of(25))
     }
 }
+
+sourceSets {
+    main {
+        runtimeClasspath += files(nativeDebug.artifacts.files.map { it.parentFile.toPath() })
+    }
+}
+
+sourceSets.create("tsgen")
+
 dependencies {
     implementation(ktorLibs.serialization.kotlinx.json)
     implementation(ktorLibs.server.config.yaml)
@@ -51,13 +60,12 @@ dependencies {
     nativeDebug(project(":omri-usb-native", "debugRuntimeElements"))
     nativeRelease(project(":omri-usb-native", "releaseRuntimeElements"))
 
+    "tsgenImplementation"("dev.adamko.kxstsgen:kxs-ts-gen-core-jvm:0.2.4")
+    "tsgenImplementation"(project(":omriusb"))
+    "tsgenImplementation"(sourceSets.main.get().output)
+    "tsgenImplementation"(ktorLibs.serialization.kotlinx.json)
+
 }
 
-
-sourceSets {
-    main {
-        runtimeClasspath += files(nativeDebug.artifacts.files.map { it.parentFile.toPath() })
-    }
-}
 tasks["assemble"].dependsOn(nativeRelease)
 
