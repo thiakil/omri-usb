@@ -5,12 +5,13 @@ import {ServiceInfo, TunerStatus, WSMessage} from './websocketTypes'
 import CurrentlyPlaying from "./CurrentlyPlaying"
 import ServiceList from "./ServiceList";
 import {Button, Icon, IconButton, TopAppBar} from 'actify'
+import PageHeading from "./PageHeading";
 
 function App() {
 
   const [services, setServices] = useState<ServiceInfo[]>([]);
-  const [currentService, setCurrentService] = useState<ServiceInfo|null>(null);
-  const [currentDls, setCurrentDls] = useState<string|null>(null)
+  const [currentService, setCurrentService] = useState<ServiceInfo|undefined>(undefined);
+  const [currentDls, setCurrentDls] = useState<string|undefined>(undefined)
   const [tunerStatus, setTunerStatus] = useState<TunerStatus>(TunerStatus.TUNER_STATUS_NOT_INITIALIZED)
   const [serviceListActive, setServiceListActive] = useState(false)
 
@@ -24,10 +25,10 @@ function App() {
       if (message.type === 'service_list') {
         setServices(message.services || [])
       } else if (message.type === 'tuner_state') {
-        setCurrentService(message.currentService)
+        setCurrentService(message.currentService || undefined)
         //setTunerStatus(message.status)
         if (!message.currentService && currentDls) {
-          setCurrentDls(null);
+          setCurrentDls(undefined);
         }
       } else if (message.type === 'dab_text_update'){
         setCurrentDls(message.text)
@@ -45,39 +46,31 @@ function App() {
       ensembleId: service.ensembleId,
       serviceId: service.serviceId,
     })
+    setServiceListActive(false)
   }
 
   let content;
   if (serviceListActive) {
     content = (<ServiceList services={services} startService={startService}></ServiceList>);
   } else {
-    content = (<>
-          <header>
-            <IconButton>
-              <Icon>close</Icon>
-            </IconButton>
-            <div>
-              <Icon fill>cell_tower</Icon>
-              <span>&nbsp;DAB Radio</span>
-            </div>
-          </header>
-          <main><Button>Hello Actify</Button>
-          <CurrentlyPlaying
-              service={currentService}
-              currentText={currentDls}
-              onStop={stopService}
-          ></CurrentlyPlaying>
-          </main>
-          <footer>buttons go here</footer>
-        </>
+    content = (<div className="flex flex-col h-screen">
+          <PageHeading headerText="Dab Radio"/>
+          <div className="flex justify-center py-6">
+            <CurrentlyPlaying
+                service={currentService}
+                currentText={currentDls}
+                onStop={stopService}
+            ></CurrentlyPlaying>
+          </div>
+          <div className="flex justify-center py-6">
+            <Button onClick={()=>setServiceListActive(true)}><Icon>playlist_play</Icon></Button>
+            {currentService ? (<IconButton onClick={stopService} color="primary"><Icon fill>stop</Icon></IconButton>) : undefined}
+          </div>
+        </div>
     )
   }
 
-  return (
-      <div id="container">
-        {content}
-      </div>
-  );
+  return content;
 }
 
 export default App;
