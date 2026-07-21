@@ -1,7 +1,10 @@
+/// <reference types="mdui/jsx.en" />
 import {useState} from "react";
 import useWebSocket from "react-use-websocket";
 import {ServiceInfo} from "./websocketTypes";
-import {List, ListItem, ListGroup} from "actify";
+import 'mdui/components/list.js';
+import 'mdui/components/list-item.js';
+import 'mdui/components/list-subheader.js';
 
 interface ServiceListProps {
   services: Array<ServiceInfo>;
@@ -14,23 +17,22 @@ export default function ServiceList({services, startService}: ServiceListProps) 
     return previousValue;
   }, {});
 
-  console.log("keys", Object.keys(serviceMap))
-
-  return (<div className="overflow-auto h-screen"><List>
+  return (<div className="overflow-auto h-screen"><mdui-list>
     {Object.keys(serviceMap).map(ensemble => (
-        <ListGroup key={ensemble} label={ensemble}>
+        <div key={ensemble}>
+          <mdui-list-subheader >{ensemble}</mdui-list-subheader>
           {(serviceMap[ensemble]||[]).map(svc=>{
             console.log(svc)
             return (
-                <ListItem onClick={()=>startService(svc)}
+                <mdui-list-item onClick={()=>startService(svc)}
                     key={svc.ensembleId+'-'+svc.serviceId}
                 >
                   {svc.serviceLabel}
-                </ListItem>
+                </mdui-list-item>
             )})}
-        </ListGroup>
+        </div>
     ))}
-  </List></div>)
+  </mdui-list></div>)
 }
 
 /*<ListGroup key={ensemble} label={ensemble}>

@@ -1,11 +1,27 @@
-import React, {useState} from 'react';
+/// <reference types="mdui/jsx.en" />
+import React, {ReactElement, ReactNode, useState} from 'react';
 import './App.css';
 import useWebSocket from 'react-use-websocket';
 import {ServiceInfo, TunerStatus, WSMessage} from './websocketTypes'
+import 'mdui/mdui.css';
+import 'mdui/components/button-icon.js';
 import CurrentlyPlaying from "./CurrentlyPlaying"
 import ServiceList from "./ServiceList";
-import {Button, Icon, IconButton, TopAppBar} from 'actify'
 import PageHeading from "./PageHeading";
+
+interface MainWrapProps {
+  headerText: string
+  headerIcon?: string
+  backAction?: string
+  onBack?: ()=>void
+  children?: ReactNode
+}
+function MainWrapper({headerText= "cell_tower", backAction = "close", headerIcon, onBack, children}: MainWrapProps) {
+  return (<div className="flex flex-col h-screen">
+    <PageHeading headerText={headerText} icon={headerIcon} onBack={onBack}/>
+    {children}
+  </div>)
+}
 
 function App() {
 
@@ -51,22 +67,23 @@ function App() {
 
   let content;
   if (serviceListActive) {
-    content = (<ServiceList services={services} startService={startService}></ServiceList>);
+    content = (<MainWrapper headerText="Services" onBack={()=>setServiceListActive(false)}>
+      <ServiceList services={services} startService={startService}></ServiceList>
+    </MainWrapper>);
   } else {
-    content = (<div className="flex flex-col h-screen">
-          <PageHeading headerText="Dab Radio"/>
-          <div className="flex justify-center py-6">
+    content = (<MainWrapper headerText="DAB Radio">
+          <div className="size-main flex justify-center pt-6">
             <CurrentlyPlaying
                 service={currentService}
                 currentText={currentDls}
                 onStop={stopService}
             ></CurrentlyPlaying>
           </div>
-          <div className="flex justify-center py-6">
-            <Button onClick={()=>setServiceListActive(true)}><Icon>playlist_play</Icon></Button>
-            {currentService ? (<IconButton onClick={stopService} color="primary"><Icon fill>stop</Icon></IconButton>) : undefined}
+          <div className="size-main flex justify-center py-3 gap-2">
+            <mdui-button-icon icon="playlist_play" onClick={()=>setServiceListActive(true)}></mdui-button-icon>
+            {currentService ? (<mdui-button-icon icon="stop" onClick={stopService} variant="tonal"></mdui-button-icon>) : undefined}
           </div>
-        </div>
+        </MainWrapper>
     )
   }
 

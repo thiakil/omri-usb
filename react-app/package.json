@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -12,8 +11,8 @@
     "@types/node": "^16.18.126",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "actify": "^0.5.7",
     "http-proxy-middleware": "^3.0.7",
+    "mdui": "^2.1.5",
     "parcel": "^2.16.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -49,6 +48,7 @@
   "devDependencies": {
     "@parcel/packager-raw-url": "^2.16.4",
     "@parcel/transformer-webmanifest": "^2.16.4",
+    "@tailwindcss/postcss": "^4.3.3",
     "babel-jest": "^27.4.2",
     "babel-preset-react-app": "^10.0.1",
     "eslint": "^8.3.0",

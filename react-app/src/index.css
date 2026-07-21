@@ -11,7 +11,14 @@
   font-family: 'Material Symbols Outlined';
   font-style: normal;
   font-weight: 400;
-  src: url(fonts/MaterialSymbolsOutlined.ttf) format('truetype');
+  src: url(fonts/MaterialSymbolsRounded.ttf) format('truetype');
+}
+/* fallback */
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  src: url(fonts/MaterialSymbolsRounded.ttf) format('truetype');
 }
 
 
@@ -123,43 +130,43 @@ code {
 }
 
 :root {
-  --md-sys-color-background: var(--hudiy-background);
-  --md-sys-color-on-background: var(--hudiy-onBackground);
-  --md-sys-color-surface: var(--hudiy-surface);
-  --md-sys-color-surface-dim: var(--hudiy-surfaceDim);
-  --md-sys-color-surface-bright: var(--hudiy-surfaceBright);
-  --md-sys-color-surface-container-lowest: var(--hudiy-surfaceContainerLowest);
-  --md-sys-color-surface-container-low: var(--hudiy-surfaceContainerLow);
-  --md-sys-color-surface-container: var(--hudiy-surfaceContainer);
-  --md-sys-color-surface-container-high: var(--hudiy-surfaceContainerHigh);
-  --md-sys-color-surface-container-highest: var(--hudiy-surfaceContainerHighest);
-  --md-sys-color-on-surface: var(--hudiy-onSurface);
-  --md-sys-color-surface-variant: var(--hudiy-surfaceVariant);
-  --md-sys-color-on-surface-variant: var(--hudiy-onSurfaceVariant);
-  --md-sys-color-inverse-surface: var(--hudiy-inverseSurface);
-  --md-sys-color-inverse-on-surface: var(--hudiy-inverseOnSurface);
-  --md-sys-color-outline: var(--hudiy-outline);
-  --md-sys-color-outline-variant: var(--hudiy-outlineVariant);
-  --md-sys-color-shadow: var(--hudiy-shadow);
-  --md-sys-color-scrim: var(--hudiy-scrim);
-  --md-sys-color-surface-tint: var(--hudiy-surfaceTint);
-  --md-sys-color-primary: var(--hudiy-primary);
-  --md-sys-color-on-primary: var(--hudiy-onPrimary);
-  --md-sys-color-primary-container: var(--hudiy-primaryContainer);
-  --md-sys-color-on-primary-container: var(--hudiy-onPrimaryContainer);
-  --md-sys-color-inverse-primary: var(--hudiy-inversePrimary);
-  --md-sys-color-secondary: var(--hudiy-secondary);
-  --md-sys-color-on-secondary: var(--hudiy-onSecondary);
-  --md-sys-color-secondary-container: var(--hudiy-secondaryContainer);
-  --md-sys-color-on-secondary-container: var(--hudiy-onSecondaryContainer);
-  --md-sys-color-tertiary: var(--hudiy-tertiary);
-  --md-sys-color-on-tertiary: var(--hudiy-onTertiary);
-  --md-sys-color-tertiary-container: var(--hudiy-tertiaryContainer);
-  --md-sys-color-on-tertiary-container: var(--hudiy-onTertiaryContainer);
-  --md-sys-color-error: var(--hudiy-error);
-  --md-sys-color-on-error: var(--hudiy-onError);
-  --md-sys-color-error-container: var(--hudiy-errorContainer);
-  --md-sys-color-on-error-container: var(--hudiy-onErrorContainer);
+  --mdui-color-color-background: var(--hudiy-background);
+  --mdui-color-color-on-background: var(--hudiy-onBackground);
+  --mdui-color-color-surface: var(--hudiy-surface);
+  --mdui-color-color-surface-dim: var(--hudiy-surfaceDim);
+  --mdui-color-color-surface-bright: var(--hudiy-surfaceBright);
+  --mdui-color-color-surface-container-lowest: var(--hudiy-surfaceContainerLowest);
+  --mdui-color-color-surface-container-low: var(--hudiy-surfaceContainerLow);
+  --mdui-color-color-surface-container: var(--hudiy-surfaceContainer);
+  --mdui-color-color-surface-container-high: var(--hudiy-surfaceContainerHigh);
+  --mdui-color-color-surface-container-highest: var(--hudiy-surfaceContainerHighest);
+  --mdui-color-color-on-surface: var(--hudiy-onSurface);
+  --mdui-color-color-surface-variant: var(--hudiy-surfaceVariant);
+  --mdui-color-color-on-surface-variant: var(--hudiy-onSurfaceVariant);
+  --mdui-color-color-inverse-surface: var(--hudiy-inverseSurface);
+  --mdui-color-color-inverse-on-surface: var(--hudiy-inverseOnSurface);
+  --mdui-color-color-outline: var(--hudiy-outline);
+  --mdui-color-color-outline-variant: var(--hudiy-outlineVariant);
+  --mdui-color-color-shadow: var(--hudiy-shadow);
+  --mdui-color-color-scrim: var(--hudiy-scrim);
+  --mdui-color-color-surface-tint: var(--hudiy-surfaceTint);
+  --mdui-color-color-primary: var(--hudiy-primary);
+  --mdui-color-color-on-primary: var(--hudiy-onPrimary);
+  --mdui-color-color-primary-container: var(--hudiy-primaryContainer);
+  --mdui-color-color-on-primary-container: var(--hudiy-onPrimaryContainer);
+  --mdui-color-color-inverse-primary: var(--hudiy-inversePrimary);
+  --mdui-color-color-secondary: var(--hudiy-secondary);
+  --mdui-color-color-on-secondary: var(--hudiy-onSecondary);
+  --mdui-color-color-secondary-container: var(--hudiy-secondaryContainer);
+  --mdui-color-color-on-secondary-container: var(--hudiy-onSecondaryContainer);
+  --mdui-color-color-tertiary: var(--hudiy-tertiary);
+  --mdui-color-color-on-tertiary: var(--hudiy-onTertiary);
+  --mdui-color-color-tertiary-container: var(--hudiy-tertiaryContainer);
+  --mdui-color-color-on-tertiary-container: var(--hudiy-onTertiaryContainer);
+  --mdui-color-color-error: var(--hudiy-error);
+  --mdui-color-color-on-error: var(--hudiy-onError);
+  --mdui-color-color-error-container: var(--hudiy-errorContainer);
+  --mdui-color-color-on-error-container: var(--hudiy-onErrorContainer);
 
   /*fix it not scaling*/
   --md-elevated-button-container-height: 2.5rem;
@@ -167,45 +174,71 @@ code {
 }
 
 @theme {
-  --color-background: var(--md-sys-color-background);
-  --color-on-background: var(--md-sys-color-on-background);
-  --color-surface: var(--md-sys-color-surface);
-  --color-surface-dim: var(--md-sys-color-surface-dim);
-  --color-surface-bright: var(--md-sys-color-surface-bright);
+  --color-background: var(--hudiy-background);
+  --color-on-background: var(--hudiy-onBackground);
+  --color-surface: var(--hudiy-surface);
+  --color-surface-dim: var(--hudiy-surfaceDim);
+  --color-surface-bright: var(--hudiy-surfaceBright);
   --color-surface-container-lowest: var(
-      --md-sys-color-surface-container-lowest
+      --hudiy-surfaceContainerLowest
   );
-  --color-surface-container-low: var(--md-sys-color-surface-container-low);
-  --color-surface-container: var(--md-sys-color-surface-container);
-  --color-surface-container-high: var(--md-sys-color-surface-container-high);
+  --color-surface-container-low: var(--hudiy-surfaceContainerLow);
+  --color-surface-container: var(--hudiy-surfaceContainer);
+  --color-surface-container-high: var(--hudiy-surfaceContainerHigh);
   --color-surface-container-highest: var(
-      --md-sys-color-surface-container-highest
+      --hudiy-surfaceContainerHighest
   );
-  --color-on-surface: var(--md-sys-color-on-surface);
-  --color-surface-variant: var(--md-sys-color-surface-variant);
-  --color-on-surface-variant: var(--md-sys-color-on-surface-variant);
-  --color-inverse-surface: var(--md-sys-color-inverse-surface);
-  --color-inverse-on-surface: var(--md-sys-color-inverse-on-surface);
-  --color-outline: var(--md-sys-color-outline);
-  --color-outline-variant: var(--md-sys-color-outline-variant);
-  --color-shadow: var(--md-sys-color-shadow);
-  --color-scrim: var(--md-sys-color-scrim);
-  --color-surface-tint: var(--md-sys-color-surface-tint);
-  --color-primary: var(--md-sys-color-primary);
-  --color-on-primary: var(--md-sys-color-on-primary);
-  --color-primary-container: var(--md-sys-color-primary-container);
-  --color-on-primary-container: var(--md-sys-color-on-primary-container);
-  --color-inverse-primary: var(--md-sys-color-inverse-primary);
-  --color-secondary: var(--md-sys-color-secondary);
-  --color-on-secondary: var(--md-sys-color-on-secondary);
-  --color-secondary-container: var(--md-sys-color-secondary-container);
-  --color-on-secondary-container: var(--md-sys-color-on-secondary-container);
-  --color-tertiary: var(--md-sys-color-tertiary);
-  --color-on-tertiary: var(--md-sys-color-on-tertiary);
-  --color-tertiary-container: var(--md-sys-color-tertiary-container);
-  --color-on-tertiary-container: var(--md-sys-color-on-tertiary-container);
-  --color-error: var(--md-sys-color-error);
-  --color-on-error: var(--md-sys-color-on-error);
-  --color-error-container: var(--md-sys-color-error-container);
-  --color-on-error-container: var(--md-sys-color-on-error-container);
+  --color-on-surface: var(--hudiy-onSurface);
+  --color-surface-variant: var(--hudiy-surfaceVariant);
+  --color-on-surface-variant: var(--hudiy-onSurfaceVariant);
+  --color-inverse-surface: var(--hudiy-inverseSurface);
+  --color-inverse-on-surface: var(--hudiy-inverseOnSurface);
+  --color-outline: var(--hudiy-outline);
+  --color-outline-variant: var(--hudiy-outlineVariant);
+  --color-shadow: var(--hudiy-shadow);
+  --color-scrim: var(--hudiy-scrim);
+  --color-surface-tint: var(--hudiy-surfaceTint);
+  --color-primary: var(--hudiy-primary);
+  --color-on-primary: var(--hudiy-onPrimary);
+  --color-primary-container: var(--hudiy-primaryContainer);
+  --color-on-primary-container: var(--hudiy-onPrimaryContainer);
+  --color-inverse-primary: var(--hudiy-inversePrimary);
+  --color-secondary: var(--hudiy-secondary);
+  --color-on-secondary: var(--hudiy-onSecondary);
+  --color-secondary-container: var(--hudiy-secondaryContainer);
+  --color-on-secondary-container: var(--hudiy-onSecondaryContainer);
+  --color-tertiary: var(--hudiy-tertiary);
+  --color-on-tertiary: var(--hudiy-onTertiary);
+  --color-tertiary-container: var(--hudiy-tertiaryContainer);
+  --color-on-tertiary-container: var(--hudiy-onTertiaryContainer);
+  --color-error: var(--hudiy-error);
+  --color-on-error: var(--hudiy-onError);
+  --color-error-container: var(--hudiy-errorContainer);
+  --color-on-error-container: var(--hudiy-onErrorContainer);
+}
+
+.size-46vh {
+  width: 46vh;
+  height: 46vh;
+}
+
+.size-46vh mdui-icon {
+  font-size: 15vh;
+}
+
+/*.size-main, .size-main mdui-icon, .size-main mdui-button-icon {
+  font-size: 6vh;
+}
+
+.size-main mdui-button-icon {
+  width: 8vh;
+  height: 8vh;
+}*/
+
+.size-main {
+  font-size: 7vh;
+}
+
+html {
+  font-size: 120% !important;
 }
