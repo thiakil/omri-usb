@@ -1,7 +1,9 @@
 package com.thiakil.com.thiakil.tunerapi
 
+import com.thiakil.tunerapi.messages.DabSlideshow
 import com.thiakil.tunerapi.messages.DabTextUpdate
 import com.thiakil.tunerapi.messages.ErrorMessage
+import com.thiakil.tunerapi.messages.ReceptionStatus
 import com.thiakil.tunerapi.messages.ServiceList
 import com.thiakil.tunerapi.messages.StartService
 import com.thiakil.tunerapi.messages.StopService
@@ -10,6 +12,7 @@ import com.thiakil.tunerapi.messages.WSMessage
 import io.ktor.serialization.*
 import io.ktor.server.websocket.*
 import io.ktor.utils.io.*
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
@@ -19,6 +22,7 @@ import org.omri.radioservice.metadata.Textual
 import org.omri.radioservice.metadata.TextualDabDynamicLabel
 import org.omri.radioservice.metadata.TextualMetadataListener
 import org.omri.radioservice.metadata.Visual
+import org.omri.radioservice.metadata.VisualDabSlideShow
 import org.omri.radioservice.metadata.VisualMetadataListener
 import org.omri.tuner.ReceptionQuality
 import org.omri.tuner.Tuner
@@ -61,6 +65,9 @@ class RadioWebsocketHandler(
         }
         catch (e: CancellationException) {
             LOGGER.debug("Cancelled", e)
+        }
+        catch (e: ClosedReceiveChannelException) {
+            LOGGER.debug("Closed", e)
         }
         catch (e: Exception) {
             LOGGER.error("Caught exception", e)//todo decide which one is an actual error
@@ -133,7 +140,7 @@ class RadioWebsocketHandler(
         quality: ReceptionQuality,
         rawValue: Int
     ) {
-        //todo
+        sendMessageSync(ReceptionStatus(rfLock, quality, rawValue))
     }
 
     override fun tunerRawData(tuner: Tuner, data: ByteArray) {
@@ -150,7 +157,9 @@ class RadioWebsocketHandler(
     }
 
     override fun newVisualMetadata(visualMetadata: Visual) {
-        //todo
+        if (visualMetadata is VisualDabSlideShow) {
+            sendMessageSync(DabSlideshow(visualMetadata))
+        }
     }
 
     companion object {

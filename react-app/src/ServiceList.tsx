@@ -9,23 +9,24 @@ import 'mdui/components/list-subheader.js';
 interface ServiceListProps {
   services: Array<ServiceInfo>;
   startService: (svc: ServiceInfo)=>void
+  currentService?: ServiceInfo
 }
-export default function ServiceList({services, startService}: ServiceListProps) {
+export default function ServiceList({services, startService, currentService}: ServiceListProps) {
   const serviceMap = services.reduce<Record<string, Array<ServiceInfo>>>((previousValue, currentValue)=>{
     const services = previousValue[currentValue.ensembleLabel] = previousValue[currentValue.ensembleLabel] || []
     services.push(currentValue)
     return previousValue;
   }, {});
 
-  return (<div className="overflow-auto h-screen"><mdui-list>
+  return (<div className="overflow-auto h-full"><mdui-list>
     {Object.keys(serviceMap).map(ensemble => (
         <div key={ensemble}>
           <mdui-list-subheader >{ensemble}</mdui-list-subheader>
           {(serviceMap[ensemble]||[]).map(svc=>{
-            console.log(svc)
             return (
                 <mdui-list-item onClick={()=>startService(svc)}
                     key={svc.ensembleId+'-'+svc.serviceId}
+                    active={currentService && currentService.ensembleId === svc.ensembleId && currentService.serviceId === svc.serviceId}
                 >
                   {svc.serviceLabel}
                 </mdui-list-item>

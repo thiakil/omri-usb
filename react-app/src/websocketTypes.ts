@@ -1,6 +1,8 @@
 export type WSMessage =
+  | WSMessage.dab_image
   | WSMessage.dab_text_update
   | WSMessage.error
+  | WSMessage.reception_status
   | WSMessage.service_list
   | WSMessage.start_service
   | WSMessage.stop_service
@@ -8,12 +10,20 @@ export type WSMessage =
 
 export namespace WSMessage {
   export enum Type {
+    dab_image = "dab_image",
     dab_text_update = "dab_text_update",
     error = "error",
+    reception_status = "reception_status",
     service_list = "service_list",
     start_service = "start_service",
     stop_service = "stop_service",
     tuner_state = "tuner_state",
+  }
+  
+  export interface dab_image {
+    type: WSMessage.Type.dab_image;
+    mimeType: string;
+    imageData: string;
   }
   
   export interface dab_text_update {
@@ -26,6 +36,13 @@ export namespace WSMessage {
     type: WSMessage.Type.error;
     message: string;
     fatal?: boolean;
+  }
+  
+  export interface reception_status {
+    type: WSMessage.Type.reception_status;
+    rfLock: boolean;
+    quality: ReceptionQuality;
+    rawValue: number;
   }
   
   export interface service_list {
@@ -48,6 +65,15 @@ export namespace WSMessage {
     status: TunerStatus;
     currentService: ServiceInfo | null;
   }
+}
+
+export enum ReceptionQuality {
+  NO_SIGNAL = "NO_SIGNAL",
+  BAD = "BAD",
+  POOR = "POOR",
+  OKAY = "OKAY",
+  GOOD = "GOOD",
+  BEST = "BEST",
 }
 
 export enum TunerStatus {
