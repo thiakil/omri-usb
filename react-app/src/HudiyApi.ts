@@ -1,4 +1,5 @@
-import {useCallback, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
+import useWebSocket, {Options as WSOptions, ReadyState} from "react-use-websocket";
 import {hudiy} from "./hudi_protobuf";
 
 export interface HudiyNavCallbacks {
@@ -210,10 +211,77 @@ export function useHudiy(callbacks: HudiyCallbacks) {
     hudiyGlobal[cbName] = callbacks[cbName]
   }
 
+  const wsOptions = useMemo<WSOptions>(()=>({
+    disableJson: true,
+    onOpen: event => console.log('app socket connected')
+  }), [])
+  const url = `ws://${/*window.location.host === 'trinity.lan:3000' ? */'localhost' /*: 'car-pi.lan'*/}:44406`;
+  const appSocket = useWebSocket<ArrayBuffer>(url, wsOptions, isAttached/* || window.location.host === 'localhost:3000'*/);
+
+  const {sendMessage, lastMessage, readyState} = appSocket
+
+  const sendProtobufMessage = useCallback((id: hudiy.app.api.MessageType, flags:number, payload: Uint8Array) =>{
+    if (readyState !== ReadyState.OPEN){
+      return
+    }
+    const header = new ArrayBuffer(12);
+    const view = new DataView(header);
+    view.setUint32(0, payload.length, true);
+    view.setUint32(4, id, true);
+    view.setUint32(8, flags, true);
+
+    const full = new Uint8Array(12 + payload.length);
+    full.set(new Uint8Array(header), 0);
+    full.set(payload, 12);
+    sendMessage(full);
+    console.debug("send message: ", id)
+  }, [sendMessage, readyState])
+
+  useEffect(()=> {
+    const buffer: ArrayBuffer|undefined = lastMessage?.data
+    if (buffer) {
+      const view = new DataView(buffer);
+      const len = view.getUint32(0, true);
+      const id = view.getUint32(4, true);
+      const flags = view.getUint32(8, true);
+      const payload = new Uint8Array(buffer.slice(12));
+      console.log("decoded", { id, flags, payload })
+      if (id === hudiy.app.api.MessageType.MESSAGE_HELLO_RESPONSE) {
+        const decoded = hudiy.app.api.HelloResponse.decode(payload);
+        console.log("HelloResponse:", decoded);
+      } else if (id === hudiy.app.api.MessageType.MESSAGE_PING) {
+       sendProtobufMessage(hudiy.app.api.MessageType.MESSAGE_PONG, 0, new Uint8Array(0));
+      }
+      //return { id, flags, payload }
+    }
+  }, [lastMessage, sendProtobufMessage])
+
+  useEffect(()=>{
+    if (readyState === ReadyState.OPEN) {
+      const rawSocket = appSocket.getWebSocket() as WebSocket
+      if (rawSocket) {
+        rawSocket.binaryType= 'arraybuffer'
+      } else {
+        console.error('Failed to get raw socket')
+      }
+      console.log("sending hello")
+      const versionObj = hudiy.app.api.Version.create({ major: 1, minor: 0 });
+      const hello = hudiy.app.api.HelloRequest.create({
+        name: "DAB Radio",
+        apiVersion: versionObj
+      });
+
+      const payload = hudiy.app.api.HelloRequest.encode(hello).finish();
+      sendProtobufMessage(hudiy.app.api.MessageType.MESSAGE_HELLO_REQUEST, 0, payload);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyState, sendProtobufMessage])
+
   return {
     isAttached,
     colorScheme,
     inputFocus,
-    activated
+    activated,
+    sendProtobufMessage
   }
 }
