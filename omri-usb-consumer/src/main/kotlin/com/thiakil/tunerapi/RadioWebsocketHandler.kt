@@ -29,12 +29,14 @@ import org.omri.tuner.Tuner
 import org.omri.tuner.TunerListener
 import org.omri.tuner.TunerStatus
 import java.util.Date
+import kotlin.time.Duration.Companion.seconds
 
 class RadioWebsocketHandler(
     private val session: WebSocketServerSession,
     val tuner: Tuner
 ): TunerListener, TextualMetadataListener, VisualMetadataListener
 {
+    private var lastReceptionSentAt: Long = 0
     suspend fun handleSession() {
         tuner.subscribe(this)
         sendMessage(TunerState(tuner))
@@ -140,7 +142,11 @@ class RadioWebsocketHandler(
         quality: ReceptionQuality,
         rawValue: Int
     ) {
-        sendMessageSync(ReceptionStatus(rfLock, quality, rawValue))
+        val currTime = Date().time
+        if (currTime - lastReceptionSentAt > 1.seconds.inWholeMilliseconds) {
+            lastReceptionSentAt = currTime
+            sendMessageSync(ReceptionStatus(rfLock, quality, rawValue))
+        }
     }
 
     override fun tunerRawData(tuner: Tuner, data: ByteArray) {
