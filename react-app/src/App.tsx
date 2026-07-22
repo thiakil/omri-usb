@@ -1,5 +1,5 @@
 /// <reference types="mdui/jsx.en" />
-import React, {ReactElement, ReactNode, useState} from 'react';
+import React, {ReactElement, ReactNode, useCallback, useMemo, useState} from 'react';
 import './App.css';
 import useWebSocket from 'react-use-websocket';
 import {ReceptionQuality, ServiceInfo, TunerStatus, WSMessage} from './websocketTypes'
@@ -8,6 +8,7 @@ import 'mdui/components/button-icon.js';
 import CurrentlyPlaying from "./CurrentlyPlaying"
 import ServiceList from "./ServiceList";
 import PageHeading from "./PageHeading";
+import {Options as WebsocketOptions} from "react-use-websocket/src/lib/types";
 
 interface MainWrapProps {
   headerText: string
@@ -36,73 +37,77 @@ function App() {
   const [signalIcon, setSignalIcon] = useState<string|undefined>(undefined)
   const [signalColour, setSignalColour] = useState<"red"|"orange"|"yellow"|"green"|undefined>(undefined)
 
-  const { sendJsonMessage/*, lastJsonMessage, readyState */} = useWebSocket(`ws://${window.location.host}/socket`, {
-    shouldReconnect: (closeEvent) => true, // Auto-reconnect on server drops
-    onOpen: () => console.log('Connection established!'),
-    onClose: e=> console.log("Web socket connection closed", e),
-    onMessage: event => {
-      let message: WSMessage = JSON.parse(event.data);
-      //console.log('received message', message)
-      if (message.type === 'service_list') {
-        setServices(message.services || [])
-      } else if (message.type === 'tuner_state') {
-        setCurrentService(message.currentService || undefined)
-        //setTunerStatus(message.status)
-        if (!message.currentService) {
-          setCurrentDls(undefined);
-          setSlideshowImage(undefined)
-          setSignalIcon(undefined)
-          setSignalColour(undefined)
-        }
-      } else if (message.type === 'dab_text_update'){
-        setCurrentDls(message.text)
-      } else if (message.type === 'dab_image') {
-        setSlideshowImage(`data:${message.mimeType};base64,${message.imageData}`)
-      } else if (message.type === "reception_status") {
-        let icon: string|undefined
-        let colour: "red"|"orange"|"yellow"|"green"|undefined;
-        if (message.rfLock) {
-          switch (message.quality) {
-            case ReceptionQuality.BAD:
-              icon = "signal_cellular_alt_1_bar"
-              colour = "red"
-              break;
-            case ReceptionQuality.POOR:
-              icon = "signal_cellular_alt_1_bar"
-              colour = "orange"
-              break;
-            case ReceptionQuality.OKAY:
-              icon = "signal_cellular_alt_2_bar"
-              colour = "yellow"
-              break
-            case ReceptionQuality.GOOD:
-              icon = "signal_cellular_alt_2_bar"
-              colour = "green"
-              break
-            case ReceptionQuality.BEST:
-              icon = "signal_cellular_alt"
-              colour = "green"
-              break;
+  let socketConfig = useMemo<WebsocketOptions>(()=>{
+    return {
+      shouldReconnect: (closeEvent) => true, // Auto-reconnect on server drops
+      onOpen: () => console.log('Connection established!'),
+      onClose: e=> console.log("Web socket connection closed", e),
+      onMessage: event => {
+        let message: WSMessage = JSON.parse(event.data);
+        //console.log('received message', message)
+        if (message.type === 'service_list') {
+          setServices(message.services || [])
+        } else if (message.type === 'tuner_state') {
+          setCurrentService(message.currentService || undefined)
+          setTunerStatus(message.status)
+          //setTunerStatus(message.status)
+          if (!message.currentService) {
+            setCurrentDls(undefined);
+            setSlideshowImage(undefined)
+            setSignalIcon(undefined)
+            setSignalColour(undefined)
           }
+        } else if (message.type === 'dab_text_update'){
+          setCurrentDls(message.text)
+        } else if (message.type === 'dab_image') {
+          setSlideshowImage(`data:${message.mimeType};base64,${message.imageData}`)
+        } else if (message.type === "reception_status") {
+          let icon: string|undefined
+          let colour: "red"|"orange"|"yellow"|"green"|undefined;
+          if (message.rfLock) {
+            switch (message.quality) {
+              case ReceptionQuality.BAD:
+                icon = "signal_cellular_alt_1_bar"
+                colour = "red"
+                break;
+              case ReceptionQuality.POOR:
+                icon = "signal_cellular_alt_1_bar"
+                colour = "orange"
+                break;
+              case ReceptionQuality.OKAY:
+                icon = "signal_cellular_alt_2_bar"
+                colour = "yellow"
+                break
+              case ReceptionQuality.GOOD:
+                icon = "signal_cellular_alt_2_bar"
+                colour = "green"
+                break
+              case ReceptionQuality.BEST:
+                icon = "signal_cellular_alt"
+                colour = "green"
+                break;
+            }
+          }
+          setSignalIcon(icon)
+          setSignalColour(colour)
         }
-        setSignalIcon(icon)
-        setSignalColour(colour)
       }
     }
-  });
+  }, [setServices, setCurrentService, setCurrentDls, setSlideshowImage, setSignalIcon, setSignalColour, setTunerStatus])
+  const { sendJsonMessage/*, lastJsonMessage, readyState */} = useWebSocket(`ws://${window.location.host}/socket`, socketConfig);
 
-  function stopService() {
+  const stopService = useCallback( ()=> {
     sendJsonMessage({type: 'stop_service'})
-  }
+  }, [sendJsonMessage]);
 
-  function startService(service: ServiceInfo) {
+  const startService = useCallback((service: ServiceInfo) => {
     sendJsonMessage({
       type: 'start_service',
       ensembleId: service.ensembleId,
       serviceId: service.serviceId,
     })
     setServiceListActive(false)
-  }
+  }, [sendJsonMessage, setServiceListActive]);
 
   let content;
   if (serviceListActive) {
