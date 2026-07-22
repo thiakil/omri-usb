@@ -15,6 +15,7 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.freedesktop.gstreamer.Gst;
+import org.freedesktop.gstreamer.Version;
 import org.jspecify.annotations.NullMarked;
 import org.omri.radio.Radio;
 import org.omri.radio.impl.DabAudioDecoder;
@@ -40,7 +41,7 @@ public class TestMe {
     private static final Logger LOGGER = LogManager.getLogger();
 
     public static void main(String[] args) throws IOException {
-        Gst.init();
+        Gst.init(new Version(1, 28));
         Radio instance = Radio.getInstance();
         instance.initialize(new Context(), null);
         List<Tuner> availableTuners = instance.getAvailableTuners();

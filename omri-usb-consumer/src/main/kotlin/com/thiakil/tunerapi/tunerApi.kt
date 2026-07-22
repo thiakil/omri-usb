@@ -16,13 +16,14 @@ import io.ktor.websocket.CloseReason
 import io.ktor.websocket.close
 import kotlinx.coroutines.ensureActive
 import org.freedesktop.gstreamer.Gst
+import org.freedesktop.gstreamer.Version
 import org.omri.radio.Radio
 import org.omri.radioservice.RadioServiceDab
 import org.omri.tuner.Tuner
 import org.omri.tuner.TunerType
 
 fun Application.tunerApi() {
-    Gst.init()
+    Gst.init(Version(1, 28))
     val instance = Radio.getInstance()
     instance.initialize(Context(), null)
     val availableTuners = instance.getAvailableTuners(TunerType.TUNER_TYPE_DAB)

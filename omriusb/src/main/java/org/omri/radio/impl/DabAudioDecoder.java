@@ -2,6 +2,7 @@ package org.omri.radio.impl;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.EnumSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -316,6 +317,7 @@ public class DabAudioDecoder {
 					ByteBuffer nativeBuffer = gstBuffer.map(true);
 					nativeBuffer.put(rawAacFrame);
 					gstBuffer.unmap();
+					gstBuffer.setFlags(EnumSet.of(BufferFlags.LIVE, BufferFlags.RESYNC));
 
 					// Push the buffer downstream
 					FlowReturn ret = appSrc.pushBuffer(gstBuffer);
