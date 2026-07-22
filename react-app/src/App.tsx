@@ -1,4 +1,5 @@
 /// <reference types="mdui/jsx.en" />
+import {useHudiy} from "./HudiyApi";
 import React, {ReactElement, ReactNode, useCallback, useMemo, useState} from 'react';
 import './App.css';
 import useWebSocket from 'react-use-websocket';
@@ -27,7 +28,9 @@ function MainWrapper({headerText= "cell_tower", backAction = "close", headerIcon
 }
 
 function App() {
-
+  const hudiyCallbacks = useMemo(()=>({}), [])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const hudiy = useHudiy(hudiyCallbacks)
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [currentService, setCurrentService] = useState<ServiceInfo|undefined>(undefined);
   const [currentDls, setCurrentDls] = useState<string|undefined>(undefined)
