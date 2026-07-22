@@ -12,7 +12,7 @@ import PageHeading from "./PageHeading";
 interface MainWrapProps {
   headerText: string
   headerIcon?: string
-  backAction?: string
+  backAction?: "close"|"arrow_back"
   onBack?: ()=>void
   signalIcon?: string
   signalColour?: "red"|"orange"|"yellow"|"green"
@@ -20,7 +20,7 @@ interface MainWrapProps {
 }
 function MainWrapper({headerText= "cell_tower", backAction = "close", headerIcon, onBack, children, signalIcon, signalColour}: MainWrapProps) {
   return (<div className="flex flex-col h-screen max-h-screen">
-    <PageHeading headerText={headerText} icon={headerIcon} onBack={onBack} signalIcon={signalIcon} signalColour={signalColour}/>
+    <PageHeading headerText={headerText} icon={headerIcon} onBack={onBack} backAction={backAction} signalIcon={signalIcon} signalColour={signalColour}/>
     {children}
   </div>)
 }
