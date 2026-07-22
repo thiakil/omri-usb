@@ -116,11 +116,11 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--hudiy-background);
+  /*background-color: var(--hudiy-background);*/
   overflow: hidden;
   font-family: 'Roboto', sans-serif;
   user-select: none;
-  color: var(--hudiy-onBackground);
+  /*color: var(--hudiy-onBackground);*/
   box-sizing: border-box;
 }
 

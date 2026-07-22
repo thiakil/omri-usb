@@ -86,6 +86,11 @@
         for (let color in hudiy.colorScheme) {
           document.body.style.setProperty(`--hudiy-${color}`, hudiy.colorScheme[color]);
         }
+        if (hudiy.colorScheme?.darkThemeEnabled) {
+          document.body.className = 'mdui-theme-dark'
+        } else {
+          document.body.className = 'mdui-theme-light'
+        }
       }
 
       hudiy.onInputFocusChanged = function() {
