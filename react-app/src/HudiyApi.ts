@@ -138,12 +138,11 @@ interface HudiyColorScheme {
 
 declare global {
   interface Window {
-    hudiy?: HudiyGlobal
+    hudiy: HudiyGlobal
   }
 }
 
-const hudiyGlobal: HudiyGlobal = window.hudiy || {};
-window.hudiy = hudiyGlobal;//either assign it back to itself or the new object
+window.hudiy = window.hudiy || {colorScheme:{ background: '#FF00FF'}};//lets it work on non-hudiy browsers
 
 // Creates an object shape where every interface key must be present
 const navCallbackKeysRecord: Record<keyof HudiyNavCallbacks, null> = {
@@ -157,58 +156,53 @@ const navCallbackKeysRecord: Record<keyof HudiyNavCallbacks, null> = {
 const navCallbackNames = Object.keys(navCallbackKeysRecord) as Array<keyof HudiyNavCallbacks>
 
 function updateColors() {
-  for (let color in hudiyGlobal.colorScheme) {
-    document.body.style.setProperty(`--hudiy-${color}`, String(hudiyGlobal.colorScheme[color as keyof HudiyColorScheme]));
+  for (let color in window.hudiy.colorScheme) {
+    console.log("setting css", String(window.hudiy.colorScheme[color as keyof HudiyColorScheme]))
+    document.body.style.setProperty(`--hudiy-${color}`, String(window.hudiy.colorScheme[color as keyof HudiyColorScheme]));
   }
-  if (hudiyGlobal.colorScheme?.darkThemeEnabled) {
+  /*if (hudiyGlobal.colorScheme?.darkThemeEnabled) {
     document.body.className = 'mdui-theme-dark'
   } else {
     document.body.className = 'mdui-theme-light'
-  }
+  }*/
 }
 
-hudiyGlobal.onColorSchemeChanged = ()=>{
+window.hudiy.onColorSchemeChanged = ()=>{
   updateColors()
 }
 
 let globalAttached = false;
-if (window.hudiy.colorScheme) {
-  //already attached before we ran
+window.hudiy.onAttached = ()=> {
   globalAttached = true;
-  updateColors();
-} else {
-  hudiyGlobal.onAttached = ()=> {
-    globalAttached = true;
-    updateColors()
-  }
+  updateColors()
 }
 
 export function useHudiy(callbacks: HudiyCallbacks) {
 
   const [isAttached, setIsAttached] = useState(globalAttached)
-  hudiyGlobal.onAttached = useCallback(()=>{
+  window.hudiy.onAttached = useCallback(()=>{
     updateColors()
     setIsAttached(true)
   }, []);
 
-  const [colorScheme, setColorScheme] = useState(hudiyGlobal.colorScheme)
-  hudiyGlobal.onColorSchemeChanged = useCallback(()=>{
+  const [colorScheme, setColorScheme] = useState(window.hudiy.colorScheme)
+  window.hudiy.onColorSchemeChanged = useCallback(()=>{
     updateColors()
-    setColorScheme(hudiyGlobal.colorScheme)
+    setColorScheme(window.hudiy.colorScheme)
   }, [])
 
-  const [inputFocus, setInputFocus] = useState(hudiyGlobal.inputFocus);
-  hudiyGlobal.onInputFocusChanged = useCallback(()=>{
-    setInputFocus(hudiyGlobal.inputFocus)
+  const [inputFocus, setInputFocus] = useState(window.hudiy.inputFocus);
+  window.hudiy.onInputFocusChanged = useCallback(()=>{
+    setInputFocus(window.hudiy.inputFocus)
   }, [])
-  const [activated, setActivated] = useState(hudiyGlobal.activated);
-  hudiyGlobal.onActivatedChanged = useCallback(()=>{
-    setActivated(hudiyGlobal.activated)
+  const [activated, setActivated] = useState(window.hudiy.activated);
+  window.hudiy.onActivatedChanged = useCallback(()=>{
+    setActivated(window.hudiy.activated)
   }, [])
 
   for (const cbName of navCallbackNames) {
     // @ts-ignore
-    hudiyGlobal[cbName] = callbacks[cbName]
+    window.hudiy[cbName] = callbacks[cbName]
   }
 
   const wsOptions = useMemo<WSOptions>(()=>({
