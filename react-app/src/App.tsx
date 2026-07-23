@@ -1,8 +1,8 @@
 /// <reference types="mdui/jsx.en" />
 import {useHudiy} from "./HudiyApi";
-import React, {ReactElement, ReactNode, useCallback, useMemo, useState} from 'react';
+import React, {ReactNode, useCallback, useMemo, useState} from 'react';
 import './App.css';
-import useWebSocket from 'react-use-websocket';
+import useWebSocket, {ReadyState} from 'react-use-websocket';
 import {ReceptionQuality, ServiceInfo, TunerStatus, WSMessage} from './websocketTypes'
 import 'mdui/mdui.css';
 import 'mdui/components/button-icon.js';
@@ -21,7 +21,7 @@ interface MainWrapProps {
   signalColour?: "red"|"orange"|"yellow"|"green"
   children?: ReactNode
 }
-function MainWrapper({headerText= "cell_tower", backAction = "close", headerIcon, onBack, children, signalIcon, signalColour}: MainWrapProps) {
+function MainWrapper({headerText= "cell_tower", backAction = "arrow_back", headerIcon, onBack, children, signalIcon, signalColour}: MainWrapProps) {
   return (<div className="flex flex-col h-screen max-h-screen">
     <PageHeading headerText={headerText} icon={headerIcon} onBack={onBack} backAction={backAction} signalIcon={signalIcon} signalColour={signalColour}/>
     {children}
@@ -31,7 +31,7 @@ function MainWrapper({headerText= "cell_tower", backAction = "close", headerIcon
 function App() {
   const hudiyCallbacks = useMemo(()=>({}), [])
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const {sendProtobufMessage} = useHudiy(hudiyCallbacks)
+  const {sendProtobufMessage, apiReadyState} = useHudiy(hudiyCallbacks)
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [currentService, setCurrentService] = useState<ServiceInfo|undefined>(undefined);
   const [currentDls, setCurrentDls] = useState<string|undefined>(undefined)
@@ -113,13 +113,18 @@ function App() {
     setServiceListActive(false)
   }, [sendJsonMessage, setServiceListActive]);
 
-  const goBack = useCallback(()=>{
-    const msg = hudiy.app.api.DispatchAction.create({
-      action: "go_back"
-    });
-    const payload = hudiy.app.api.DispatchAction.encode(msg).finish();
-    sendProtobufMessage(hudiy.app.api.MessageType.MESSAGE_DISPATCH_ACTION, 0, payload);
-  }, [sendProtobufMessage])
+  const mainExitFn = useMemo(() => {
+    if (apiReadyState === ReadyState.OPEN) {
+      return ()=>{
+        const msg = hudiy.app.api.DispatchAction.create({
+          action: "go_back"
+        });
+        const payload = hudiy.app.api.DispatchAction.encode(msg).finish();
+        sendProtobufMessage(hudiy.app.api.MessageType.MESSAGE_DISPATCH_ACTION, 0, payload);
+      }
+    }
+    return undefined
+  }, [apiReadyState,sendProtobufMessage]);
 
   let content;
   if (serviceListActive) {
@@ -129,7 +134,7 @@ function App() {
       </div>
     </MainWrapper>);
   } else {
-    content = (<MainWrapper headerText="DAB Radio" signalIcon={signalIcon} signalColour={signalColour} onBack={goBack}>
+    content = (<MainWrapper headerText="DAB Radio" signalIcon={signalIcon} signalColour={signalColour} onBack={mainExitFn} backAction="close">
           <div className="size-main flex justify-center pt-6">
             <CurrentlyPlaying
                 service={currentService}

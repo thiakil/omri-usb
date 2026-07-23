@@ -282,6 +282,7 @@ export function useHudiy(callbacks: HudiyCallbacks) {
     colorScheme,
     inputFocus,
     activated,
-    sendProtobufMessage
+    sendProtobufMessage,
+    apiReadyState: readyState
   }
 }
