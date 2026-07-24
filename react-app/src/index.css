@@ -60,58 +60,6 @@
   -webkit-font-smoothing: antialiased;
 }
 
-:root {
-  --hudiy-background: rgb(249 249 255);
-  --hudiy-onBackground: rgb(25 28 32);
-  --hudiy-surface: rgb(249 249 255);
-  --hudiy-surfaceDim: rgb(217 218 224);
-  --hudiy-surfaceBright: rgb(249 249 255);
-  --hudiy-surfaceContainerLowest: rgb(255 255 255);
-  --hudiy-surfaceContainerLow: rgb(243 243 250);
-  --hudiy-surfaceContainer: rgb(237 237 244);
-  --hudiy-surfaceContainerHigh: rgb(231 232 238);
-  --hudiy-surfaceContainerHighest: rgb(225 226 233);
-  --hudiy-onSurface: rgb(25 28 32);
-  --hudiy-surfaceVariant: rgb(224 226 236);
-  --hudiy-onSurfaceVariant: rgb(67 71 78);
-  --hudiy-inverseSurface: rgb(46 48 53);
-  --hudiy-inverseOnSurface: rgb(240 240 247);
-  --hudiy-outline: rgb(116 119 127);
-  --hudiy-outlineVariant: rgb(196 198 207);
-  --hudiy-shadow: rgb(0 0 0);
-  --hudiy-scrim: rgb(0 0 0);
-  --hudiy-surfaceTint: rgb(62 95 144);
-  --hudiy-primary: rgb(62 95 144);
-  --hudiy-onPrimary: rgb(255 255 255);
-  --hudiy-primaryContainer: rgb(213 227 255);
-  --hudiy-onPrimaryContainer: rgb(36 71 119);
-  --hudiy-inversePrimary: rgb(167 200 255);
-  --hudiy-secondary: rgb(85 95 113);
-  --hudiy-onSecondary: rgb(255 255 255);
-  --hudiy-secondaryContainer: rgb(217 227 248);
-  --hudiy-onSecondaryContainer: rgb(61 71 88);
-  --hudiy-tertiary: rgb(110 86 118);
-  --hudiy-onTertiary: rgb(255 255 255);
-  --hudiy-tertiaryContainer: rgb(248 216 254);
-  --hudiy-onTertiaryContainer: rgb(86 62 93);
-  --hudiy-error: rgb(186 26 26);
-  --hudiy-onError: rgb(255 255 255);
-  --hudiy-errorContainer: rgb(255 218 214);
-  --hudiy-onErrorContainer: rgb(147 0 10);
-  --hudiy-primaryFixed: rgb(213 227 255);
-  --hudiy-primaryFixedDim: rgb(167 200 255);
-  --hudiy-onPrimaryFixed: rgb(0 27 60);
-  --hudiy-onPrimaryFixedVariant: rgb(36 71 119);
-  --hudiy-secondaryFixed: rgb(217 227 248);
-  --hudiy-secondaryFixedDim: rgb(189 199 220);
-  --hudiy-onSecondaryFixed: rgb(18 28 43);
-  --hudiy-onSecondaryFixedVariant: rgb(61 71 88);
-  --hudiy-tertiaryFixed: rgb(248 216 254);
-  --hudiy-tertiaryFixedDim: rgb(219 188 225);
-  --hudiy-onTertiaryFixed: rgb(39 19 47);
-  --hudiy-onTertiaryFixedVariant: rgb(86 62 93);
-}
-
 body {
   margin: 0;
   padding: 0;
@@ -126,94 +74,6 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
-}
-
-:root {
-  --mdui-color-color-background: var(--hudiy-background);
-  --mdui-color-color-on-background: var(--hudiy-onBackground);
-  --mdui-color-color-surface: var(--hudiy-surface);
-  --mdui-color-color-surface-dim: var(--hudiy-surfaceDim);
-  --mdui-color-color-surface-bright: var(--hudiy-surfaceBright);
-  --mdui-color-color-surface-container-lowest: var(--hudiy-surfaceContainerLowest);
-  --mdui-color-color-surface-container-low: var(--hudiy-surfaceContainerLow);
-  --mdui-color-color-surface-container: var(--hudiy-surfaceContainer);
-  --mdui-color-color-surface-container-high: var(--hudiy-surfaceContainerHigh);
-  --mdui-color-color-surface-container-highest: var(--hudiy-surfaceContainerHighest);
-  --mdui-color-color-on-surface: var(--hudiy-onSurface);
-  --mdui-color-color-surface-variant: var(--hudiy-surfaceVariant);
-  --mdui-color-color-on-surface-variant: var(--hudiy-onSurfaceVariant);
-  --mdui-color-color-inverse-surface: var(--hudiy-inverseSurface);
-  --mdui-color-color-inverse-on-surface: var(--hudiy-inverseOnSurface);
-  --mdui-color-color-outline: var(--hudiy-outline);
-  --mdui-color-color-outline-variant: var(--hudiy-outlineVariant);
-  --mdui-color-color-shadow: var(--hudiy-shadow);
-  --mdui-color-color-scrim: var(--hudiy-scrim);
-  --mdui-color-color-surface-tint: var(--hudiy-surfaceTint);
-  --mdui-color-color-primary: var(--hudiy-primary);
-  --mdui-color-color-on-primary: var(--hudiy-onPrimary);
-  --mdui-color-color-primary-container: var(--hudiy-primaryContainer);
-  --mdui-color-color-on-primary-container: var(--hudiy-onPrimaryContainer);
-  --mdui-color-color-inverse-primary: var(--hudiy-inversePrimary);
-  --mdui-color-color-secondary: var(--hudiy-secondary);
-  --mdui-color-color-on-secondary: var(--hudiy-onSecondary);
-  --mdui-color-color-secondary-container: var(--hudiy-secondaryContainer);
-  --mdui-color-color-on-secondary-container: var(--hudiy-onSecondaryContainer);
-  --mdui-color-color-tertiary: var(--hudiy-tertiary);
-  --mdui-color-color-on-tertiary: var(--hudiy-onTertiary);
-  --mdui-color-color-tertiary-container: var(--hudiy-tertiaryContainer);
-  --mdui-color-color-on-tertiary-container: var(--hudiy-onTertiaryContainer);
-  --mdui-color-color-error: var(--hudiy-error);
-  --mdui-color-color-on-error: var(--hudiy-onError);
-  --mdui-color-color-error-container: var(--hudiy-errorContainer);
-  --mdui-color-color-on-error-container: var(--hudiy-onErrorContainer);
-
-  /*fix it not scaling*/
-  --md-elevated-button-container-height: 2.5rem;
-  --md-icon-size: 1.5rem;
-}
-
-@theme {
-  --color-background: var(--hudiy-background);
-  --color-on-background: var(--hudiy-onBackground);
-  --color-surface: var(--hudiy-surface);
-  --color-surface-dim: var(--hudiy-surfaceDim);
-  --color-surface-bright: var(--hudiy-surfaceBright);
-  --color-surface-container-lowest: var(
-      --hudiy-surfaceContainerLowest
-  );
-  --color-surface-container-low: var(--hudiy-surfaceContainerLow);
-  --color-surface-container: var(--hudiy-surfaceContainer);
-  --color-surface-container-high: var(--hudiy-surfaceContainerHigh);
-  --color-surface-container-highest: var(
-      --hudiy-surfaceContainerHighest
-  );
-  --color-on-surface: var(--hudiy-onSurface);
-  --color-surface-variant: var(--hudiy-surfaceVariant);
-  --color-on-surface-variant: var(--hudiy-onSurfaceVariant);
-  --color-inverse-surface: var(--hudiy-inverseSurface);
-  --color-inverse-on-surface: var(--hudiy-inverseOnSurface);
-  --color-outline: var(--hudiy-outline);
-  --color-outline-variant: var(--hudiy-outlineVariant);
-  --color-shadow: var(--hudiy-shadow);
-  --color-scrim: var(--hudiy-scrim);
-  --color-surface-tint: var(--hudiy-surfaceTint);
-  --color-primary: var(--hudiy-primary);
-  --color-on-primary: var(--hudiy-onPrimary);
-  --color-primary-container: var(--hudiy-primaryContainer);
-  --color-on-primary-container: var(--hudiy-onPrimaryContainer);
-  --color-inverse-primary: var(--hudiy-inversePrimary);
-  --color-secondary: var(--hudiy-secondary);
-  --color-on-secondary: var(--hudiy-onSecondary);
-  --color-secondary-container: var(--hudiy-secondaryContainer);
-  --color-on-secondary-container: var(--hudiy-onSecondaryContainer);
-  --color-tertiary: var(--hudiy-tertiary);
-  --color-on-tertiary: var(--hudiy-onTertiary);
-  --color-tertiary-container: var(--hudiy-tertiaryContainer);
-  --color-on-tertiary-container: var(--hudiy-onTertiaryContainer);
-  --color-error: var(--hudiy-error);
-  --color-on-error: var(--hudiy-onError);
-  --color-error-container: var(--hudiy-errorContainer);
-  --color-on-error-container: var(--hudiy-onErrorContainer);
 }
 
 .size-46vh {
@@ -242,4 +102,8 @@ code {
 
 html {
   font-size: 120% !important;
+}
+
+body,html {
+  background-color: transparent !important;
 }

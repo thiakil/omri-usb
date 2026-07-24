@@ -4,7 +4,6 @@ import React, {ReactNode, useCallback, useMemo, useState} from 'react';
 import './App.css';
 import useWebSocket, {ReadyState} from 'react-use-websocket';
 import {ReceptionQuality, ServiceInfo, TunerStatus, WSMessage} from './websocketTypes'
-import 'mdui/mdui.css';
 import 'mdui/components/button-icon.js';
 import CurrentlyPlaying from "./CurrentlyPlaying"
 import ServiceList from "./ServiceList";
@@ -31,7 +30,7 @@ function MainWrapper({headerText= "cell_tower", backAction = "arrow_back", heade
 function App() {
   const hudiyCallbacks = useMemo(()=>({}), [])
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const {sendProtobufMessage, apiReadyState} = useHudiy(hudiyCallbacks)
+  const {sendProtobufMessage, apiReadyState, colorScheme} = useHudiy(hudiyCallbacks)
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [currentService, setCurrentService] = useState<ServiceInfo|undefined>(undefined);
   const [currentDls, setCurrentDls] = useState<string|undefined>(undefined)

@@ -1,6 +1,21 @@
 import {useCallback, useEffect, useMemo, useState} from "react";
 import useWebSocket, {Options as WSOptions, ReadyState} from "react-use-websocket";
 import {hudiy} from "./hudi_protobuf";
+import {JQ} from "mdui";
+import {
+  argbFromHex,
+  blueFromArgb,
+  greenFromArgb,
+  redFromArgb,
+} from "@material/material-color-utilities";
+import { $ as JQ$ } from '@mdui/jq/$.js';
+import '@mdui/jq/methods/addClass.js';
+import '@mdui/jq/methods/append.js';
+import '@mdui/jq/methods/get.js';
+import '@mdui/jq/methods/remove.js';
+import '@mdui/jq/methods/removeClass.js';
+import { unique } from '@mdui/jq/functions/unique.js';
+import { toKebabCase } from '@mdui/jq/shared/helper.js';
 
 export interface HudiyNavCallbacks {
   /**
@@ -136,13 +151,15 @@ interface HudiyColorScheme {
   darkContrastLevel: number
 }
 
+type HudiyColor = Omit<HudiyColorScheme, 'darkThemeEnabled'|'lightContrastLevel'|'darkContrastLevel'>
+
 declare global {
   interface Window {
     hudiy: HudiyGlobal
   }
 }
 
-window.hudiy = window.hudiy || {colorScheme:{ background: '#FF00FF'}};//lets it work on non-hudiy browsers
+window.hudiy = window.hudiy || {};//lets it work on non-hudiy browsers
 
 // Creates an object shape where every interface key must be present
 const navCallbackKeysRecord: Record<keyof HudiyNavCallbacks, null> = {
@@ -155,16 +172,140 @@ const navCallbackKeysRecord: Record<keyof HudiyNavCallbacks, null> = {
 };
 const navCallbackNames = Object.keys(navCallbackKeysRecord) as Array<keyof HudiyNavCallbacks>
 
-function updateColors() {
-  for (let color in window.hudiy.colorScheme) {
-    console.log("setting css", String(window.hudiy.colorScheme[color as keyof HudiyColorScheme]))
-    document.body.style.setProperty(`--hudiy-${color}`, String(window.hudiy.colorScheme[color as keyof HudiyColorScheme]));
+const COLORS_USED = [
+  "primaryPaletteKeyColor",
+  "secondaryPaletteKeyColor",
+  "tertiaryPaletteKeyColor",
+  "neutralPaletteKeyColor",
+  "neutralVariantPaletteKeyColor",
+  "background",
+  "onBackground",
+  "surface",
+  "surfaceDim",
+  "surfaceBright",
+  "surfaceContainerLowest",
+  "surfaceContainerLow",
+  "surfaceContainer",
+  "surfaceContainerHigh",
+  "surfaceContainerHighest",
+  "onSurface",
+  "surfaceVariant",
+  "onSurfaceVariant",
+  "inverseSurface",
+  "inverseOnSurface",
+  "outline",
+  "outlineVariant",
+  "shadow",
+  "scrim",
+  "surfaceTint",
+  "primary",
+  "onPrimary",
+  "primaryContainer",
+  "onPrimaryContainer",
+  "inversePrimary",
+  "secondary",
+  "onSecondary",
+  "secondaryContainer",
+  "onSecondaryContainer",
+  "tertiary",
+  "onTertiary",
+  "tertiaryContainer",
+  "onTertiaryContainer",
+  "error",
+  "onError",
+  "errorContainer",
+  "onErrorContainer",
+  "primaryFixed",
+  "primaryFixedDim",
+  "onPrimaryFixed",
+  "onPrimaryFixedVariant",
+  "secondaryFixed",
+  "secondaryFixedDim",
+  "onSecondaryFixed",
+  "onSecondaryFixedVariant",
+  "tertiaryFixed",
+  "tertiaryFixedDim",
+  "onTertiaryFixed",
+  "onTertiaryFixedVariant",
+]
+
+const prefix = 'hudiy-custom-color-scheme-'; // Class name prefix
+let themeIndex = 0;
+const rgbFromArgb = (source: number) => {
+  const red = redFromArgb(source);
+  const green = greenFromArgb(source);
+  const blue = blueFromArgb(source);
+  return [red, green, blue].join(', ');
+};
+/**
+ * Remove color scheme from specified element
+ * @param target
+ */
+export const remove = (target:JQ<HTMLElement>) => {
+  const $target = JQ$(target);
+  // Find all color schemes on a specified element (CSS class)
+  let classNames = $target
+  .get()
+  .map((element) => Array.from(element.classList))
+  .flat();
+  classNames = unique(classNames).filter((className) => className.startsWith(prefix));
+  // Remove CSS class
+  $target.removeClass(classNames.join(' '));
+  // Find CSS classes that are not used by other elements
+  const unusedClassNames = classNames.filter((className) => JQ$(`.${className}`).length === 0);
+  // Remove the corresponding `<style>` element.
+  JQ$(unusedClassNames.map((i) => `#${i}`).join(',')).remove();
+};
+
+export const setFromSource = (hudiyColors: HudiyColorScheme) => {
+  const $target = JQ$(window.document.documentElement);
+
+  // Generate CSS variables based on the color scheme.
+  const colorVar = (callback: (token: string, rgb: string)=>string) => {
+    return Object.entries(hudiyColors)
+    .filter(it=>COLORS_USED.indexOf(it[0]) !== -1)
+    .map(([key, value]) => {
+      //console.log('entry', key, value);
+      return callback(toKebabCase(key), rgbFromArgb(argbFromHex(value)));
+    })
+    .join('');
+  };
+  const className = prefix + `${themeIndex++}`;
+  // CSS text
+  const cssText = `.${className} {
+  ${colorVar((token, rgb) => `--mdui-color-${token}-light: ${rgb};`)}
+  ${colorVar((token, rgb) => `--mdui-color-${token}-dark: ${rgb};`)}
+  ${colorVar((token) => `--mdui-color-${token}: var(--mdui-color-${token}-light);`)}
+
+  color: rgb(var(--mdui-color-on-background));
+  background-color: rgb(var(--mdui-color-background));
+}
+
+.mdui-theme-dark .${className},
+.mdui-theme-dark.${className} {
+  ${colorVar((token) => `--mdui-color-${token}: var(--mdui-color-${token}-dark);`)}
+}
+
+@media (prefers-color-scheme: dark) {
+  .mdui-theme-auto .${className},
+  .mdui-theme-auto.${className} {
+    ${colorVar((token) => `--mdui-color-${token}: var(--mdui-color-${token}-dark);`)}
   }
-  /*if (hudiyGlobal.colorScheme?.darkThemeEnabled) {
-    document.body.className = 'mdui-theme-dark'
-  } else {
-    document.body.className = 'mdui-theme-light'
-  }*/
+}`;
+  // Remove the old color scheme
+  remove($target);
+  // Create a `<style>` element and add it to the `<head>` section.
+  const htmlHeadElementJQ = JQ$(document.head);
+  htmlHeadElementJQ.append(`<style id="${className}">${cssText}</style>`);
+  // Add new color scheme
+  $target.addClass(className);
+};
+
+function updateColors() {
+  const colorScheme = window.hudiy.colorScheme;
+  if (colorScheme) {
+    setFromSource(colorScheme)
+  }
 }
 
 window.hudiy.onColorSchemeChanged = ()=>{
