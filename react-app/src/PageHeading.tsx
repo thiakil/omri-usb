@@ -20,9 +20,7 @@ const colorMap = {
 function PageHeading({icon = "cell_tower", backAction = "arrow_back", headerText, onBack, signalIcon, signalColour}: PageHeadingProps) {
   return (
       <header className="pageHeader flex flex-row justify-between items-center pr-3">
-        <div>
-          {onBack ? <mdui-button-icon icon={backAction} onClick={onBack}></mdui-button-icon> : <></>}
-        </div>
+        {onBack ? <mdui-button-icon icon={backAction} onClick={onBack}></mdui-button-icon> : <div></div>}
         <div>
           {signalIcon ?
               <mdui-icon name={signalIcon} className={`align-middle ${signalColour ? colorMap[signalColour] : ''}`}></mdui-icon>

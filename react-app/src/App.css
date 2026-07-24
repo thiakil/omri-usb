@@ -2,3 +2,13 @@
   overflow: auto;
   max-height: 50vh;
 }
+
+.buttons-bar mdui-button-icon {
+  font-size: 2rem;
+  width: 3rem;
+  height: 3rem;
+}
+
+.pageHeader {
+  min-height: 2.5rem;
+}

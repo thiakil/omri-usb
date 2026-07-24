@@ -142,7 +142,7 @@ function App() {
                 currentSlideshow={slideshowImage}
             ></CurrentlyPlaying>
           </div>
-          <div className="size-main flex justify-center py-3 gap-2">
+          <div className="buttons-bar flex justify-center py-3 gap-2">
             <mdui-button-icon icon="playlist_play" onClick={()=>setServiceListActive(true)}></mdui-button-icon>
             {currentService ? (<mdui-button-icon icon="stop" onClick={stopService} variant="tonal"></mdui-button-icon>) : undefined}
           </div>
