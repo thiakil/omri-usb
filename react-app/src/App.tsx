@@ -1,5 +1,5 @@
 /// <reference types="mdui/jsx.en" />
-import {useHudiy} from "./HudiyApi";
+import {HudiyNavCallbacks, useHudiy} from "./HudiyApi";
 import React, {ReactNode, useCallback, useMemo, useState} from 'react';
 import './App.css';
 import useWebSocket, {ReadyState} from 'react-use-websocket';
@@ -28,9 +28,6 @@ function MainWrapper({headerText= "cell_tower", backAction = "arrow_back", heade
 }
 
 function App() {
-  const hudiyCallbacks = useMemo(()=>({}), [])
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const {sendProtobufMessage, apiReadyState, colorScheme} = useHudiy(hudiyCallbacks)
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [currentService, setCurrentService] = useState<ServiceInfo|undefined>(undefined);
   const [currentDls, setCurrentDls] = useState<string|undefined>(undefined)
@@ -114,19 +111,6 @@ function App() {
     setServiceListActive(false)
   }, [sendJsonMessage, setServiceListActive]);
 
-  const mainExitFn = useMemo(() => {
-    if (apiReadyState === ReadyState.OPEN) {
-      return ()=>{
-        const msg = hudiy.app.api.DispatchAction.create({
-          action: "go_back"
-        });
-        const payload = hudiy.app.api.DispatchAction.encode(msg).finish();
-        sendProtobufMessage(hudiy.app.api.MessageType.MESSAGE_DISPATCH_ACTION, 0, payload);
-      }
-    }
-    return undefined
-  }, [apiReadyState,sendProtobufMessage]);
-
   const currentSvcIdx = useMemo(() => {
     if (!currentService) {
       return -1
@@ -152,9 +136,38 @@ function App() {
     startService(services[(currentSvcIdx+1) % services.length])
   }, [currentSvcIdx, startService, services]);
 
+  const closeServiceList = useCallback(() => {
+    setServiceListActive(false)
+  }, [setServiceListActive]);
+
+  const hudiyCallbacks = useMemo<HudiyNavCallbacks>(()=>({
+    onGoBack(): boolean {
+      if (serviceListActive) {
+        closeServiceList()
+        return true;
+      }
+      return false
+    }
+  }), [serviceListActive, closeServiceList])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const {sendProtobufMessage, apiReadyState, colorScheme} = useHudiy(hudiyCallbacks)
+
+  const mainExitFn = useMemo(() => {
+    if (apiReadyState === ReadyState.OPEN) {
+      return ()=>{
+        const msg = hudiy.app.api.DispatchAction.create({
+          action: "go_back"
+        });
+        const payload = hudiy.app.api.DispatchAction.encode(msg).finish();
+        sendProtobufMessage(hudiy.app.api.MessageType.MESSAGE_DISPATCH_ACTION, 0, payload);
+      }
+    }
+    return undefined
+  }, [apiReadyState,sendProtobufMessage]);
+
   let content;
   if (serviceListActive) {
-    content = (<MainWrapper headerText="Services" onBack={()=>setServiceListActive(false)} signalIcon={signalIcon} signalColour={signalColour}>
+    content = (<MainWrapper headerText="Services" onBack={closeServiceList} signalIcon={signalIcon} signalColour={signalColour}>
       <div className="w-11/12 m-auto min-h-0 py-2 grow">
         <ServiceList services={services} startService={startService} currentService={currentService}></ServiceList>
       </div>
