@@ -124,7 +124,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 			if(radioServiceListener instanceof TextualMetadataListener) {
 				synchronized (mLabelListeners) {
 					if (!mLabelListeners.contains(radioServiceListener)) {
-						LOGGER.debug("Subscribing TextualMetadataListener: " + radioServiceListener);
+                        LOGGER.debug("Subscribing TextualMetadataListener: {}", radioServiceListener);
 						this.mLabelListeners.add((TextualMetadataListener) radioServiceListener);
 					}
 				}
@@ -132,7 +132,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 			if(radioServiceListener instanceof VisualMetadataListener) {
 				synchronized (mSlideshowListeners) {
 					if (!mSlideshowListeners.contains(radioServiceListener)) {
-						LOGGER.debug("Subscribing VisualMetadataListener: " + radioServiceListener);
+                        LOGGER.debug("Subscribing VisualMetadataListener: {}", radioServiceListener);
 						this.mSlideshowListeners.add((VisualMetadataListener) radioServiceListener);
 					}
 				}
@@ -140,7 +140,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 			if(radioServiceListener instanceof RadioServiceRawAudiodataListener) {
 				synchronized (mRawAudiodataListeners) {
 					if (!mRawAudiodataListeners.contains(radioServiceListener)) {
-						LOGGER.debug("Subscribing RadioServiceRawAudiodataListener: " + radioServiceListener);
+                        LOGGER.debug("Subscribing RadioServiceRawAudiodataListener: {}", radioServiceListener);
 						this.mRawAudiodataListeners.add((RadioServiceRawAudiodataListener) radioServiceListener);
 					}
 				}
@@ -148,7 +148,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 			if (radioServiceListener instanceof RadioServiceFollowingListener) {
 				synchronized (mSfListeners) {
 					if (!mSfListeners.contains(radioServiceListener)) {
-						LOGGER.debug("Subscribing RadioServiceFollowingListener: " + radioServiceListener);
+                        LOGGER.debug("Subscribing RadioServiceFollowingListener: {}", radioServiceListener);
 						this.mSfListeners.add((RadioServiceFollowingListener) radioServiceListener);
 					}
 				}
@@ -164,7 +164,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 			if(radioServiceListener instanceof TextualMetadataListener) {
 				synchronized (this.mLabelListeners) {
 					if (this.mLabelListeners.contains(radioServiceListener)) {
-						LOGGER.debug("UnSubscribing TextualMetadataListener: " + radioServiceListener);
+                        LOGGER.debug("UnSubscribing TextualMetadataListener: {}", radioServiceListener);
 						this.mLabelListeners.remove(radioServiceListener);
 					}
 				}
@@ -172,7 +172,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 			if(radioServiceListener instanceof VisualMetadataListener) {
 				synchronized (this.mSlideshowListeners) {
 					if (this.mSlideshowListeners.contains(radioServiceListener)) {
-						LOGGER.debug("UnSubscribing VisualMetadataListener: " + radioServiceListener);
+                        LOGGER.debug("UnSubscribing VisualMetadataListener: {}", radioServiceListener);
 						this.mSlideshowListeners.remove(radioServiceListener);
 					}
 				}
@@ -180,7 +180,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 			if(radioServiceListener instanceof RadioServiceRawAudiodataListener) {
 				synchronized (this.mRawAudiodataListeners) {
 					if (this.mRawAudiodataListeners.contains(radioServiceListener)) {
-						LOGGER.debug("UnSubscribing RadioServiceRawAudiodataListener: " + radioServiceListener);
+                        LOGGER.debug("UnSubscribing RadioServiceRawAudiodataListener: {}", radioServiceListener);
 						this.mRawAudiodataListeners.remove(radioServiceListener);
 					}
 				}
@@ -188,7 +188,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 			if (radioServiceListener instanceof RadioServiceFollowingListener) {
 				synchronized (this.mSfListeners) {
 					if (this.mSfListeners.contains(radioServiceListener)) {
-						LOGGER.debug("UnSubscribing RadioServiceFollowingListener: " + radioServiceListener);
+                        LOGGER.debug("UnSubscribing RadioServiceFollowingListener: {}", radioServiceListener);
 						this.mSfListeners.remove(radioServiceListener);
 					}
 				}
@@ -266,8 +266,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	}
 
 	void setFollowingServices(@NotNull ArrayList<RadioService> sfServices) {
-		LOGGER.debug("setFollowingServices sz=" + sfServices.size() + " for " +
-				this.toString());
+        LOGGER.debug("setFollowingServices sz={} for {}", sfServices.size(), this.toString());
 		synchronized (mSfServices) {
 			mSfServices.clear();
 			mSfServices.addAll(sfServices);
@@ -282,8 +281,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	// called from JNI
 	public void serviceFollowingReceived(ArrayList<RadioService> sfServices) {
 		if (sfServices != null) {
-			LOGGER.debug("serviceFollowingReceived sz=" + sfServices.size() + " for " +
-					this.toString());
+            LOGGER.debug("serviceFollowingReceived sz={} for {}", sfServices.size(), this.toString());
 			// execute following on a thread because this may be a lengthy job
 			final RadioService radioService = this;
 			new Thread(() ->
@@ -351,7 +349,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
     }
 
 	void serviceStarted() {
-		LOGGER.debug("Service '" + getServiceLabel() + "' started");
+        LOGGER.debug("Service '{}' started", getServiceLabel());
 	}
 
 	void serviceStopped() {
