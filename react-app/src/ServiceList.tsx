@@ -1,5 +1,5 @@
 /// <reference types="mdui/jsx.en" />
-import {useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import useWebSocket from "react-use-websocket";
 import {ServiceInfo} from "./websocketTypes";
 import 'mdui/components/list.js';
@@ -18,15 +18,27 @@ export default function ServiceList({services, startService, currentService}: Se
     return previousValue;
   }, {});
 
+  const targetRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const current = targetRef.current;
+    if (current) {
+      setTimeout(()=>current.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+    } else {
+      console.log('ref was not active')
+    }
+  }, []);
+
   return (<div className="overflow-auto h-full"><mdui-list>
     {Object.keys(serviceMap).map(ensemble => (
         <div key={ensemble}>
           <mdui-list-subheader >{ensemble}</mdui-list-subheader>
           {(serviceMap[ensemble]||[]).map(svc=>{
+            const isCurrentSvc = currentService && currentService.ensembleId === svc.ensembleId && currentService.serviceId === svc.serviceId;
             return (
                 <mdui-list-item onClick={()=>startService(svc)}
-                    key={svc.ensembleId+'-'+svc.serviceId}
-                    active={currentService && currentService.ensembleId === svc.ensembleId && currentService.serviceId === svc.serviceId}
+                                key={svc.ensembleId+'-'+svc.serviceId}
+                                active={isCurrentSvc}
+                                ref={isCurrentSvc ? targetRef : null}
                 >
                   {svc.serviceLabel}
                 </mdui-list-item>
