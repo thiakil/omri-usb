@@ -49,7 +49,9 @@ function App() {
         let message: WSMessage = JSON.parse(event.data);
         //console.log('received message', message)
         if (message.type === 'service_list') {
-          setServices(message.services || [])
+          setServices(message.services.sort((a,b)=>{
+            return a.frequency - b.frequency || a.serviceLabel.localeCompare(b.serviceLabel);
+          }) || [])
         } else if (message.type === 'tuner_state') {
           setCurrentService(message.currentService || undefined)
           setTunerStatus(message.status)
@@ -125,6 +127,31 @@ function App() {
     return undefined
   }, [apiReadyState,sendProtobufMessage]);
 
+  const currentSvcIdx = useMemo(() => {
+    if (!currentService) {
+      return -1
+    }
+    return services.findIndex(v=>v.ensembleId === currentService.ensembleId && v.serviceId === currentService.serviceId)
+  }, [currentService, services]);
+
+  const prevService = useCallback(() => {
+    if (currentSvcIdx === -1) {
+      return
+    }
+    let prevIdx = currentSvcIdx -1;
+    if (prevIdx === -1) {
+      prevIdx = services.length - 1;
+    }
+    startService(services[prevIdx])
+  }, [currentSvcIdx, startService, services]);
+
+  const nextService = useCallback(() => {
+    if (currentSvcIdx === -1) {
+      return
+    }
+    startService(services[(currentSvcIdx+1) % services.length])
+  }, [currentSvcIdx, startService, services]);
+
   let content;
   if (serviceListActive) {
     content = (<MainWrapper headerText="Services" onBack={()=>setServiceListActive(false)} signalIcon={signalIcon} signalColour={signalColour}>
@@ -144,7 +171,11 @@ function App() {
           </div>
           <div className="buttons-bar flex justify-center py-3 gap-2">
             <mdui-button-icon icon="playlist_play" onClick={()=>setServiceListActive(true)}></mdui-button-icon>
-            {currentService ? (<mdui-button-icon icon="stop" onClick={stopService} variant="tonal"></mdui-button-icon>) : undefined}
+            {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_previous" onClick={prevService}></mdui-button-icon> : undefined }
+            {currentService ? (
+                <mdui-button-icon icon="stop" onClick={stopService} variant="tonal"></mdui-button-icon>
+            ) : undefined}
+            {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_next" onClick={nextService}></mdui-button-icon> : undefined }
           </div>
         </MainWrapper>
     )

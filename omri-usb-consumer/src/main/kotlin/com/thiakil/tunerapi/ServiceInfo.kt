@@ -9,10 +9,12 @@ data class ServiceInfo(
     val ensembleLabel: String,
     val serviceLabel: String,
     val serviceId: Int,
+    val frequency: Int,
 ) {
     constructor(dab: RadioServiceDab): this(
         dab.ensembleId,
         dab.ensembleLabel,
         dab.serviceLabel,
-        dab.serviceId)
+        dab.serviceId,
+        dab.ensembleFrequency)
 }

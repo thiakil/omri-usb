@@ -91,4 +91,5 @@ export interface ServiceInfo {
   ensembleLabel: string;
   serviceLabel: string;
   serviceId: number;
+  frequency: number;
 }
