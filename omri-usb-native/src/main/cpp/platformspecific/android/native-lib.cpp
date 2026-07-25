@@ -68,8 +68,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     jenny::Env::attachJvm(m_javaVm);
     jenny::initAllProxies(env);
     Log4JLogger::getInstance().init(m_javaVm, env);
-    //clogDirector = new LogRedirector(LOGLEVEL_WARN);
-    //cerrDirector = new LogRedirector(LOGLEVEL_ERROR);
+    clogDirector = new LogRedirector(LOGLEVEL_WARN);
+    cerrDirector = new LogRedirector(LOGLEVEL_ERROR);
     coutDirector = new LogRedirector(LOGLEVEL_DEBUG);
     //sets the redirect stream for logcat logging
     std::clog.rdbuf(clogDirector);
