@@ -42,8 +42,11 @@ public class DabAudioDecoder {
 
 	private static final Bus.ERROR GST_ERROR_LISTENER = (source, code, message) ->
 		LOGGER.error("GST error: {} {}: {}", source, code, message);
-	private static final Bus.STATE_CHANGED GST_STATE_CHANGED_LISTENER = (source, old, current, pending) ->
-		LOGGER.info("GST bus state changed from {}: old {}, current {}, pending: {}", source, old, current, pending);
+	private static final Bus.STATE_CHANGED GST_STATE_CHANGED_LISTENER = (source, old, current, pending) -> {
+		if (source instanceof Pipeline) {
+			LOGGER.info("GST bus state changed from {}: old {}, current {}, pending: {}", source, old, current, pending);
+		}
+	};
 
 	private final int BUFFER_TIMEOUT = 1000;
 
