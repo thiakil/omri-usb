@@ -189,33 +189,8 @@ public class DabAudioDecoder {
 	private boolean creatMediaFormat() {
 		byte[] ascBytes = null;
 		if (mConfCodec == DAB_CODEC_AAC) {
-			//todo, make this less magic numbery
-			if (mConfSbr) {
-				if (!mConfPs) {
-					LOGGER.debug("Configuring ASC with SBR!");
-					ascBytes = new byte[]{(byte) 0x2B, (byte) 0x11, (byte) 0x8A, (byte) 0x00};
-				} else {
-					LOGGER.debug("Configuring ASC with SBR and PS!");
-					ascBytes = new byte[]{(byte) 0xEB, (byte) 0x11, (byte) 0x8A, (byte) 0x00};
-				}
-			} else {
-				LOGGER.debug("Configuring ASC without SBR!");
-				ascBytes = new byte[]{(byte) 0x11, (byte) 0x94, (byte) 0x00, (byte) 0x00};
-			}
-
-			if (mConfSampling == 32000) {
-				LOGGER.debug("Configuring ASC for 32 kHz!");
-				ascBytes[0] = (byte) (ascBytes[0] + 1);
-				if (mConfSbr) {
-					LOGGER.debug("Configuring ASC for 32 kHz and SBR!");
-					ascBytes[1] = (byte) (ascBytes[1] + 1);
-				}
-			}
-
-			if (mConfChans == 1) {
-				LOGGER.debug("Configuring ASC for Mono!");
-				ascBytes[1] = (byte) (ascBytes[1] - 8);
-			}
+			ascBytes = AudioSpecificConfigGenerator.generateHeAacV2Config(mConfSampling, mConfCodec, mConfSbr, mConfPs);
+			LOGGER.debug("Using ASC of {}  ", ascBytes);
 		} else {
 			throw new IllegalStateException("Unhandled codec: "+mConfCodec);
 		}
@@ -234,7 +209,8 @@ public class DabAudioDecoder {
 				//decoder = ElementFactory.make("fdkaacdec", "decoder");
 			} catch (Exception e) {
 				LOGGER.warn("Falling back to avdec", e);
-				decoder = ElementFactory.make("avdec_aac", "decoder");
+				//decoder = ElementFactory.make("avdec_aac", "decoder");
+				decoder = ElementFactory.make("avdec_aac_fixed", "decoder");
 			}
 			//Element decoder = ElementFactory.make("avdec_aac", "decoder");
 
@@ -268,6 +244,7 @@ public class DabAudioDecoder {
 				"mpegversion", GType.INT, 4,
 				"stream-format", GType.STRING, "raw",
 				"plc", GType.BOOLEAN, true,
+				//"channels", GType.INT, 2,
 				"codec_data", GstTypes.typeFor(Buffer.class), gstBuffer
 			));
 
