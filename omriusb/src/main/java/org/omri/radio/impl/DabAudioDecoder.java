@@ -40,6 +40,11 @@ public class DabAudioDecoder {
 
 	private static final Logger LOGGER = LogManager.getLogger("DabAudioDecoder");
 
+	private static final Bus.ERROR GST_ERROR_LISTENER = (source, code, message) ->
+		LOGGER.error("GST error: {} {}: {}", source, code, message);
+	private static final Bus.STATE_CHANGED GST_STATE_CHANGED_LISTENER = (source, old, current, pending) ->
+		LOGGER.info("GST bus state changed from {}: old {}, current {}, pending: {}", source, old, current, pending);
+
 	private final int BUFFER_TIMEOUT = 1000;
 
 	//DAB ASCTy
@@ -129,6 +134,8 @@ public class DabAudioDecoder {
 		}
 		if (this.pipeline != null) {
 			this.pipeline.stop();
+			pipeline.getBus().disconnect(GST_ERROR_LISTENER);
+			pipeline.getBus().disconnect(GST_STATE_CHANGED_LISTENER);
 			this.pipeline.close();
 			this.pipeline = null;
 		}
@@ -223,8 +230,8 @@ public class DabAudioDecoder {
 			Element aacParse = ElementFactory.make("aacparse", "parser");
 			Element decoder;
 			try {
-				//decoder = ElementFactory.make("faad", "decoder");
-				decoder = ElementFactory.make("fdkaacdec", "decoder");
+				decoder = ElementFactory.make("faad", "decoder");
+				//decoder = ElementFactory.make("fdkaacdec", "decoder");
 			} catch (Exception e) {
 				LOGGER.warn("Falling back to avdec", e);
 				decoder = ElementFactory.make("avdec_aac", "decoder");
@@ -245,6 +252,9 @@ public class DabAudioDecoder {
 				pipeline = null;
 				return false;
 			}
+
+			pipeline.getBus().connect(GST_ERROR_LISTENER);
+			pipeline.getBus().connect(GST_STATE_CHANGED_LISTENER);
 
 			//Set Caps for Raw AAC
 			//String capstr = "audio/mpeg, mpegversion=(int)4, stream-format=(string)raw, plc=(boolean)true, codec_data=(buffer)" + toHex(ascBytes, ascBytes.length);
@@ -268,6 +278,9 @@ public class DabAudioDecoder {
 			}
 			appSrc.setCaps(caps);
 			appSrc.setStreamType(AppSrc.StreamType.STREAM);
+			//appSrc.set("is-live", true);
+			//appSrc.set("format", Format.TIME.intValue());
+			//appSrc.set("do-timestamp", true);
 
 			// Start Pipeline Playing
 			pipeline.play();
@@ -278,6 +291,8 @@ public class DabAudioDecoder {
 				appSrc = null;
 			}
 			if (pipeline != null) {
+				pipeline.getBus().disconnect(GST_ERROR_LISTENER);
+				pipeline.getBus().disconnect(GST_STATE_CHANGED_LISTENER);
 				pipeline.close();
 				pipeline = null;
 			}
