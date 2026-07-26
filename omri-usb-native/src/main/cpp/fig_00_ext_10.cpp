@@ -31,7 +31,7 @@ Fig_00_Ext_10::~Fig_00_Ext_10() = default;
 
 void Fig_00_Ext_10::parseFigData(const std::vector<uint8_t>& figData) {
     auto figIter = figData.cbegin() +1;
-    while(figIter < figData.cend()) {
+    //while(figIter < figData.cend()) {
         //bool rfu = ((*figIter & 0x80) >> 7) & 0xFF;
         uint32_t mjd = (*figIter++ & 0x7F) << 10 | (*figIter++ & 0xFF) << 2 |
                        (((*figIter & 0xC0) >> 6) & 0xFF);
@@ -68,7 +68,7 @@ void Fig_00_Ext_10::parseFigData(const std::vector<uint8_t>& figData) {
                << +m_dabTime.milliseconds << ", UnixEpoch: " << +m_dabTime.unixEpoch << ": "
                << std::put_time(std::gmtime(&m_dabTime.unixEpoch), "%c %Z");
         std::cout << logStr.rdbuf() << std::endl;*/
-    }
+    //}
 }
 
 
