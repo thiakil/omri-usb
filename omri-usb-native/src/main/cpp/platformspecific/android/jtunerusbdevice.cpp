@@ -264,15 +264,20 @@ void JTunerUsbDevice::receptionStatistics(bool rfLock, int level, int rawValue) 
 }
 
 void JTunerUsbDevice::dabTimeUpdate(const Fig_00_Ext_10::DabTime& dabTime) {
-    if (m_lastDabTimeEpoch == dabTime.unixEpoch) { // seconds since 1900-01-01 00:00
+    if (m_lastDabSeconds == dabTime.second) {
         // rate-limit to only once per second
         return;
     }
-    m_lastDabTimeEpoch = dabTime.unixEpoch;
-    // Java Date(long) constructor requires milliseconds
-    auto t = dabTime.unixEpoch * 1000L;
-    t += dabTime.milliseconds;
+    m_lastDabSeconds = dabTime.second;
 
-    m_usbTunerObject.dabTimeUpdateEpoch(t);
+    m_usbTunerObject.dabTimeUpdate(
+        dabTime.year,
+        dabTime.month,
+        dabTime.day,
+        dabTime.hour,
+        dabTime.minute,
+        dabTime.second,
+        dabTime.milliseconds
+    );
 
 }

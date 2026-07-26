@@ -45,7 +45,6 @@ public:
         int minute;
         int second;
         int milliseconds;
-        std::time_t unixEpoch;
     };
 
 public:

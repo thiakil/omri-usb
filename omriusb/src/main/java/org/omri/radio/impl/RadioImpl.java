@@ -443,7 +443,7 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	@Override
-	public void dabDateTime(Tuner tuner, Date dabTime) {
+	public void dabDateTime(Tuner tuner, int year, int month, int day, int hour, int minute, int second, int milliseconds) {
 
 	}
 

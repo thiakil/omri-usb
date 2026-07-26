@@ -40,9 +40,6 @@ interface TunerUsb extends Tuner {
 
 	void receptionStatistics(boolean rfLocked, int qualLevel, int rawValue);
 
-	void dabTimeUpdate(Date dabDateTime);
+	void dabTimeUpdate(int year, int month, int day, int hour, int minute, int second, int milliseconds);
 
-	default void dabTimeUpdateEpoch(long epoch) {
-		dabTimeUpdate(new Date(epoch));
-	}
 }

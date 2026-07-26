@@ -59,7 +59,7 @@ void Fig_00_Ext_10::parseFigData(const std::vector<uint8_t>& figData) {
         dabDateTime.tm_isdst = 0;
 
         // note: mktime interprets input as local time
-        m_dabTime.unixEpoch = std::mktime(&dabDateTime) - timezone;
+        //m_dabTime.unixEpoch = std::mktime(&dabDateTime) - timezone;
 
         /*std::stringstream logStr;
         logStr << m_logTag << " Y: " << +m_dabTime.year << ", M: " << +m_dabTime.month

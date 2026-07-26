@@ -498,10 +498,11 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@SuppressWarnings("unused") // called from JNI
-	public void dabTimeUpdate(Date dabDateTime) {
+	@Override
+	public void dabTimeUpdate(int year, int month, int day, int hour, int minute, int second, int milliseconds) {
 		synchronized (mTunerlisteners) {
 			for (TunerListener cb : mTunerlisteners) {
-				cb.dabDateTime(this, dabDateTime);
+				cb.dabDateTime(this, year, month, day, hour, minute, second, milliseconds);
 			}
 		}
 	}

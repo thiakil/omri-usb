@@ -153,7 +153,16 @@ class RadioWebsocketHandler(
 
     }
 
-    override fun dabDateTime(tuner: Tuner, dabDateTime: Date) {
+    override fun dabDateTime(
+        tuner: Tuner,
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int,
+        minute: Int,
+        second: Int,
+        milliseconds: Int
+    ) {
         //todo?
     }
 

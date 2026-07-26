@@ -84,9 +84,8 @@ public interface TunerListener extends RadioListener {
 	public void tunerRawData(Tuner tuner, byte[] data);
 
 	/**
-	 * Update on DAB date and time
+	 * Update on DAB date and time (UTC)
 	 * @param tuner the {@link Tuner} from which the date and time was received
-	 * @param dabDateTime {@link Date}
 	 */
-	public void dabDateTime(Tuner tuner, Date dabDateTime);
+	public void dabDateTime(Tuner tuner, int year, int month, int day, int hour, int minute, int second, int milliseconds);
 }

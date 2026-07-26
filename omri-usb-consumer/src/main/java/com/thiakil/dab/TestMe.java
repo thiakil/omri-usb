@@ -117,7 +117,7 @@ public class TestMe {
                 }
 
                 @Override
-                public void dabDateTime(Tuner tuner, Date dabDateTime) {
+                public void dabDateTime(Tuner tuner, int year, int month, int day, int hour, int minute, int second, int milliseconds) {
                     //LOGGER.info("Got dabtime: {}", dabDateTime.toInstant());
                 }
             });

@@ -55,7 +55,7 @@ private:
 private:
     TunerUsbProxy m_usbTunerObject;//The existing Tuner object reference
     std::shared_ptr<DabEnsemble::Date_Time_Callback> m_dabTimeCallback;
-    std::time_t m_lastDabTimeEpoch{0};
+    int m_lastDabSeconds{-1};
 };
 
 
