@@ -32,7 +32,7 @@ Fig_00_Ext_09::~Fig_00_Ext_09() {
 
 void Fig_00_Ext_09::parseFigData(const std::vector<uint8_t>& figData) {
     auto figIter = figData.cbegin() +1;
-    while(figIter < figData.cend()) {
+    //while(figIter < figData.cend()) {
         bool extendedFieldPresent = ((*figIter & 0x80) >> 7) & 0xFF;
         //bool rfa1 = ((*figIter & 0x40) >> 6) & 0xFF;
         bool isNegativeOffset = ((*figIter & 0x20) >> 5) & 0xFF;
@@ -45,7 +45,8 @@ void Fig_00_Ext_09::parseFigData(const std::vector<uint8_t>& figData) {
         m_interTableId = (*figIter++ & 0xFF);
 
         //std::cout << m_logTag << " LTO: " << +m_lto << " Extension: " << std::boolalpha << extendedFieldPresent << std::noboolalpha << std::endl;
-        if(extendedFieldPresent) {
+    //this is quite useless, redundant info
+    /*if(extendedFieldPresent) {
             while(figIter < figData.end()) {
                 uint8_t numSrvs = ((*figIter & 0xC0) >> 6) & 0xFF;
                 uint8_t rfa2 = (*figIter++ & 0x3F);
@@ -54,8 +55,8 @@ void Fig_00_Ext_09::parseFigData(const std::vector<uint8_t>& figData) {
                     uint16_t sid = (*figIter++ & 0xFF) << 8 | (*figIter++ & 0xFF);
                 }
             }
-        }
-    }
+        }*/
+    //}
 }
 
 int Fig_00_Ext_09::getLocalTimeOffset() const {
