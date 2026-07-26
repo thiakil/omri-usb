@@ -26,7 +26,7 @@
 #include <functional>
 
 #include "callback.h"
-#include "concurrent_queue.h"
+#include "blockingconcurrentqueue.h"
 
 #include "fig_00_ext_00.h"
 #include "fig_00_ext_01.h"
@@ -192,7 +192,7 @@ private:
     CallbackDispatcher<Fig_00_isComplete_Callback> m_fig00IsCompleteDispatcher;
     CallbackDispatcher<Fig_01_isComplete_Callback> m_fig01IsCompleteDispatcher;
 
-    ConcurrentQueue<std::vector<uint8_t> > m_fibDataQueue;
+    moodycamel::BlockingConcurrentQueue<std::vector<uint8_t>> m_fibDataQueue{50, 0, 1};
     mutable std::mutex m_fibThreadMutex;
     bool m_fibProcessThreadRunning{false};
     std::unique_ptr<DabThread> m_fibProcessorThread;

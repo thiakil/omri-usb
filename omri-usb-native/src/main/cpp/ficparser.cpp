@@ -77,7 +77,8 @@ void FicParser::start() {
             if (m_fibProcessorThread->joinable()) { // thread seems to be running
                 std::clog << M_LOG_TAG << "Continue FIB thread " << getParserThreadName()
                           << std::endl;
-                m_fibDataQueue.push(std::vector<uint8_t>(0)); // trigger thread with empty data
+                //todo is this still needed?
+                m_fibDataQueue.enqueue(std::vector<uint8_t>(0)); // trigger thread with empty data
             } else {
                 std::clog << M_LOG_TAG << "Re-Create FIB thread" << std::endl;
                 // create a new thread, other seems already dead
@@ -106,7 +107,8 @@ void FicParser::stop() {
                           << std::endl;
             } else {
                 // cannot join myself, trigger myself with empty data
-                m_fibDataQueue.push(std::vector<uint8_t>(0));
+                //todo is this needed??
+                m_fibDataQueue.enqueue(std::vector<uint8_t>(0));
             }
         }
     }
@@ -129,11 +131,17 @@ void FicParser::call(const std::vector<uint8_t> &data, bool rfLock) {
         }
         std::vector<uint8_t> fib(ficIter, ficIter+FIB_SIZE);
         if(FIB_CRC_CHECK(fib.data())) {
-            m_fibDataQueue.push(fib);
-            size_t sz = m_fibDataQueue.getSize();
+            if (m_fibProcessThreadRunning) {
+                if (!m_fibDataQueue.try_enqueue(fib)) {
+                    std::clog << M_LOG_TAG << "FIB queue full" << std::endl;
+                }
+            }
+            size_t sz = m_fibDataQueue.size_approx();
             if ((sz > 0u) && (sz % 50u == 0u)) {
                 std::clog << M_LOG_TAG << "FIBs pile up: " << +sz << ", fibThread running: "
                           << std::boolalpha << m_fibProcessThreadRunning << std::noboolalpha
+                << " thread ptr: " << m_fibProcessorThread.get()
+                << " Joinable? " << std::boolalpha << (m_fibProcessorThread.get() != nullptr && m_fibProcessorThread->joinable()) << std::noboolalpha
                           << std::endl;
             }
         } else {
@@ -158,60 +166,67 @@ void FicParser::processFib() {
 
     std::cout << M_LOG_TAG << "FIB thread started: " << getParserThreadName() << std::endl;
 
-    const auto timeout = std::chrono::milliseconds(24);
+    const auto timeout = std::chrono::milliseconds(50);
+    std::vector<uint8_t> fibDataBuffer[10];
     while (m_fibProcessThreadRunning) {
-        std::vector<uint8_t> fibData;
-        if(m_fibDataQueue.tryPop(fibData, timeout)) {
-            try {
-                auto figIter = fibData.begin();
-                auto remainingBytes = std::distance(figIter, fibData.end());
-                if (remainingBytes < 2) {
-                    std::cout << M_LOG_TAG << "popped FIB too short: exp:2, rcv:" << +remainingBytes
-                              << std::endl;
-                    continue;
-                }
-                while (figIter < fibData.end() - 2 && m_fibProcessThreadRunning) {
-                    const auto figType = static_cast<uint8_t>((*figIter & 0xE0u) >> 5u);
-                    const auto figLength = static_cast<uint8_t>(*figIter & 0x1Fu);
-
-                    ++figIter;
-
-                    if (figType != 7 && figLength != 31 && figLength > 0) {
-                        remainingBytes = std::distance(figIter, fibData.end());
-                        if (remainingBytes < figLength) {
-                            std::cout << M_LOG_TAG << "FIG too short: exp:" << +figLength
-                                      << ", rcv:"
-                                      << +remainingBytes << std::endl;
-                        }
-                        const std::vector<uint8_t> figData(figIter, figIter + figLength);
-                        switch (figType) {
-                            case 0: {
-                                parseFig_00(figData);
-                                break;
-                            }
-                            case 1: {
-                                parseFig_01(figData);
-                                break;
-                            }
-                            default:
-                                std::cout << M_LOG_TAG << "Unknown FIG Type: " << +figType
-                                          << std::endl;
-                                break;
-                        }
-
-                        figIter += figLength;
-                    } else {
-                        // figType=7, figLength=31: End Marker
-                        // -OR-
-                        // figLength = 0
-                        break;
+        //std::clog <<  "FIB waiting" << std::endl;
+        if(int numDequeued = m_fibDataQueue.wait_dequeue_bulk_timed(fibDataBuffer, 10, timeout)) {
+            //std::clog <<  "FIB stopped waiting, has data" << std::endl;
+            for (int iFib = 0; iFib < numDequeued; iFib++) {
+                std::vector<uint8_t> &fibData = fibDataBuffer[iFib];
+                try {
+                    auto figIter = fibData.begin();
+                    auto remainingBytes = std::distance(figIter, fibData.end());
+                    if (remainingBytes < 2) {
+                        std::cout << M_LOG_TAG << "popped FIB too short: exp:2, rcv:" << +remainingBytes
+                                  << std::endl;
+                        continue;
                     }
+                    while (figIter < fibData.end() - 2 && m_fibProcessThreadRunning) {
+                        const auto figType = static_cast<uint8_t>((*figIter & 0xE0u) >> 5u);
+                        const auto figLength = static_cast<uint8_t>(*figIter & 0x1Fu);
+
+                        ++figIter;
+
+                        if (figType != 7 && figLength != 31 && figLength > 0) {
+                            remainingBytes = std::distance(figIter, fibData.end());
+                            if (remainingBytes < figLength) {
+                                std::cout << M_LOG_TAG << "FIG too short: exp:" << +figLength
+                                          << ", rcv:"
+                                          << +remainingBytes << std::endl;
+                            }
+                            const std::vector<uint8_t> figData(figIter, figIter + figLength);
+                            switch (figType) {
+                                case 0: {
+                                    parseFig_00(figData);
+                                    break;
+                                }
+                                case 1: {
+                                    parseFig_01(figData);
+                                    break;
+                                }
+                                default:
+                                    std::clog << M_LOG_TAG << "Unknown FIG Type: " << +figType
+                                              << std::endl;
+                                    break;
+                            }
+
+                            figIter += figLength;
+                        } else {
+                            // figType=7, figLength=31: End Marker
+                            // -OR-
+                            // figLength = 0
+                            break;
+                        }
+                    }
+                } catch (std::exception& e) {
+                    std::clog << M_LOG_TAG << "Caught exception: " << e.what() << std::endl;
+                    std::clog << M_LOG_TAG << "FIB size: " << +fibData.size() << std::endl;
+                    std::clog << M_LOG_TAG << Fig::toHexString(fibData) << std::endl;
                 }
-            } catch (std::exception& e) {
-                std::clog << M_LOG_TAG << "Caught exception: " << e.what() << std::endl;
-                std::clog << M_LOG_TAG << "FIB size: " << +fibData.size() << std::endl;
-                std::clog << M_LOG_TAG << Fig::toHexString(fibData) << std::endl;
             }
+        } else {
+            //std::clog <<  "FIB stopped waiting, NO data" << std::endl;
         }
     }
     std::stringstream logMsg;
@@ -609,7 +624,12 @@ std::shared_ptr<FicParser::Fig_01_isComplete_Callback> FicParser::registerFig_01
 }
 
 void FicParser::reset() {
-    m_fibDataQueue.clear();
+    {
+        std::vector<uint8_t> dummy;
+        while (m_fibDataQueue.try_dequeue(dummy)) {
+            //ignore elements
+        }
+    }
 
     m_fig00_00dispatcher.clear();
     m_fig01DoneDispatcher.clear();
