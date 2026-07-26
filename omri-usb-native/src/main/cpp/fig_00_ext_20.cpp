@@ -32,6 +32,7 @@ Fig_00_Ext_20::~Fig_00_Ext_20() {
 
 void Fig_00_Ext_20::parseFigData(const std::vector<uint8_t>& figData) {
     auto figIter = figData.cbegin() +1;
+    //todo store these in a list
     while(figIter < figData.cend()) {
         uint32_t sId;
         if(!isDataService()) {
