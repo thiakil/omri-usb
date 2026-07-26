@@ -21,7 +21,8 @@
 #include "fig_00_ext_04.h"
 
 Fig_00_Ext_04::Fig_00_Ext_04(const std::vector<uint8_t> &figData) : Fig_00(figData) {
-    parseFigData(figData);
+    //todo - store this data. No point parsing to not use it
+    //parseFigData(figData);
 }
 
 Fig_00_Ext_04::~Fig_00_Ext_04() {
