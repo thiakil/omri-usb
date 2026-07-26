@@ -32,6 +32,7 @@ Fig_00_Ext_05::~Fig_00_Ext_05() {
 
 void Fig_00_Ext_05::parseFigData(const std::vector<uint8_t>& figData) {
     auto figIter = figData.cbegin() +1;
+    //TODO - store these in a list if ever used, currently only saves the last one
     while(figIter < figData.cend()) {
         m_isShortForm = (((*figIter & 0x80) >> 7) & 0xFF) == 0;
         if(m_isShortForm) {
