@@ -52,7 +52,7 @@ library {
 }
 
 tasks.withType(LinkSharedLibrary).configureEach {
-    linkerArgs.addAll("-pthread", "-lusb-1.0", "-L${javaHome}/lib", '-ljvm')
+    linkerArgs.addAll("-pthread", "-lusb-1.0", "-L${javaHome}/lib", '-ljvm', '-lfaad')
     linkerArgs.add(it.targetPlatform.map {
         if (it.operatingSystem.windows) {
             return "-lws2_32"

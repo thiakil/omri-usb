@@ -22,6 +22,7 @@
 
 
 #include "thirdparty/fec/fec.h"
+#include <neaacdec.h>
 
 
 #include <iostream>
@@ -128,7 +129,84 @@ std::shared_ptr<DabPlusServiceComponentDecoder::AUDIO_COMPONENT_DATA_CALLBACK> D
     return m_audioDataDispatcher.add(cb);
 }
 
+//copied from welle.io
+void DabPlusServiceComponentDecoder::make_asc() {
+    /* AudioSpecificConfig structure (the only way to select 960 transform here!)
+     *
+     *  00010 = AudioObjectType 2 (AAC LC)
+     *  xxxx  = (core) sample rate index
+     *  xxxx  = (core) channel config
+     *  100   = GASpecificConfig with 960 transform
+     *
+     * SBR: explicit signaling (backwards-compatible), adding:
+     *  01010110111 = sync extension for SBR
+     *  00101       = AudioObjectType 5 (SBR)
+     *  1           = SBR present flag
+     *  xxxx        = extension sample rate index
+     *
+     * PS:  explicit signaling (backwards-compatible), adding:
+     *  10101001000 = sync extension for PS
+     *  1           = PS present flag
+     *
+     * Note:
+     * libfaad2 does not support non backwards-compatible PS signaling (AOT 29);
+     * it detects PS only by implicit signaling.
+     */
+
+    // AAC LC
+    asc_len = 0;
+    int core_sr_idx = m_currentSuperFrame.dacRate ? (m_currentSuperFrame.sbrUsed ? 6 : 3) : (m_currentSuperFrame.sbrUsed ? 8 : 5);	// 24/48/16/32 kHz
+    asc[asc_len++] = 0b00010 << 3 | core_sr_idx >> 1;
+    asc[asc_len++] = (core_sr_idx & 0x01) << 7 | m_currentSuperFrame.channels << 3 | 0b100;
+
+    if(m_currentSuperFrame.sbrUsed) {
+        // add SBR
+        asc[asc_len++] = 0x56;
+        asc[asc_len++] = 0xE5;
+        int extension_sr_idx = m_currentSuperFrame.dacRate ? 3 : 5;	// 48/32 kHz
+        asc[asc_len++] = 0x80 | (extension_sr_idx << 3);
+
+        if(m_currentSuperFrame.psUsed) {
+            // add PS
+            asc[asc_len - 1] |= 0x05;
+            asc[asc_len++] = 0x48;
+            asc[asc_len++] = 0x80;
+        }
+    }
+}
 void DabPlusServiceComponentDecoder::processData() {
+    // ensure features
+    unsigned long cap = NeAACDecGetCapabilities();
+    if(!(cap & LC_DEC_CAP)) {
+        std::cerr << "AACDecoderFAAD2: no LC decoding support!" << std::endl;
+        m_processThreadRunning = false;
+        return;
+    }
+    NeAACDecFrameInfo dec_frameinfo;
+    NeAACDecHandle handle = NeAACDecOpen();
+    if(!handle) {
+        std::cerr << "AACDecoderFAAD2: error while NeAACDecOpen" << std::endl;
+        m_processThreadRunning = false;
+        return;
+    }
+
+    // set general config
+    NeAACDecConfigurationPtr config = NeAACDecGetCurrentConfiguration(handle);
+    if(!config) {
+        std::cerr << "AACDecoderFAAD2: error while NeAACDecGetCurrentConfiguration" << std::endl;
+        m_processThreadRunning = false;
+        return;
+    }
+
+    config->outputFormat = FAAD_FMT_16BIT;
+    config->dontUpSampleImplicitSBR = 0;
+
+    if(NeAACDecSetConfiguration(handle, config) != 1) {
+        std::cerr << "AACDecoderFAAD2: error while NeAACDecSetConfiguration" << std::endl;
+        m_processThreadRunning = false;
+        return;
+    }
+
     while(m_processThreadRunning) {
         std::vector<uint8_t> frameData;
         //For assembling all access units per superframe for always having 120 ms audio for feeding into decoder
@@ -158,6 +236,7 @@ void DabPlusServiceComponentDecoder::processData() {
                     bool ps = static_cast<bool>((frameData[2] & 0x08u) >> 3u);           // ps ? psUsed : psNotUsed
                     auto mpgSurCfg = static_cast<uint8_t >(frameData[2] & 0x07u);
 
+                    m_currentSuperFrame.dacRate = dacRate;
                     m_currentSuperFrame.sbrUsed = sbr;
                     m_currentSuperFrame.psUsed = ps;
                     m_currentSuperFrame.channels = chanMode ? 2 : 1;
@@ -167,6 +246,19 @@ void DabPlusServiceComponentDecoder::processData() {
                     if(dacRate && sbr) m_currentSuperFrame.numAUs = 3;
                     if(!dacRate && !sbr) m_currentSuperFrame.numAUs = 4;
                     if(dacRate && !sbr) m_currentSuperFrame.numAUs = 6;
+
+                    make_asc();
+
+                    // init decoder
+                    unsigned long output_sr;
+                    unsigned char output_ch;
+                    long int init_result = NeAACDecInit2(handle, asc, asc_len, &output_sr, &output_ch);
+                    m_currentSuperFrame.outputChannels = output_ch;
+                    if(init_result != 0) {
+                        std::cerr << "AACDecoderFAAD2: error while NeAACDecInit2: " + std::string(NeAACDecGetErrorMessage(-init_result)) << std::endl;
+                        m_processThreadRunning = false;
+                        return;
+                    }
 
                     //std::cout << m_logTag << " NumAUs: " << +m_currentSuperFrame.numAUs << " DAC: " << +dacRate << " : " << +m_currentSuperFrame.samplingRate << " SBR: " << +sbr << " CHAN: " << +chanMode << " : " << +m_currentSuperFrame.channels << " PS: " << +ps << " MPEG: " << +mpgSurCfg << std::endl;
 
@@ -299,8 +391,26 @@ void DabPlusServiceComponentDecoder::processData() {
                                     m_currentSuperFrame.auLengths[i] -= (padDataStart + padDataLen);
                                 }
 
-                                auBuff.insert(auBuff.end(), m_currentSuperFrame.superFrameData.begin()+m_currentSuperFrame.auStarts[i], m_currentSuperFrame.superFrameData.begin() + m_currentSuperFrame.auStarts[i] + m_currentSuperFrame.auLengths[i] - 2); // -2 of length to cut off CRC
-                                m_audioDataDispatcher.invoke(auBuff, 63, m_currentSuperFrame.channels, m_currentSuperFrame.samplingRate, m_currentSuperFrame.sbrUsed, m_currentSuperFrame.psUsed);
+                                int auLen = m_currentSuperFrame.auLengths[i] - 2;// -2 of length to cut off CRC
+                                // decode audio
+                                uint8_t* output_frame = (uint8_t*) NeAACDecDecode(handle, &dec_frameinfo, m_currentSuperFrame.superFrameData.data()+m_currentSuperFrame.auStarts[i], auLen);
+                                if (dec_frameinfo.error) {
+                                    std::clog << dec_frameinfo.error << " errors in decode. output " << dec_frameinfo.samples << std::endl;
+                                }
+
+                                // abort, if no output at all
+                                if(dec_frameinfo.bytesconsumed == 0 && dec_frameinfo.samples == 0) {
+                                    std::clog << "AACDecoderFAAD2: Nothing produced. output " << dec_frameinfo.samples << " samples, " << dec_frameinfo.bytesconsumed << " bytes consumed, sent: " << auLen << std::endl;
+                                    continue;
+                                }
+
+                                if(dec_frameinfo.bytesconsumed != auLen) {
+                                    std::clog << "AACDecoderFAAD2: NeAACDecDecode did not consume all bytes" << std::endl;
+                                }
+
+                                auBuff.insert(auBuff.end(), output_frame, output_frame + dec_frameinfo.samples * 2);
+
+                                m_audioDataDispatcher.invoke(auBuff, 99, dec_frameinfo.channels, dec_frameinfo.samplerate, false, false);
                             } else {
                                 std::cout << m_logTag << " SuperFrame AU[" << +i << "] CRC failed, Bitrate: " << +m_subChanBitrate << std::endl;
                             }
@@ -315,7 +425,8 @@ void DabPlusServiceComponentDecoder::processData() {
         }
     }
 
-    //std::cout << m_logTag << " ProcessData thread stopped" << std::endl;
+    NeAACDecClose(handle);
+    std::cout << m_logTag << " ProcessData thread stopped" << std::endl;
 }
 
 const uint16_t DabPlusServiceComponentDecoder::FIRECODE_TABLE[256] = {

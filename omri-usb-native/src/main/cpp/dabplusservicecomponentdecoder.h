@@ -60,6 +60,8 @@ private:
         bool psUsed{false};
         int samplingRate{-1};
         int channels{-1};
+        int outputChannels{-1};
+        bool dacRate{false};
         void clear() {superFrameData.clear(); numAUs = 0; auLengths.clear(); auStarts.clear(); sbrUsed = false; psUsed = false; samplingRate = -1; channels = -1;}
     };
 
@@ -82,6 +84,8 @@ private:
     const std::string m_logTag = "[DabPlusServiceComponentDecoder]";
 
     DabSuperFrame m_currentSuperFrame;
+    uint8_t asc[7];
+    size_t asc_len;
     bool m_isSync{false};
     int m_dabSuperFrameCount{0};
 
@@ -133,6 +137,8 @@ private:
     void processData();
 
     void synchronizeData(const std::vector<uint8_t>& unsyncData);
+
+    void make_asc();
 
 private:
     static const uint16_t FIRECODE_TABLE[256];

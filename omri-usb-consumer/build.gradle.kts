@@ -52,7 +52,6 @@ dependencies {
 
 
     implementation(project(":omriusb"))
-    implementation("org.freedesktop.gstreamer:gst1-java-core:1.4.0")
 
     testImplementation(kotlin("test"))
     testImplementation(ktorLibs.server.testHost)

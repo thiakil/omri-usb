@@ -1,22 +1,17 @@
 package org.omri.radio.impl;
 
-import java.lang.reflect.Array;
-import java.util.Arrays;
-import java.util.EnumSet;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.SourceDataLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import org.freedesktop.gstreamer.lowlevel.GType;
-import org.freedesktop.gstreamer.lowlevel.GstTypes;
 import org.jetbrains.annotations.Nullable;
 import org.omri.radio.Radio;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import org.freedesktop.gstreamer.*;
-import org.freedesktop.gstreamer.elements.AppSrc;
-import java.nio.ByteBuffer;
 
 //import de.irt.dabaudiodecoderplugininterface.IDabPluginCallback;
 //import de.irt.dabaudiodecoderplugininterface.IDabPluginInterface;
@@ -40,14 +35,6 @@ public class DabAudioDecoder {
 
 	private static final Logger LOGGER = LogManager.getLogger("DabAudioDecoder");
 
-	private static final Bus.ERROR GST_ERROR_LISTENER = (source, code, message) ->
-		LOGGER.error("GST error: {} {}: {}", source, code, message);
-	private static final Bus.STATE_CHANGED GST_STATE_CHANGED_LISTENER = (source, old, current, pending) -> {
-		if (source instanceof Pipeline) {
-			LOGGER.info("GST bus state changed from {}: old {}, current {}, pending: {}", source, old, current, pending);
-		}
-	};
-
 	private final int BUFFER_TIMEOUT = 1000;
 
 	//DAB ASCTy
@@ -56,8 +43,7 @@ public class DabAudioDecoder {
 
 	private final String[] DAB_MIME = {"audio/unknown", "audio/mpeg-l2" /*"audio/mpeg"*/, "audio/mp4a-latm"};
 
-	private Pipeline pipeline = null;
-	private AppSrc appSrc = null;
+	private SourceDataLine line = null;
 
 	private @Nullable Thread mDecodeThread = null;
 	private boolean mDecode = false;
@@ -108,7 +94,7 @@ public class DabAudioDecoder {
 			LOGGER.warn("Discarding audio data as thread is not alive");
 			return;
 		}
-		if (mConfCodec == DAB_CODEC_AAC && audioData != null && audioData.length > 0) {
+		if ((mConfCodec == DAB_CODEC_AAC || mConfCodec == 99) && audioData != null && audioData.length > 0) {
 			mDataQ.offer(audioData);
 		}//todo non-aac
 	}
@@ -116,7 +102,10 @@ public class DabAudioDecoder {
 	void stopCodec() {
 		stopDecodeThread();
 
-		closeGst();
+		if (line != null) {
+			line.close();
+			line = null;
+		}
 
 		ArrayList<DabAudioDecoderStateCallBack> currentCallbacks;
 		synchronized (mCodecStateCallbacks){
@@ -127,20 +116,6 @@ public class DabAudioDecoder {
 			if (cb != null) {
 				cb.codecStopped(this);
 			}
-		}
-	}
-
-	private void closeGst() {
-		if (this.appSrc != null) {
-			this.appSrc.endOfStream();
-			this.appSrc = null;
-		}
-		if (this.pipeline != null) {
-			this.pipeline.stop();
-			pipeline.getBus().disconnect(GST_ERROR_LISTENER);
-			pipeline.getBus().disconnect(GST_STATE_CHANGED_LISTENER);
-			this.pipeline.close();
-			this.pipeline = null;
 		}
 	}
 
@@ -169,113 +144,24 @@ public class DabAudioDecoder {
 
 		mDataQ.clear();
 
-		closeGst();
-
 		mConfCodec = dabCodec;
 		mConfSampling = samplingRate;
 		mConfChans = channelCnt;
 		mConfSbr = sbr;
 		mConfPs = ps;
 
-		if (mConfCodec == DAB_CODEC_AAC) {
-			if (!creatMediaFormat()) {
+		if (mConfCodec == 99) {
+            try {
+                line = AudioSystem.getSourceDataLine(new AudioFormat(samplingRate, 16, channelCnt, true, false));
+				line.open();
+				line.start();
+            } catch (LineUnavailableException e) {
+                LOGGER.error("Line unavailable", e);
 				return false;
-			}
-
-			mDecodeThread = new Thread(DecoderRunnable, "aac decoder thread");
+            }
+			mDecodeThread = new Thread(DecoderRunnable, "raw decoder thread");
 			mDecodeThread.start();
-		}
-
-		return true;
-	}
-
-	private boolean creatMediaFormat() {
-		byte[] ascBytes = null;
-		if (mConfCodec == DAB_CODEC_AAC) {
-			ascBytes = AudioSpecificConfigGenerator.generateHeAacV2Config(mConfSampling, mConfCodec, mConfSbr, mConfPs);
-			LOGGER.debug("Using ASC of {}  ", ascBytes);
-		} else {
-			throw new IllegalStateException("Unhandled codec: "+mConfCodec);
-		}
-
-		// Initialize GStreamer
-		Gst.init();
-
-		try {
-			// Create elements
-			pipeline = new Pipeline("aac-pipeline");
-			appSrc = (AppSrc) ElementFactory.make("appsrc", "source");
-			Element aacParse = ElementFactory.make("aacparse", "parser");
-			Element decoder;
-			try {
-				decoder = ElementFactory.make("faad", "decoder");
-				//decoder = ElementFactory.make("fdkaacdec", "decoder");
-			} catch (Exception e) {
-				LOGGER.warn("Falling back to avdec", e);
-				//decoder = ElementFactory.make("avdec_aac", "decoder");
-				decoder = ElementFactory.make("avdec_aac_fixed", "decoder");
-			}
-			//Element decoder = ElementFactory.make("avdec_aac", "decoder");
-
-			Element audioConvert = ElementFactory.make("audioconvert", "converter");
-			Element audioResample = ElementFactory.make("audioresample", "resampler");
-			Element audioSink = ElementFactory.make("autoaudiosink", "sink");
-
-			if (appSrc == null || decoder == null || audioSink == null) {
-				System.err.println("Could not create all GStreamer elements.");
-				if (appSrc != null) {
-					appSrc.close();
-					appSrc = null;
-				}
-				pipeline.close();
-				pipeline = null;
-				return false;
-			}
-
-			pipeline.getBus().connect(GST_ERROR_LISTENER);
-			pipeline.getBus().connect(GST_STATE_CHANGED_LISTENER);
-
-			//Set Caps for Raw AAC
-			//String capstr = "audio/mpeg, mpegversion=(int)4, stream-format=(string)raw, plc=(boolean)true, codec_data=(buffer)" + toHex(ascBytes, ascBytes.length);
-			//LOGGER.info("using {}", capstr);
-			//Caps caps = Caps.fromString(capstr);
-			Buffer gstBuffer = new Buffer(ascBytes.length);
-            gstBuffer.map(true).put(ascBytes);
-			gstBuffer.unmap();
-			Caps caps = new Caps();
-			caps.append(new Structure("audio/mpeg",
-				"mpegversion", GType.INT, 4,
-				"stream-format", GType.STRING, "raw",
-				"plc", GType.BOOLEAN, true,
-				//"channels", GType.INT, 2,
-				"codec_data", GstTypes.typeFor(Buffer.class), gstBuffer
-			));
-
-			// Assemble Pipeline
-			pipeline.addMany(appSrc, aacParse, decoder, audioConvert, audioResample, audioSink);
-			if (!Element.linkMany(appSrc, aacParse, decoder, audioConvert, audioResample, audioSink)) {
-				throw new IllegalStateException("link failed");
-			}
-			appSrc.setCaps(caps);
-			appSrc.setStreamType(AppSrc.StreamType.STREAM);
-			//appSrc.set("is-live", true);
-			//appSrc.set("format", Format.TIME.intValue());
-			//appSrc.set("do-timestamp", true);
-
-			// Start Pipeline Playing
-			pipeline.play();
-		} catch (Exception e) {
-			LOGGER.error("Failed to init gstreamer", e);
-			if (appSrc != null) {
-				appSrc.close();
-				appSrc = null;
-			}
-			if (pipeline != null) {
-				pipeline.getBus().disconnect(GST_ERROR_LISTENER);
-				pipeline.getBus().disconnect(GST_STATE_CHANGED_LISTENER);
-				pipeline.close();
-				pipeline = null;
-			}
+        } else {
 			return false;
 		}
 
@@ -302,28 +188,9 @@ public class DabAudioDecoder {
 				if (!mDecode) {
 					break THREADLOOP;
 				}
-				try {
-					byte[] rawAacFrame = mDataQ.poll();
-					if (rawAacFrame == null || rawAacFrame.length == 0)
-						continue THREADLOOP;
-
-                    // Wrap Java byte array into a GStreamer Buffer
-					Buffer gstBuffer = new Buffer(rawAacFrame.length);
-					ByteBuffer nativeBuffer = gstBuffer.map(true);
-					nativeBuffer.put(rawAacFrame);
-					gstBuffer.unmap();
-					gstBuffer.setFlags(EnumSet.of(BufferFlags.LIVE, BufferFlags.RESYNC));
-
-					// Push the buffer downstream
-					FlowReturn ret = appSrc.pushBuffer(gstBuffer);
-					if (ret != FlowReturn.OK) {
-						throw new IllegalStateException("Buffer push failed: " + ret);
-					}
-					/*if (mDecode && pipeline.getState(1000) == State.READY) {
-						pipeline.play();
-					}*/
-				} catch (Exception e) {
-					LOGGER.error(e);
+				byte[] audioData = mDataQ.poll();
+				if (line != null) {
+					line.write(audioData, 0, audioData.length);
 				}
 			}
 			LOGGER.info("exiting decoder thread");
