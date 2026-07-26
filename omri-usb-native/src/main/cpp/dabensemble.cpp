@@ -266,12 +266,13 @@ void DabEnsemble::fig00_00_input(const Fig_00_Ext_00& fig00) {
     m_cifCntHigh = fig00.getCifCountHigh();
     m_cifCntLow = fig00.getCifCountLow();
 
-    if((m_cifCntHigh != m_cifCntHighNext || m_cifCntLow != m_cifCntLowNext) && !m_isInitializing) {
+    //if((m_cifCntHigh != m_cifCntHighNext || m_cifCntLow != m_cifCntLowNext) && !m_isInitializing) {
         //std::cout << m_logTag << " CIF Counter interrupted" << std::endl;
         //std::cout << m_logTag << " FIG 00 Ext 00 CifCnt    : " << +m_cifCntHigh << ":" << +m_cifCntLow << std::endl;
         //std::cout << m_logTag << " FIG 00 Ext 00 CifCntNext: " << +m_cifCntHighNext << ":" << +m_cifCntLowNext << std::endl;
-    }
+    //}
 
+    //todo - this seems off, but not used, so whatever. the count increases by 1, and only on overflow of low (249 max) does the high increase
     m_cifCntHighNext = static_cast<uint8_t>((m_cifCntLowNext >= 246) ? ((m_cifCntHigh+1) % 20) : m_cifCntHigh);
     m_cifCntLowNext = static_cast<uint8_t>((m_cifCntLow + 4) % 250);
 
