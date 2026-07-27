@@ -44,6 +44,9 @@ public:
     }
 
     bool hasCallbacks() {
+        if (callbacks.empty()) {
+            return false;
+        }
         // Remove all callbacks that are gone, only if we are not dispatching.
         if (this->concurrent_dispatcher_count == 0) {
             this->callbacks.erase(std::remove_if(this->callbacks.begin(), this->callbacks.end(),
@@ -61,7 +64,9 @@ public:
     template <typename ... A>
     void invoke(A && ... args)  {
         // Remove all callbacks that are gone
-        hasCallbacks();
+        if (!hasCallbacks()) {
+            return;
+        }
 
         this->concurrent_dispatcher_count++;
 

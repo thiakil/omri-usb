@@ -307,13 +307,17 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             break;
         }
         case Fig::FIG_00_TYPE::SERVICE_COMPONENT_STREAM_CA: {
-            Fig_00_Ext_04 extFour(ficData);
-            m_fig00_04dispatcher.invoke(extFour);
+            if (m_fig00_04dispatcher.hasCallbacks()) {
+                Fig_00_Ext_04 extFour(ficData);
+                m_fig00_04dispatcher.invoke(extFour);
+            }
             break;
         }
         case Fig::FIG_00_TYPE::SERVICE_COMPONENT_LANGUAGE: {
-            Fig_00_Ext_05 extFive(ficData);
-            m_fig00_05dispatcher.invoke(extFive);
+            if (m_fig00_05dispatcher.hasCallbacks()) {
+                Fig_00_Ext_05 extFive(ficData);
+                m_fig00_05dispatcher.invoke(extFive);
+            }
             break;
         }
         case Fig::FIG_00_TYPE::SERVICE_LINKING_INFORMATION: {
@@ -322,8 +326,10 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             break;
         }
         case Fig::FIG_00_TYPE::CONFIGURATION_INFORMATION: {
-            Fig_00_Ext_07 extSeven(ficData);
-            m_fig00_07dispatcher.invoke(extSeven);
+            if (m_fig00_07dispatcher.hasCallbacks()) {
+                Fig_00_Ext_07 extSeven(ficData);
+                m_fig00_07dispatcher.invoke(extSeven);
+            }
             break;
         }
         case Fig::FIG_00_TYPE::SERVICE_COMPONENT_GLOBAL_DEFINITION: {
@@ -405,8 +411,10 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             break;
         }
         case Fig::FIG_00_TYPE::SERVICE_COMPONENT_INFORMATION: {
-            Fig_00_Ext_20 extTwenty(ficData);
-            m_fig00_20dispatcher.invoke(extTwenty);
+            if (m_fig00_20dispatcher.hasCallbacks()) {
+                Fig_00_Ext_20 extTwenty(ficData);
+                m_fig00_20dispatcher.invoke(extTwenty);
+            }
             break;
         }
         case Fig::FIG_00_TYPE::FREQUENCY_INFORMATION: {
@@ -420,13 +428,17 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             break;
         }
         case Fig::FIG_00_TYPE::OE_ANNOUNCEMENT_SUPPORT: {
-            Fig_00_Ext_25 ext5Twenty(ficData);
-            m_fig00_25dispatcher.invoke(ext5Twenty);
+            if (m_fig00_25dispatcher.hasCallbacks()) {
+                Fig_00_Ext_25 ext5Twenty(ficData);
+                m_fig00_25dispatcher.invoke(ext5Twenty);
+            }
             break;
         }
         case Fig::FIG_00_TYPE::OE_ANNOUNCEMENT_SWITCHING: {
-            Fig_00_Ext_26 ext6Twenty(ficData);
-            m_fig00_26dispatcher.invoke(ext6Twenty);
+            if (m_fig00_26dispatcher.hasCallbacks()) {
+                Fig_00_Ext_26 ext6Twenty(ficData);
+                m_fig00_26dispatcher.invoke(ext6Twenty);
+            }
             break;
         }
         default:
