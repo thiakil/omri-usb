@@ -1607,5 +1607,30 @@ bool DabEnsemble::isFig00Complete(const Fig::FIG_00_TYPE fig00Type) {
 }
 bool DabEnsemble::isFig01Complete(const Fig::FIG_01_TYPE fig01Type) {
     bool isDone = false;
+    switch (fig01Type) {
+        case Fig::FIG_01_TYPE::ENSEMBLE_LABEL: {
+            isDone = m_fig100done;
+            break;
+        }
+        case Fig::FIG_01_TYPE::PROGRAMME_SERVICE_LABEL: {
+            isDone = m_fig101done;
+            break;
+        }
+        case Fig::FIG_01_TYPE::SERVICE_COMPONENT_LABEL: {
+            isDone = m_fig104done;
+            break;
+        }
+        case Fig::FIG_01_TYPE::DATA_SERVICE_LABEL: {
+            isDone = m_fig105done;
+            break;
+        }
+        case Fig::FIG_01_TYPE::XPAD_USERAPPLICATION_LABEL: {
+            isDone = m_fig106done;
+            break;
+        }
+        default: {
+            break;
+        }
+    }
     return isDone;
 }

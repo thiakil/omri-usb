@@ -133,7 +133,7 @@ void FicParser::call(const std::vector<uint8_t> &data, bool rfLock) {
         if(FIB_CRC_CHECK(fib.data())) {
             if (m_fibProcessThreadRunning) {
                 if (!m_fibDataQueue.try_enqueue(fib)) {
-                    std::clog << M_LOG_TAG << "FIB queue full" << std::endl;
+                    std::cerr << M_LOG_TAG << "FIB queue full";
                 }
             }
             size_t sz = m_fibDataQueue.size_approx();
@@ -171,14 +171,14 @@ void FicParser::processFib() {
     while (m_fibProcessThreadRunning) {
         //std::clog <<  "FIB waiting" << std::endl;
         if(int numDequeued = m_fibDataQueue.wait_dequeue_bulk_timed(fibDataBuffer, 10, timeout)) {
-            //std::clog <<  "FIB stopped waiting, has data" << std::endl;
+            //std::cout <<  "Dequeued " << numDequeued << " FIGs" << std::endl;
             for (int iFib = 0; iFib < numDequeued; iFib++) {
                 std::vector<uint8_t> &fibData = fibDataBuffer[iFib];
                 try {
                     auto figIter = fibData.begin();
                     auto remainingBytes = std::distance(figIter, fibData.end());
                     if (remainingBytes < 2) {
-                        std::cout << M_LOG_TAG << "popped FIB too short: exp:2, rcv:" << +remainingBytes
+                        std::clog << M_LOG_TAG << "popped FIB too short: exp:2, rcv:" << +remainingBytes
                                   << std::endl;
                         continue;
                     }
@@ -191,7 +191,7 @@ void FicParser::processFib() {
                         if (figType != 7 && figLength != 31 && figLength > 0) {
                             remainingBytes = std::distance(figIter, fibData.end());
                             if (remainingBytes < figLength) {
-                                std::cout << M_LOG_TAG << "FIG too short: exp:" << +figLength
+                                std::clog << M_LOG_TAG << "FIG too short: exp:" << +figLength
                                           << ", rcv:"
                                           << +remainingBytes << std::endl;
                             }
@@ -229,32 +229,39 @@ void FicParser::processFib() {
             //std::clog <<  "FIB stopped waiting, NO data" << std::endl;
         }
     }
-    std::stringstream logMsg;
-    logMsg << M_LOG_TAG << "FIB Processor thread stopped: " << threadName;
-    std::cout << logMsg.rdbuf() << std::endl;
+    std::cout << M_LOG_TAG << "FIB Processor thread stopped: " << threadName  << std::endl;
 }
 
 void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
     //ficData[0] ensured by the calling thread - figLength > 0
     const auto figType = static_cast<Fig::FIG_00_TYPE>(ficData[0] & 0x1Fu);
+    //std::cout << "Found FIB 0/"<< figType << std::endl;
     switch (figType) {
         case Fig::FIG_00_TYPE::ENSEMBLE_INFORMATION: {
             Fig_00_Ext_00 extZero(ficData);
             m_fig00_00dispatcher.invoke(extZero);
 
-            bool done{false};
-            if(!contains<Fig_00_Ext_00>(m_parsedFig0000, extZero)) {
-                m_parsedFig0000.push_back(extZero);
-            } else {
-                done = true;
-            }
+            if (!m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                bool done{false};
+                if(!contains<Fig_00_Ext_00>(m_parsedFig0000, extZero)) {
+                    if (m_parsedFig0000.size() > 100) {
+                        m_parsedFig0000.clear();
+                        std::clog << "Cache too big, clearing FIG 0_00" <<std::endl;
+                    }
+                    m_parsedFig0000.push_back(extZero);
+                    std::clog << "Adding FIG 0_00, cif: " << (extZero.getCifCountHigh() * 250 + extZero.getCifCountLow()) << " stored count: "<< m_parsedFig0000.size() << std::endl;
+                } else {
+                    done = true;
+                }
 #if defined(LOG_DETAILLED_FIG_ANALYSIS)
-            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
-                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
-            }
+                if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                    std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+                }
 #endif
-            if (done) {
-                m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::ENSEMBLE_INFORMATION);
+                if (done) {
+                    m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::ENSEMBLE_INFORMATION);
+                    m_parsedFig0000.clear();
+                }
             }
             break;
         }
@@ -262,19 +269,27 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             Fig_00_Ext_01 extOne(ficData);
             m_fig00_01dispatcher.invoke(extOne);
 
-            bool done{false};
-            if(!contains<Fig_00_Ext_01>(m_parsedFig0001, extOne)) {
-                m_parsedFig0001.push_back(extOne);
-            } else {
-                done = true;
-            }
+            if (!m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                bool done{false};
+                if(!contains<Fig_00_Ext_01>(m_parsedFig0001, extOne)) {
+                    if (m_parsedFig0001.size() > 100) {
+                        m_parsedFig0001.clear();
+                        std::clog << "Cache too big, clearing FIG 0_01" <<std::endl;
+                    }
+                    m_parsedFig0001.push_back(extOne);
+                    std::clog << "Adding FIG 0001, stored count: "<< m_parsedFig0001.size() << std::endl;
+                } else {
+                    done = true;
+                }
 #if defined(LOG_DETAILLED_FIG_ANALYSIS)
-            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
-                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
-            }
+                if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                    std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+                }
 #endif
-            if (done) {
-                m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::BASIC_SUBCHANNEL_ORGANIZATION);
+                if (done) {
+                    m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::BASIC_SUBCHANNEL_ORGANIZATION);
+                    m_parsedFig0001.clear();
+                }
             }
             break;
         }
@@ -282,21 +297,28 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             Fig_00_Ext_02 extTwo(ficData);
             m_fig00_02dispatcher.invoke(extTwo);
 
-            bool done{false};
-            if(!contains<Fig_00_Ext_02>(m_parsedFig0002, extTwo)) {
-                m_parsedFig0002.push_back(extTwo);
-            } else {
-                done = true;
-            }
+            if (!m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                bool done{false};
+                if(!contains<Fig_00_Ext_02>(m_parsedFig0002, extTwo)) {
+                    if (m_parsedFig0002.size() > 100) {
+                        m_parsedFig0002.clear();
+                        std::clog << "Cache too big, clearing FIG 0_02" <<std::endl;
+                    }
+                    m_parsedFig0002.push_back(extTwo);
+                    std::clog << "Adding FIG 0002,  stored count: "<< m_parsedFig0002.size() << std::endl;
+                } else {
+                    done = true;
+                }
 #if defined(LOG_DETAILLED_FIG_ANALYSIS)
-            std::string hexStr = Fig::toHexString(ficData);
-            std::cout << M_LOG_TAG << "FIG 0/" << +figType << " : " << hexStr << std::endl;
-            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
-                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
-            }
+                std::string hexStr = Fig::toHexString(ficData);
+                std::cout << M_LOG_TAG << "FIG 0/" << +figType << " : " << hexStr << std::endl;
+                if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                    std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+                }
 #endif
-            if (done) {
-                m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::BASIC_SERVICE_COMPONENT_DEFINITION);
+                if (done) {
+                    m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::BASIC_SERVICE_COMPONENT_DEFINITION);
+                }
             }
             break;
         }
@@ -336,21 +358,29 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             Fig_00_Ext_08 extEight(ficData);
             m_fig00_08dispatcher.invoke(extEight);
 
-            bool done{false};
-            if(!contains<Fig_00_Ext_08>(m_parsedFig0008, extEight)) {
-                m_parsedFig0008.push_back(extEight);
-            } else {
-                done = true;
-            }
+            if (!m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                bool done{false};
+                if(!contains<Fig_00_Ext_08>(m_parsedFig0008, extEight)) {
+                    if (m_parsedFig0008.size() > 100) {
+                        m_parsedFig0008.clear();
+                        std::clog << "Cache too big, clearing FIG 0_08" <<std::endl;
+                    }
+                    m_parsedFig0008.push_back(extEight);
+                    std::clog << "Adding FIG 0008,  stored count: "<< m_parsedFig0008.size() << std::endl;
+                } else {
+                    done = true;
+                }
 #if defined(LOG_DETAILLED_FIG_ANALYSIS)
-            std::string hexStr = Fig::toHexString(ficData);
-            std::cout << M_LOG_TAG << "FIG 0/" << +figType << " : " << hexStr << std::endl;
-            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
-                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
-            }
+                std::string hexStr = Fig::toHexString(ficData);
+                std::cout << M_LOG_TAG << "FIG 0/" << +figType << " : " << hexStr << std::endl;
+                if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                    std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+                }
 #endif
-            if (done) {
-                m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::SERVICE_COMPONENT_GLOBAL_DEFINITION);
+                if (done) {
+                    m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::SERVICE_COMPONENT_GLOBAL_DEFINITION);
+                    m_parsedFig0008.clear();
+                }
             }
             break;
         }
@@ -368,19 +398,27 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
             Fig_00_Ext_13 ext3Ten(ficData);
             m_fig00_13dispatcher.invoke(ext3Ten);
 
-            bool done{false};
-            if(!contains<Fig_00_Ext_13>(m_parsedFig0013, ext3Ten)) {
-                m_parsedFig0013.push_back(ext3Ten);
-            } else {
-                done = true;
-            }
+            if (!m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                bool done{false};
+                if(!contains<Fig_00_Ext_13>(m_parsedFig0013, ext3Ten)) {
+                    if (m_parsedFig0013.size() > 100) {
+                        m_parsedFig0013.clear();
+                        std::clog << "Cache too big, clearing FIG 0_13" <<std::endl;
+                    }
+                    m_parsedFig0013.push_back(ext3Ten);
+                    std::clog << "Adding FIG 0013,  stored count: "<< m_parsedFig0013.size() << std::endl;
+                } else {
+                    done = true;
+                }
 #if defined(LOG_DETAILLED_FIG_ANALYSIS)
-            if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
-                std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
-            }
+                if (done && m_fig00IsCompleteDispatcher.invokeAndReturn<bool>(false, figType)) {
+                    std::clog << M_LOG_TAG << " ServiceSanity FIG 0/" << +figType << " was already done" << std::endl;
+                }
 #endif
-            if (done) {
-                m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::USERAPPLICATION_INFORMATION);
+                if (done) {
+                    m_fig00DoneDispatcher.invoke(Fig::FIG_00_TYPE::USERAPPLICATION_INFORMATION);
+                    m_parsedFig0013.clear();
+                }
             }
             break;
         }
@@ -448,21 +486,26 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
 }
 
 void FicParser::parseFig_01(const std::vector<uint8_t>& ficData) {
+    auto fig1Type = ficData[0] & 0x07u;
     //ficData[0] ensured by the calling thread - figLEngth > 0
-    switch(ficData[0] & 0x07u) {
+    switch(fig1Type) {
         case Fig::FIG_01_TYPE::ENSEMBLE_LABEL: {
             Fig_01_Ext_00 extZero(ficData);
             m_fig01_00dispatcher.invoke(extZero);
 
-            bool done{false};
-            if(!contains<Fig_01_Ext_00>(m_parsedFig0100, extZero)) {
-                m_parsedFig0100.push_back(extZero);
-            } else {
-                done = true;
-            }
+            if (!m_fig01IsCompleteDispatcher.invokeAndReturn<bool>(false, fig1Type)) {
+                bool done{false};
+                if(!contains<Fig_01_Ext_00>(m_parsedFig0100, extZero)) {
+                    m_parsedFig0100.push_back(extZero);
+                    std::clog << "Adding FIG 0100, stored count: "<< m_parsedFig0100.size() << std::endl;
+                } else {
+                    done = true;
+                }
 
-            if (done) {
-                m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::ENSEMBLE_LABEL);
+                if (done) {
+                    m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::ENSEMBLE_LABEL);
+                    m_parsedFig0100.clear();
+                }
             }
             break;
         }
@@ -478,15 +521,19 @@ void FicParser::parseFig_01(const std::vector<uint8_t>& ficData) {
                    << "' short:'" << extOne.getProgrammeServiceShortLabel() << "'";
             std::cout << logStr.rdbuf() << std::endl;
 #endif
-            bool done{false};
-            if(!contains<Fig_01_Ext_01>(m_parsedFig0101, extOne)) {
-                m_parsedFig0101.push_back(extOne);
-            } else {
-                done = true;
-            }
+            if (!m_fig01IsCompleteDispatcher.invokeAndReturn<bool>(false, fig1Type)) {
+                bool done{false};
+                if(!contains<Fig_01_Ext_01>(m_parsedFig0101, extOne)) {
+                    m_parsedFig0101.push_back(extOne);
+                    std::clog << "Adding FIG 0101, stored count: "<< m_parsedFig0101.size() << std::endl;
+                } else {
+                    done = true;
+                }
 
-            if (done) {
-                m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::PROGRAMME_SERVICE_LABEL);
+                if (done) {
+                    m_fig01DoneDispatcher.invoke(Fig::FIG_01_TYPE::PROGRAMME_SERVICE_LABEL);
+                    m_parsedFig0101.clear();
+                }
             }
             break;
         }
@@ -509,7 +556,7 @@ void FicParser::parseFig_01(const std::vector<uint8_t>& ficData) {
             break;
         }
         default:
-            std::clog << M_LOG_TAG << "Unknown Extension1: " << +(ficData[0] & 0x07u) << std::endl;
+            std::clog << M_LOG_TAG << "Unknown Extension1: " << +fig1Type << std::endl;
             break;
     }
 
