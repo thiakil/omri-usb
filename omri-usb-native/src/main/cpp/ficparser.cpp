@@ -486,7 +486,7 @@ void FicParser::parseFig_00(const std::vector<uint8_t>& ficData) {
 }
 
 void FicParser::parseFig_01(const std::vector<uint8_t>& ficData) {
-    auto fig1Type = ficData[0] & 0x07u;
+    auto fig1Type = static_cast<Fig::FIG_01_TYPE>(ficData[0] & 0x07u);
     //ficData[0] ensured by the calling thread - figLEngth > 0
     switch(fig1Type) {
         case Fig::FIG_01_TYPE::ENSEMBLE_LABEL: {
