@@ -102,6 +102,7 @@ public interface RadioServiceDabComponent {
 
 	/**
 	 * Indicates if a forward error correction (FEC) scheme is applied to this {@link RadioServiceDabComponent}
+	 * Packet mode only.
 	 * @return a boolean indicating if a forward error correction (FEC) scheme is applied to this {@link RadioServiceDabComponent}
 	 */
 	public boolean isFecSchemeApplied();
