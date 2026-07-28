@@ -92,4 +92,7 @@ export interface ServiceInfo {
   serviceLabel: string;
   serviceId: number;
   frequency: number;
+  bitrate: number;
+  programmeType: number;
+  programmeTypeDynamic: boolean;
 }

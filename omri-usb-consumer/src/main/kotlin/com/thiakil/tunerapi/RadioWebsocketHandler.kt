@@ -117,7 +117,6 @@ class RadioWebsocketHandler(
         tuner: Tuner,
         foundService: RadioService
     ) {
-
     }
 
     override fun radioServiceStarted(
@@ -175,6 +174,13 @@ class RadioWebsocketHandler(
         if (visualMetadata is VisualDabSlideShow) {
             sendMessageSync(DabSlideshow(visualMetadata))
         }
+    }
+
+    override fun tunerUpdatedService(
+        tuner: Tuner,
+        updatedService: RadioService
+    ) {
+        sendMessageSync(ServiceList(tuner))
     }
 
     companion object {

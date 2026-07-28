@@ -84,4 +84,12 @@ public interface RadioService {
 	 */
 	public ArrayList<RadioService> getFollowingServices();
 
+	/**
+	 * Update the service with newly received info - e.g. DAB ensemble/service info regular update packets
+	 *
+	 * @param newData the newly received data. The Identity elements checked in {@link #equalsRadioService} must always match
+	 * @return whether anything was actually updated (and should be saved)
+	 */
+	boolean checkForUpdates(RadioService newData);
+
 }

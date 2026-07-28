@@ -101,9 +101,8 @@ void JTunerUsbDevice::ensembleReady(DabEnsemble& ensemble) {
             dabServiceObject.setIsProgrammeService(JNI_FALSE);
         }
 
-        LocalRef<jstring> genrePty = jenny::toJavaString(enve, srv->getProgrammeTypeFullName().c_str());
-
-        dabServiceObject.addGenre(genrePty);
+        dabServiceObject.setProgrammeType(srv->getProgrammeTypeCode());
+        dabServiceObject.setProgrammeTypeDynamic(srv->isProgrammeTypeDynamic() ? JNI_TRUE : JNI_FALSE);
 
         //DABServiceComponent creation
         for(const auto& srvComp : srv->getServiceComponents()) {

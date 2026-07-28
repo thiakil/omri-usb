@@ -1,10 +1,9 @@
 package org.omri.radio.impl;
 
-import io.github.landerlyoung.jenny.NativeMethodProxy;
-import io.github.landerlyoung.jenny.NativeProxy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NullMarked;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceDabComponent;
@@ -33,12 +32,13 @@ import java.util.Objects;
  * @author Fabian Sattler, IRT GmbH
  */
 
+@NullMarked
 public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServiceDab, RadioServiceDabNative, Serializable {
 
 	private static final long serialVersionUID = 4382868398713243924L;
 
 	private static final Logger LOGGER = LogManager.getLogger("DabService");
-	
+
 	private int mEnsembleEcc = 0;
 	private int mEnsembleId= 0;
 	private String mEnsembleLabel = "";
@@ -50,6 +50,8 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 	private String mShortServiceLabel = "";
 	private int mServiceId = 0;
 	private boolean mIsProgrammeService = false;
+	private int programmeType = PROGRAMME_TYPE_UNSET;
+	private boolean isProgrammeTypeDynamic = false;
 	final private List<RadioServiceDabComponent> mServiceComponents = new ArrayList<RadioServiceDabComponent>();
 
 	@Override
@@ -156,6 +158,22 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 		mIsProgrammeService = isProg;
 	}
 
+	public void setProgrammeType(int genrePty) {
+		this.programmeType = genrePty;
+	}
+
+	public int getProgrammeType() {
+		return this.programmeType;
+	}
+
+	public boolean isProgrammeTypeDynamic() {
+		return isProgrammeTypeDynamic;
+	}
+
+	public void setProgrammeTypeDynamic(boolean programmeTypeDynamic) {
+		isProgrammeTypeDynamic = programmeTypeDynamic;
+	}
+
 	@Override
 	public List<RadioServiceDabComponent> getServiceComponents() {
 		return mServiceComponents;
@@ -181,6 +199,51 @@ public class RadioServiceDabImpl extends RadioServiceImpl implements RadioServic
 		}
 
 		return false;
+	}
+
+	@Override
+	public boolean checkForUpdates(RadioService newData) {
+		if (!(newData instanceof RadioServiceDabImpl other) || !equalsRadioService(newData)) {
+			throw new IllegalArgumentException("Data did not match core details");
+		}
+		boolean changed = false;
+		if (!getEnsembleLabel().equals(other.getEnsembleLabel())) {
+			changed = true;
+			setEnsembleLabel(other.getEnsembleLabel());
+		}
+		if (!getEnsembleShortLabel().equals(other.getEnsembleShortLabel())) {
+			changed = true;
+			setEnsembleShortLabel(other.getEnsembleShortLabel());
+		}
+		if (isCaProtected() != other.isCaProtected()) {
+			changed = true;
+			setIsCaProtected(other.isCaProtected());
+		}
+		if (getCaId() != other.getCaId()) {
+			changed = true;
+			setCaId(other.getCaId());
+		}
+		if (!getServiceLabel().equals(other.getServiceLabel())) {
+			changed = true;
+			setServiceLabel(other.getServiceLabel());
+		}
+		if (!getShortLabel().equals(other.getShortLabel())) {
+			changed = true;
+			setShortLabel(other.getShortLabel());
+		}
+		if (isProgrammeService() != other.isProgrammeService()) {
+			changed = true;
+			setIsProgrammeService(other.isProgrammeService());
+		}
+		if (getProgrammeType() != other.getProgrammeType()) {
+			changed = true;
+			setProgrammeType(other.getProgrammeType());
+		}
+		if (isProgrammeTypeDynamic() != other.isProgrammeTypeDynamic()) {
+			changed = true;
+			setProgrammeTypeDynamic(other.isProgrammeTypeDynamic());
+		}
+		return changed;
 	}
 
 	@Override

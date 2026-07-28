@@ -168,7 +168,7 @@ function App() {
   let content;
   if (serviceListActive) {
     content = (<MainWrapper headerText="Services" onBack={closeServiceList} signalIcon={signalIcon} signalColour={signalColour}>
-      <div className="w-11/12 m-auto min-h-0 py-2 grow">
+      <div className="min-h-0 py-2 px-4 grow">
         <ServiceList services={services} startService={startService} currentService={currentService}></ServiceList>
       </div>
     </MainWrapper>);

@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.jspecify.annotations.NonNull;
 import org.omri.radio.Radio;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
@@ -318,6 +319,11 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 			saveSrvObj.put("genres", genreArr);
 		}
 
+		if (service.getProgrammeType() != RadioServiceDab.PROGRAMME_TYPE_UNSET) {
+			saveSrvObj.put("programmeType", service.getProgrammeType());
+			saveSrvObj.put("programmeTypeDynamic", service.isProgrammeTypeDynamic());
+		}
+
 		if (!service.getFollowingServices().isEmpty()) {
 			JSONArray sfServicesArr = new JSONArray();
 			for (RadioService srv : service.getFollowingServices()) {
@@ -439,6 +445,13 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 			JSONArray genreArr = srvObj.getJSONArray("genres");
 			for (int l = 0; l < genreArr.length(); l++) {
 				dabSrv.addGenre(genreArr.getString(l));
+			}
+		}
+
+		if (srvObj.has("programmeType")) {
+			dabSrv.setProgrammeType(srvObj.getInt("programmeType"));
+			if (srvObj.has("programmeTypeDynamic")) {
+				dabSrv.setProgrammeTypeDynamic(srvObj.getBoolean("programmeTypeDynamic"));
 			}
 		}
 
@@ -637,5 +650,10 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 	@Override
 	public boolean addRadioServiceFromParams() {
 		return false;
+	}
+
+	@Override
+	public void radioServiceChanged(@NonNull RadioService radioService) {
+		scheduleSaveServices(radioService.getRadioServiceType());
 	}
 }

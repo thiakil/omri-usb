@@ -21,7 +21,9 @@ import java.util.List;
  * @author Fabian Sattler, IRT GmbH
  */
 public interface RadioServiceDab extends RadioService {
-	
+
+	int PROGRAMME_TYPE_UNSET = 0xFF;
+
 	/**
 	 * Returns the extended country code (ECC) for the DAB Ensemble this {@link RadioServiceDab} belongs to
 	 * @return the extended country code (ECC) for the DAB Ensemble this {@link RadioServiceDab} belongs to
@@ -81,6 +83,23 @@ public interface RadioServiceDab extends RadioService {
 	 * @return indication for programme or data service
 	 */
 	public boolean isProgrammeService();
+
+	/**
+	 * Get the DAB Programme Type code, to be used in conjunction with TS 101 75, section 5.8 (English) and Annex A (others)
+	 * @return the raw code, or {@link RadioServiceDab#PROGRAMME_TYPE_UNSET} if not set
+	 */
+	int getProgrammeType();
+
+	/**
+	 * Maps the Static/Dynamic flag of the programme type.
+	 * <p></p>
+	 * When the S/D flag is set to 0 (false here) it indicates that the programme type does not change within a programme as
+	 * the content changes for individual items but indicates the overall genre of the programme. When the S/D
+	 * flag is set to 1 (true here) it indicates that the programme type does follow the various items within a programme
+	 *
+	 * @return whether the Programme Type is Dynamic
+	 */
+	boolean isProgrammeTypeDynamic();
 	
 	/**
 	 * Returns a list with the {@link RadioServiceDabComponent}s associated with this {@link RadioServiceDab}

@@ -428,29 +428,41 @@ public class TunerUsbImpl implements TunerUsb {
 
 	@Override
 	public void serviceFound(RadioServiceDab service) {
-		if (service != null) {
-			final List<RadioService> currentServices = getRadioServices();
-			try {
-				if (currentServices != null) {
-					for (RadioService currentService : currentServices) {
-						if (service.equals(currentService)) {
-							LOGGER.debug("serviceFound already known: " + service);
-							return;
-						}
+		if (service == null) {
+			return;
+		}
+        LOGGER.debug("serviceFound: {}", service);
+        final List<RadioService> currentServices = getRadioServices();
+		RadioService existingService = null;
+		try {
+			for (RadioService currentService : currentServices) {
+				if (service.equals(currentService)) {
+					LOGGER.debug("serviceFound already known: " + service);
+					existingService = currentService;
+					break;
+				}
+			}
+		} catch (Exception e) {
+            LOGGER.error("Error during service existence check", e);
+        }
+
+		if (existingService == null) {
+			// add with scheduled serialization
+			RadioServiceManager.getInstance().addRadioService(service);
+
+			synchronized (mTunerlisteners) {
+				for (TunerListener listener : mTunerlisteners) {
+					listener.tunerScanServiceFound(this, service);
+				}
+			}
+		} else {
+			if (existingService.checkForUpdates(service)) {
+				RadioServiceManager.getInstance().radioServiceChanged(existingService);
+				synchronized (mTunerlisteners) {
+					for (TunerListener listener : mTunerlisteners) {
+						listener.tunerUpdatedService(this, existingService);
 					}
 				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		LOGGER.debug("serviceFound: " + service);
-
-		// add with scheduled serialization
-		RadioServiceManager.getInstance().addRadioService(service);
-
-		synchronized (mTunerlisteners) {
-			for (TunerListener listener : mTunerlisteners) {
-				listener.tunerScanServiceFound(this, service);
 			}
 		}
 	}

@@ -1,11 +1,11 @@
 package org.omri.radio;
 
+import org.jetbrains.annotations.NotNull;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceType;
 
 import java.util.List;
 
-//TODO add to OMRI_BASE
 public interface RadioServiceManager {
 
 	/**
@@ -29,4 +29,11 @@ public interface RadioServiceManager {
 	public void addRadioService(RadioService addSrv);
 
 	public boolean addRadioServiceFromParams();
+
+	/**
+	 * Signal that a service has changed data, and should be saved
+	 *
+	 * @param radioService the updated radio service, MUST already exist in the list
+	 */
+	void radioServiceChanged(@NotNull RadioService radioService);
 }

@@ -28,7 +28,9 @@ public interface RadioServiceDabNative {
     void setIsProgrammeService(boolean isProg);
     void addServiceComponent(RadioServiceDabComponent dabComp);
     //void addServiceComponent(List<RadioServiceDabComponent> dabComp);
-    void addGenre(String genre);
+    //void addGenre(String genre);
+    void setProgrammeType(int genrePty);
+    void setProgrammeTypeDynamic(boolean programmeTypeDynamic);
     void slideshowReceived(VisualDabSlideShow slideShow);
     void labelReceived(Textual label);
     void audioData(final byte[] pcmData, final int channelCount, final int samplingRate);

@@ -57,6 +57,13 @@ public interface TunerListener extends RadioListener {
 	public void tunerScanServiceFound(Tuner tuner, RadioService foundService);
 
 	/**
+	 * Tuner updated an existing service with new over-the-air info
+	 * @param tuner the responsible tuner
+	 * @param updatedService the new service details
+	 */
+	default void tunerUpdatedService(Tuner tuner, RadioService updatedService) {}
+
+	/**
 	 * A {@link RadioService} started
 	 * @param startedRadioService the {@link RadioService} which has started
 	 */
