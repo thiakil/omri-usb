@@ -1,5 +1,5 @@
 /// <reference types="mdui/jsx.en" />
-import {RefObject, useEffect, useRef, useState} from "react";
+import {RefObject, useEffect, useMemo, useRef, useState} from "react";
 import useWebSocket from "react-use-websocket";
 import {ServiceInfo} from "./websocketTypes";
 import {PROGRAMME_TYPE_TABLES, PROGRAMME_TYPE_UNSET} from "./ProgrammeTypes";
@@ -37,11 +37,11 @@ function ServiceEntry({svc, startService, currentService, targetRef}: ServiceIte
 }
 
 export default function ServiceList({services, startService, currentService}: ServiceListProps) {
-  const serviceMap = services.reduce<Record<string, Array<ServiceInfo>>>((previousValue, currentValue)=>{
+  const serviceMap = useMemo(()=> services.reduce<Record<string, Array<ServiceInfo>>>((previousValue, currentValue)=>{
     const services = previousValue[currentValue.ensembleLabel] = previousValue[currentValue.ensembleLabel] || []
     services.push(currentValue)
     return previousValue;
-  }, {});
+  }, {}), [services]);
 
   const targetRef = useRef<HTMLElement>(null);
   useEffect(() => {
