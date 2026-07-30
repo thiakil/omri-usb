@@ -94,14 +94,12 @@ code {
     monospace;
 }
 
-.size-46vh {
+.slideshow-holder {
   width: 46vh;
-}
-.h-46vh {
-  height: 46vh;
+  min-height: calc(46vh / 1.333); /* 4:3 */
 }
 
-.size-46vh mdui-icon {
+.slideshow-holder mdui-icon {
   font-size: 15vh;
 }
 
