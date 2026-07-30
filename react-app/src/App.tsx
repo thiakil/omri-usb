@@ -234,7 +234,7 @@ function App() {
             <div className="buttons-bar flex justify-center py-3 gap-2">
               <mdui-button-icon icon="queue_music"
                                 onClick={() => setPopupActive(PopupType.SERVICE_LIST)}></mdui-button-icon>
-              {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_previous"
+              {currentSvcIdx > -1 ? <mdui-button-icon icon="navigate_before"
                                                       onClick={prevService}></mdui-button-icon> : undefined}
               {currentService ? (<>
                 <mdui-button-icon icon="stop" onClick={stopService}
@@ -242,9 +242,9 @@ function App() {
                 <mdui-button-icon
                                   onClick={()=>favourites.toggleFavourite(currentService)}
                 ><span className={isFav ? "material-symbols-round-filled" : "material-symbols-round"}>
-                        {isFav ? "favorite" : "heart_plus"}</span></mdui-button-icon>
+                        star</span></mdui-button-icon>
               </>) : undefined}
-              {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_next"
+              {currentSvcIdx > -1 ? <mdui-button-icon icon="navigate_next"
                                                       onClick={nextService}></mdui-button-icon> : undefined}
               <mdui-button-icon onClick={() => setPopupActive(PopupType.FAVOURITES_LIST)} icon="folder_special">
               </mdui-button-icon>
