@@ -98,7 +98,7 @@ function App() {
       }
     }
   }, [setServices, setCurrentService, setCurrentDls, setSlideshowImage, setSignalIcon, setSignalColour, setTunerStatus])
-  const { sendJsonMessage/*, lastJsonMessage, readyState */} = useWebSocket(`ws://${window.location.host}/socket`, socketConfig);
+  const { sendJsonMessage, readyState } = useWebSocket(`ws://${window.location.host}/socket`, socketConfig);
 
   const stopService = useCallback( ()=> {
     sendJsonMessage({type: 'stop_service'})
@@ -168,31 +168,52 @@ function App() {
   }, [apiReadyState,sendProtobufMessage]);
 
   let content;
-  if (serviceListActive) {
-    content = (<MainWrapper headerText="Services" onBack={closeServiceList} signalIcon={signalIcon} signalColour={signalColour}>
-      <div className="min-h-0 py-2 px-4 grow">
-        <ServiceList services={services} startService={startService} currentService={currentService}></ServiceList>
-      </div>
-    </MainWrapper>);
+  if (readyState === ReadyState.OPEN) {
+    if (serviceListActive) {
+      content = (
+          <MainWrapper headerText="Services" onBack={closeServiceList} signalIcon={signalIcon}
+                       signalColour={signalColour}>
+            <div className="min-h-0 py-2 px-4 grow">
+              <ServiceList services={services} startService={startService}
+                           currentService={currentService}></ServiceList>
+            </div>
+          </MainWrapper>);
+    } else {
+      content = (
+          <MainWrapper headerText="DAB Radio" signalIcon={signalIcon} signalColour={signalColour}
+                       onBack={mainExitFn} backAction="close">
+            <div className="size-main flex justify-center pt-6">
+              <CurrentlyPlaying
+                  service={currentService}
+                  currentText={currentDls}
+                  onStop={stopService}
+                  currentSlideshow={slideshowImage}
+              ></CurrentlyPlaying>
+            </div>
+            <div className="buttons-bar flex justify-center py-3 gap-2">
+              <mdui-button-icon icon="queue_music"
+                                onClick={() => setServiceListActive(true)}></mdui-button-icon>
+              {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_previous"
+                                                      onClick={prevService}></mdui-button-icon> : undefined}
+              {currentService ? (
+                  <mdui-button-icon icon="stop" onClick={stopService}
+                                    variant="tonal"></mdui-button-icon>
+              ) : undefined}
+              {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_next"
+                                                      onClick={nextService}></mdui-button-icon> : undefined}
+              <mdui-button-icon onClick={() => false} icon="folder_special">
+              </mdui-button-icon>
+            </div>
+          </MainWrapper>
+      )
+    }
   } else {
-    content = (<MainWrapper headerText="DAB Radio" signalIcon={signalIcon} signalColour={signalColour} onBack={mainExitFn} backAction="close">
-          <div className="size-main flex justify-center pt-6">
-            <CurrentlyPlaying
-                service={currentService}
-                currentText={currentDls}
-                onStop={stopService}
-                currentSlideshow={slideshowImage}
-            ></CurrentlyPlaying>
-          </div>
-          <div className="buttons-bar flex justify-center py-3 gap-2">
-            <mdui-button-icon icon="queue_music" onClick={()=>setServiceListActive(true)}></mdui-button-icon>
-            {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_previous" onClick={prevService}></mdui-button-icon> : undefined }
-            {currentService ? (
-                <mdui-button-icon icon="stop" onClick={stopService} variant="tonal"></mdui-button-icon>
-            ) : undefined}
-            {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_next" onClick={nextService}></mdui-button-icon> : undefined }
-            <mdui-button-icon onClick={()=>false} icon="folder_special">
-            </mdui-button-icon>
+    content = (
+        <MainWrapper headerText="DAB Radio"
+                     onBack={mainExitFn} backAction="close">
+          <div className="text-center grow flex items-center justify-center">
+            <mdui-icon name="error_outline" className="align-middle"></mdui-icon>&nbsp;
+            { readyState === ReadyState.CONNECTING ? "Connecting" : "Not connected"}
           </div>
         </MainWrapper>
     )
