@@ -36,7 +36,7 @@ function MainWrapper({headerText= "cell_tower", backAction = "arrow_back", heade
 }
 
 function svcEqual(a: ServiceIdentity, b: ServiceIdentity): boolean {
-  return a.ensembleId === b.ensembleId && a.serviceId === b.ensembleId
+  return a.ensembleId === b.ensembleId && a.serviceId === b.serviceId
 }
 
 function App() {
@@ -238,7 +238,7 @@ function App() {
               {currentService ? (<>
                 <mdui-button-icon icon="stop" onClick={stopService}
                                   variant="tonal"></mdui-button-icon>
-                <mdui-button-icon icon={favourites.contains(currentService) ? "star" : "star_outline"}
+                <mdui-button-icon icon={favourites.contains(currentService) ? "favorite--rounded" : "heart_plus"}
                                   onClick={()=>favourites.toggleFavourite(currentService)}
                 ></mdui-button-icon>
               </>) : undefined}

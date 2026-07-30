@@ -28,18 +28,23 @@
   font-display: swap;
 }
 
-/* fallback */
 @font-face {
-  font-family: 'Material Symbols Outlined';
+  font-family: 'Material Icons Outlined';
   font-style: normal;
   font-weight: 400;
-  src: url(fonts/MaterialSymbolsRounded.ttf) format('truetype');
+  src: url(fonts/MaterialSymbolsOutlined.ttf) format('truetype');
 }
-/* fallback */
 @font-face {
   font-family: 'Material Icons';
   font-style: normal;
   font-weight: 400;
+  src: url(fonts/MaterialSymbolsRounded.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Material Icons Round';
+  font-style: normal;
+  font-weight: 400;
+  font-variation-settings: "FILL" 1;
   src: url(fonts/MaterialSymbolsRounded.ttf) format('truetype');
 }
 
