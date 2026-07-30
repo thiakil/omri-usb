@@ -148,7 +148,7 @@ function App() {
     if (!currentService) {
       return -1
     }
-    return services.findIndex(v=>v.ensembleId === currentService.ensembleId && v.serviceId === currentService.serviceId)
+    return services.findIndex(v=>svcEqual(currentService, v))
   }, [currentService, services]);
 
   const prevService = useCallback(() => {
