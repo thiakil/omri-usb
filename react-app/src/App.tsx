@@ -11,6 +11,13 @@ import PageHeading from "./PageHeading";
 import {Options as WebsocketOptions} from "react-use-websocket/src/lib/types";
 import {hudiy} from "./hudi_protobuf";
 import {useLocalStorage} from "./LocalStorage";
+import {Favourites, ServiceIdentity, FavouritesContext} from "./contexts";
+
+enum PopupType {
+  NONE,
+  SERVICE_LIST = 1,
+  FAVOURITES_LIST
+}
 
 interface MainWrapProps {
   headerText: string
@@ -28,16 +35,36 @@ function MainWrapper({headerText= "cell_tower", backAction = "arrow_back", heade
   </div>)
 }
 
+function svcEqual(a: ServiceIdentity, b: ServiceIdentity): boolean {
+  return a.ensembleId === b.ensembleId && a.serviceId === b.ensembleId
+}
+
 function App() {
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [currentService, setCurrentService] = useState<ServiceInfo|undefined>(undefined);
   const [currentDls, setCurrentDls] = useState<string|undefined>(undefined)
   const [tunerStatus, setTunerStatus] = useState<TunerStatus>(TunerStatus.TUNER_STATUS_NOT_INITIALIZED)
-  const [serviceListActive, setServiceListActive] = useState(false)
+  const [popupActive, setPopupActive] = useState<PopupType>(PopupType.NONE)
   const [slideshowImage, setSlideshowImage] = useState<string|undefined>(undefined)
   const [signalIcon, setSignalIcon] = useState<string|undefined>(undefined)
   const [signalColour, setSignalColour] = useState<"red"|"orange"|"yellow"|"green"|undefined>(undefined)
-  const [bookmarks, setBookmarks] = useLocalStorage<Array<string>>([], 'bookmarks')//TODO useContext
+  const [favouritesStorage, setFavouritesStorage] = useLocalStorage<Array<ServiceIdentity>>([], 'favourites')
+  const favourites = useMemo<Favourites>(()=>{
+    return {
+      contains: svc => favouritesStorage.findIndex(value => svcEqual(svc, value)) !== -1,
+      toggleFavourite: svc => {
+        const without = favouritesStorage.filter(v=>!svcEqual(svc, v))
+        if (without.length < favouritesStorage.length) {
+          setFavouritesStorage(without)
+        } else {
+          setFavouritesStorage([...favouritesStorage, {
+            ensembleId: svc.ensembleId,
+            serviceId: svc.serviceId
+          }])
+        }
+      }
+    }
+  }, [favouritesStorage, setFavouritesStorage])
 
   let socketConfig = useMemo<WebsocketOptions>(()=>{
     return {
@@ -104,14 +131,18 @@ function App() {
     sendJsonMessage({type: 'stop_service'})
   }, [sendJsonMessage]);
 
+  const closePopup = useCallback(() => {
+    setPopupActive(PopupType.NONE)
+  }, [setPopupActive]);
+
   const startService = useCallback((service: ServiceInfo) => {
     sendJsonMessage({
       type: 'start_service',
       ensembleId: service.ensembleId,
       serviceId: service.serviceId,
     })
-    setServiceListActive(false)
-  }, [sendJsonMessage, setServiceListActive]);
+    closePopup()
+  }, [sendJsonMessage, closePopup]);
 
   const currentSvcIdx = useMemo(() => {
     if (!currentService) {
@@ -138,19 +169,15 @@ function App() {
     startService(services[(currentSvcIdx+1) % services.length])
   }, [currentSvcIdx, startService, services]);
 
-  const closeServiceList = useCallback(() => {
-    setServiceListActive(false)
-  }, [setServiceListActive]);
-
   const hudiyCallbacks = useMemo<HudiyNavCallbacks>(()=>({
     onGoBack(): boolean {
-      if (serviceListActive) {
-        closeServiceList()
+      if (popupActive) {
+        closePopup()
         return true;
       }
       return false
     }
-  }), [serviceListActive, closeServiceList])
+  }), [popupActive, closePopup])
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const {sendProtobufMessage, apiReadyState, colorScheme} = useHudiy(hudiyCallbacks)
 
@@ -167,14 +194,27 @@ function App() {
     return undefined
   }, [apiReadyState,sendProtobufMessage]);
 
+  const favouriteServices = useMemo(() => {
+    return services.filter(svc=>favourites.contains(svc))
+  }, [favourites, services]);
+
   let content;
   if (readyState === ReadyState.OPEN) {
-    if (serviceListActive) {
+    if (popupActive === PopupType.SERVICE_LIST) {
       content = (
-          <MainWrapper headerText="Services" onBack={closeServiceList} signalIcon={signalIcon}
+          <MainWrapper headerText="Services" onBack={closePopup} signalIcon={signalIcon}
                        signalColour={signalColour}>
             <div className="min-h-0 py-2 px-4 grow">
               <ServiceList services={services} startService={startService}
+                           currentService={currentService}></ServiceList>
+            </div>
+          </MainWrapper>);
+    } else if (popupActive === PopupType.FAVOURITES_LIST) {
+      content = (
+          <MainWrapper headerText="Favourites" onBack={closePopup} signalIcon={signalIcon}
+                       signalColour={signalColour}>
+            <div className="min-h-0 py-2 px-4 grow">
+              <ServiceList services={favouriteServices} isFavourites startService={startService}
                            currentService={currentService}></ServiceList>
             </div>
           </MainWrapper>);
@@ -192,16 +232,19 @@ function App() {
             </div>
             <div className="buttons-bar flex justify-center py-3 gap-2">
               <mdui-button-icon icon="queue_music"
-                                onClick={() => setServiceListActive(true)}></mdui-button-icon>
+                                onClick={() => setPopupActive(PopupType.SERVICE_LIST)}></mdui-button-icon>
               {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_previous"
                                                       onClick={prevService}></mdui-button-icon> : undefined}
-              {currentService ? (
-                  <mdui-button-icon icon="stop" onClick={stopService}
-                                    variant="tonal"></mdui-button-icon>
-              ) : undefined}
+              {currentService ? (<>
+                <mdui-button-icon icon="stop" onClick={stopService}
+                                  variant="tonal"></mdui-button-icon>
+                <mdui-button-icon icon={favourites.contains(currentService) ? "star" : "star_outline"}
+                                  onClick={()=>favourites.toggleFavourite(currentService)}
+                ></mdui-button-icon>
+              </>) : undefined}
               {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_next"
                                                       onClick={nextService}></mdui-button-icon> : undefined}
-              <mdui-button-icon onClick={() => false} icon="folder_special">
+              <mdui-button-icon onClick={() => setPopupActive(PopupType.FAVOURITES_LIST)} icon="folder_special">
               </mdui-button-icon>
             </div>
           </MainWrapper>
@@ -219,7 +262,9 @@ function App() {
     )
   }
 
-  return content;
+  return (<FavouritesContext value={favourites}>
+    {content}
+  </FavouritesContext>);
 }
 
 export default App;

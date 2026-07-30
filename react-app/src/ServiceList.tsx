@@ -8,6 +8,7 @@ interface ServiceListProps {
   services: Array<ServiceInfo>;
   startService: (svc: ServiceInfo)=>void
   currentService?: ServiceInfo
+  isFavourites?: boolean
 }
 interface ServiceItemProps {
   svc: ServiceInfo;
@@ -36,7 +37,7 @@ function ServiceEntry({svc, startService, currentService, targetRef}: ServiceIte
   )
 }
 
-export default function ServiceList({services, startService, currentService}: ServiceListProps) {
+export default function ServiceList({services, startService, currentService, isFavourites = false}: ServiceListProps) {
   const serviceMap = useMemo(()=> services.reduce<Record<string, Array<ServiceInfo>>>((previousValue, currentValue)=>{
     const services = previousValue[currentValue.ensembleLabel] = previousValue[currentValue.ensembleLabel] || []
     services.push(currentValue)
@@ -53,20 +54,27 @@ export default function ServiceList({services, startService, currentService}: Se
     }*/
   }, []);
 
-  return (<div className="overflow-auto h-full"><mdui-list>
-    {Object.keys(serviceMap).map(ensemble => (
-        <div key={ensemble}>
-          <mdui-list-subheader >{ensemble}</mdui-list-subheader>
-          {serviceMap[ensemble].map(svc=><ServiceEntry
-              key={svc.ensembleId+'-'+svc.serviceId}
-              svc={svc}
-              currentService={currentService}
-              startService={startService}
-              targetRef={targetRef}
-          ></ServiceEntry>) }
-        </div>
-    ))}
-  </mdui-list></div>)
+  let widgetContents;
+  if (services.length) {
+    widgetContents = (<mdui-list>
+      {Object.keys(serviceMap).map(ensemble => (
+          <div key={ensemble}>
+            <mdui-list-subheader >{ensemble}</mdui-list-subheader>
+            {serviceMap[ensemble].map(svc=><ServiceEntry
+                key={svc.ensembleId+'-'+svc.serviceId}
+                svc={svc}
+                currentService={currentService}
+                startService={startService}
+                targetRef={targetRef}
+            ></ServiceEntry>) }
+          </div>
+      ))}
+    </mdui-list>)
+  } else {
+    widgetContents = (<p className="text-center h-full flex items-center justify-center">No services. {isFavourites ? 'Star a service to see it here' : 'Run a scan?'}</p>)
+  }
+
+  return (<div className="overflow-auto h-full">{widgetContents}</div>)
 }
 
 /*<ListGroup key={ensemble} label={ensemble}>
