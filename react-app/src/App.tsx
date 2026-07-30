@@ -4,12 +4,13 @@ import React, {ReactNode, useCallback, useMemo, useState} from 'react';
 import './App.css';
 import useWebSocket, {ReadyState} from 'react-use-websocket';
 import {ReceptionQuality, ServiceInfo, TunerStatus, WSMessage} from './websocketTypes'
-import 'mdui/components/button-icon.js';
+import 'mdui'
 import CurrentlyPlaying from "./CurrentlyPlaying"
 import ServiceList from "./ServiceList";
 import PageHeading from "./PageHeading";
 import {Options as WebsocketOptions} from "react-use-websocket/src/lib/types";
 import {hudiy} from "./hudi_protobuf";
+import {useLocalStorage} from "./LocalStorage";
 
 interface MainWrapProps {
   headerText: string
@@ -36,6 +37,7 @@ function App() {
   const [slideshowImage, setSlideshowImage] = useState<string|undefined>(undefined)
   const [signalIcon, setSignalIcon] = useState<string|undefined>(undefined)
   const [signalColour, setSignalColour] = useState<"red"|"orange"|"yellow"|"green"|undefined>(undefined)
+  const [bookmarks, setBookmarks] = useLocalStorage<Array<string>>([], 'bookmarks')//TODO useContext
 
   let socketConfig = useMemo<WebsocketOptions>(()=>{
     return {
@@ -183,12 +185,14 @@ function App() {
             ></CurrentlyPlaying>
           </div>
           <div className="buttons-bar flex justify-center py-3 gap-2">
-            <mdui-button-icon icon="playlist_play" onClick={()=>setServiceListActive(true)}></mdui-button-icon>
+            <mdui-button-icon icon="queue_music" onClick={()=>setServiceListActive(true)}></mdui-button-icon>
             {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_previous" onClick={prevService}></mdui-button-icon> : undefined }
             {currentService ? (
                 <mdui-button-icon icon="stop" onClick={stopService} variant="tonal"></mdui-button-icon>
             ) : undefined}
             {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_next" onClick={nextService}></mdui-button-icon> : undefined }
+            <mdui-button-icon onClick={()=>false} icon="folder_special">
+            </mdui-button-icon>
           </div>
         </MainWrapper>
     )

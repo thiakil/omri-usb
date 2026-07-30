@@ -2,10 +2,6 @@
 import {RefObject, useEffect, useRef, useState} from "react";
 import useWebSocket from "react-use-websocket";
 import {ServiceInfo} from "./websocketTypes";
-import 'mdui/components/list.js';
-import 'mdui/components/list-item.js';
-import 'mdui/components/list-subheader.js';
-import 'mdui/components/chip.js';
 import {PROGRAMME_TYPE_TABLES, PROGRAMME_TYPE_UNSET} from "./ProgrammeTypes";
 
 interface ServiceListProps {
@@ -19,7 +15,7 @@ interface ServiceItemProps {
   currentService?: ServiceInfo
   targetRef: RefObject<HTMLElement | null>
 }
-//TODO use a setting for this
+//TODO use a setting for this, or the country codes? "National Music" is translated differently in other languages
 const PROGRAMME_TYPE_TABLE = PROGRAMME_TYPE_TABLES.ENGLISH_GENERAL;
 
 function ServiceEntry({svc, startService, currentService, targetRef}: ServiceItemProps) {
