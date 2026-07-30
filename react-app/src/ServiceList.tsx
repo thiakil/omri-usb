@@ -37,12 +37,21 @@ function ServiceEntry({svc, startService, currentService, targetRef}: ServiceIte
   )
 }
 
+type ServiceInfoWithKey = ServiceInfo & {key:string}
 export default function ServiceList({services, startService, currentService, isFavourites = false}: ServiceListProps) {
-  const serviceMap = useMemo(()=> services.reduce<Record<string, Array<ServiceInfo>>>((previousValue, currentValue)=>{
-    const services = previousValue[currentValue.ensembleLabel] = previousValue[currentValue.ensembleLabel] || []
-    services.push(currentValue)
-    return previousValue;
-  }, {}), [services]);
+  const svcByEnsemble: Array<{id: string, services: Array<ServiceInfoWithKey>}> = useMemo(()=> {
+    if (!services.length) {
+      return []
+    }
+    const serviceMap = services.reduce<{[key: string]:Array<ServiceInfoWithKey>}>((previousValue, currentValue) => {
+      const services = previousValue[currentValue.ensembleLabel] = previousValue[currentValue.ensembleLabel] || []
+      services.push({...currentValue, key: currentValue.ensembleId+'-'+currentValue.serviceId})
+      return previousValue;
+    }, {});
+    return Object.keys(serviceMap).map(ensemble => ({
+      id: ensemble, services: serviceMap[ensemble]
+    }))
+  }, [services]);
 
   const targetRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -55,13 +64,13 @@ export default function ServiceList({services, startService, currentService, isF
   }, []);
 
   let widgetContents;
-  if (services.length) {
+  if (svcByEnsemble.length) {
     widgetContents = (<mdui-list>
-      {Object.keys(serviceMap).map(ensemble => (
-          <div key={ensemble}>
-            <mdui-list-subheader >{ensemble}</mdui-list-subheader>
-            {serviceMap[ensemble].map(svc=><ServiceEntry
-                key={svc.ensembleId+'-'+svc.serviceId}
+      {svcByEnsemble.map(ensemble => (
+          <div key={ensemble.id}>
+            <mdui-list-subheader >{ensemble.id}</mdui-list-subheader>
+            {ensemble.services.map(svc=><ServiceEntry
+                key={svc.key}
                 svc={svc}
                 currentService={currentService}
                 startService={startService}
