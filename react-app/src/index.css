@@ -95,8 +95,9 @@ code {
 }
 
 .slideshow-holder {
-  width: 46vh;
-  min-height: calc(46vh / 1.333); /* 4:3 */
+  --slideshow-width: 25vw;
+  width: var(--slideshow-width);
+  min-height: calc(var(--slideshow-width) / 1.333); /* 4:3 */
 }
 
 .slideshow-holder mdui-icon {
