@@ -219,6 +219,7 @@ function App() {
             </div>
           </MainWrapper>);
     } else {
+      const isFav = currentService && favourites.contains(currentService);
       content = (
           <MainWrapper headerText="DAB Radio" signalIcon={signalIcon} signalColour={signalColour}
                        onBack={mainExitFn} backAction="close">
@@ -238,9 +239,10 @@ function App() {
               {currentService ? (<>
                 <mdui-button-icon icon="stop" onClick={stopService}
                                   variant="tonal"></mdui-button-icon>
-                <mdui-button-icon icon={favourites.contains(currentService) ? "favorite--rounded" : "heart_plus"}
+                <mdui-button-icon
                                   onClick={()=>favourites.toggleFavourite(currentService)}
-                ></mdui-button-icon>
+                ><span className={isFav ? "material-symbols-round-filled" : "material-symbols-round"}>
+                        {isFav ? "favorite" : "heart_plus"}</span></mdui-button-icon>
               </>) : undefined}
               {currentSvcIdx > -1 ? <mdui-button-icon icon="skip_next"
                                                       onClick={nextService}></mdui-button-icon> : undefined}
