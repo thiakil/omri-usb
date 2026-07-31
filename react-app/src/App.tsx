@@ -223,7 +223,7 @@ function App() {
       content = (
           <MainWrapper headerText="DAB Radio" signalIcon={signalIcon} signalColour={signalColour}
                        onBack={mainExitFn} backAction="close">
-            <div className="size-main flex justify-center pt-6">
+            <div className="size-main flex justify-center pt-6 grow">
               <CurrentlyPlaying
                   service={currentService}
                   currentText={currentDls}
