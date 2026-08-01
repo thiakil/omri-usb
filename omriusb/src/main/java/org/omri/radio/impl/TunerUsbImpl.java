@@ -49,10 +49,9 @@ public class TunerUsbImpl implements TunerUsb {
 
 	private TunerStatus mTunerStatus = TunerStatus.TUNER_STATUS_NOT_INITIALIZED;
 	private final List<RadioService> mServices = Collections.synchronizedList(new ArrayList<>());
-	private final List<RadioService> mScannedServices = Collections.synchronizedList(new ArrayList<>());
 	private boolean mIsScanning = false;
 	private final List<TunerListener> mTunerlisteners = Collections.synchronizedList(new ArrayList<>());
-	@Nullable private RadioServiceDab mCurrentlyRunningService = null;
+	@Nullable private volatile RadioServiceDab mCurrentlyRunningService = null;
 
 	private final long mUsbDevice;
 
@@ -165,9 +164,6 @@ public class TunerUsbImpl implements TunerUsb {
 				synchronized (mServices) {
 					mServices.clear();
 				}
-				synchronized (mScannedServices) {
-					mScannedServices.clear();
-				}
 				mCurrentlyRunningService = null;
 
 				// stop restore service list
@@ -212,7 +208,9 @@ public class TunerUsbImpl implements TunerUsb {
 		if (getCurrentRunningRadioService() != null) {
 			stopRadioService();
             try {
-                Thread.sleep(300); // allow time to process the request
+                while (getCurrentRunningRadioService() != null) {
+					Thread.sleep(300); // allow time to process the request
+				}
             } catch (InterruptedException e) {
                 LOGGER.error(e);
             }
@@ -220,9 +218,6 @@ public class TunerUsbImpl implements TunerUsb {
 		final UsbHelper usbHelper = UsbHelper.getInstance();
 		if (usbHelper != null) {
 			usbHelper.startEnsembleScan(mUsbDevice);
-			synchronized (mScannedServices) {
-				mScannedServices.clear();
-			}
 		} else {
 			LOGGER.error("startRadioServiceScan: UsbHelper null");
 		}
