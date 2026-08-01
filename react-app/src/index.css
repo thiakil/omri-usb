@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@layer base {
+  [variant=outlined] {
+    border: revert-layer; /* fix tailwind layer overriding :host() rule */
+  }
+}
+
 @font-face {
   font-family: 'Roboto';
   src: url('fonts/Roboto-Regular.ttf') format('truetype');
