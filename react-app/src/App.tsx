@@ -97,11 +97,11 @@ function App() {
     }
     const message = tunerWSMessage as WSMessage
 
-    if (message.type === 'service_list') {
+    if (message.type === WSMessage.Type.service_list) {
       setServices(message.services.sort((a,b)=>{
         return a.frequency - b.frequency || a.serviceLabel.localeCompare(b.serviceLabel);
       }) || [])
-    } else if (message.type === 'tuner_state') {
+    } else if (message.type === WSMessage.Type.tuner_state) {
       if ((tunerStatusRef.current === TunerStatus.TUNER_STATUS_SCANNING) !== (message.status === TunerStatus.TUNER_STATUS_SCANNING)){
         //started or stopped scanning, ensure status is undefined
         resetScanningVars()
@@ -115,11 +115,11 @@ function App() {
         setSignalIcon(undefined)
         setSignalColour(undefined)
       }
-    } else if (message.type === 'dab_text_update'){
+    } else if (message.type === WSMessage.Type.dab_text_update){
       setCurrentDls(message.text)
-    } else if (message.type === 'dab_image') {
+    } else if (message.type === WSMessage.Type.dab_image) {
       setSlideshowImage(`data:${message.mimeType};base64,${message.imageData}`)
-    } else if (message.type === "reception_status") {
+    } else if (message.type === WSMessage.Type.reception_status) {
       let icon: string|undefined
       let colour: "red"|"orange"|"yellow"|"green"|undefined;
       if (message.rfLock) {
@@ -168,7 +168,7 @@ function App() {
   ])
 
   const stopService = useCallback( ()=> {
-    sendJsonMessage({type: 'stop_service'})
+    sendJsonMessage({type: WSMessage.Type.stop_service})
   }, [sendJsonMessage]);
 
   const closePopup = useCallback(() => {
@@ -177,7 +177,7 @@ function App() {
 
   const startService = useCallback((service: ServiceInfo) => {
     sendJsonMessage({
-      type: 'start_service',
+      type: WSMessage.Type.start_service,
       ensembleId: service.ensembleId,
       serviceId: service.serviceId,
     })
