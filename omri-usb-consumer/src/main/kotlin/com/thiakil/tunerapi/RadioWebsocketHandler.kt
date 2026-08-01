@@ -4,8 +4,12 @@ import com.thiakil.tunerapi.messages.DabSlideshow
 import com.thiakil.tunerapi.messages.DabTextUpdate
 import com.thiakil.tunerapi.messages.ErrorMessage
 import com.thiakil.tunerapi.messages.ReceptionStatus
+import com.thiakil.tunerapi.messages.ScanFoundService
+import com.thiakil.tunerapi.messages.ScanStatus
 import com.thiakil.tunerapi.messages.ServiceList
+import com.thiakil.tunerapi.messages.StartScan
 import com.thiakil.tunerapi.messages.StartService
+import com.thiakil.tunerapi.messages.StopScan
 import com.thiakil.tunerapi.messages.StopService
 import com.thiakil.tunerapi.messages.TunerState
 import com.thiakil.tunerapi.messages.WSMessage
@@ -16,6 +20,7 @@ import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
+import org.omri.radio.impl.TunerUsbImpl
 import org.omri.radioservice.RadioService
 import org.omri.radioservice.RadioServiceDab
 import org.omri.radioservice.metadata.Textual
@@ -31,12 +36,21 @@ import org.omri.tuner.TunerStatus
 import java.util.Date
 import kotlin.time.Duration.Companion.seconds
 
+data class ScanCounts(var countNew: Int = 0, var countUpdated: Int = 0, var countSame: Int = 0) {
+    fun reset() {
+        countNew = 0
+        countUpdated = 0
+        countSame = 0
+    }
+}
+
 class RadioWebsocketHandler(
     private val session: WebSocketServerSession,
     val tuner: Tuner
 ): TunerListener, TextualMetadataListener, VisualMetadataListener
 {
     private var lastReceptionSentAt: Long = 0
+    private val scanCounts = ScanCounts()
     suspend fun handleSession() {
         tuner.subscribe(this)
         sendMessage(TunerState(tuner))
@@ -58,6 +72,8 @@ class RadioWebsocketHandler(
                             }
                         }
                         is StopService -> tuner.stopRadioService()
+                        is StartScan -> tuner.startRadioServiceScan(TunerUsbImpl.SearchSettings(message.clearExisting))
+                        is StopScan -> tuner.stopRadioServiceScan()
                         else -> sendMessage(ErrorMessage("Unknown message"))
                     }
                 } catch (e: WebsocketDeserializeException) {
@@ -98,6 +114,8 @@ class RadioWebsocketHandler(
 
     override fun tunerScanStarted(tuner: Tuner) {
         sendMessageSync(TunerState(tuner))
+        scanCounts.reset()
+
     }
 
     override fun tunerScanProgress(
@@ -105,7 +123,7 @@ class RadioWebsocketHandler(
         percentScanned: Int,
         frequencyHz: Int
     ) {
-        //todo
+        sendMessageSync(ScanStatus(percentScanned, frequencyHz))
     }
 
     override fun tunerScanFinished(tuner: Tuner) {
@@ -117,6 +135,10 @@ class RadioWebsocketHandler(
         tuner: Tuner,
         foundService: RadioService
     ) {
+        if (tuner.tunerStatus == TunerStatus.TUNER_STATUS_SCANNING) {
+            scanCounts.countNew += 1
+            sendMessageSync(ScanFoundService(scanCounts))
+        }
     }
 
     override fun radioServiceStarted(
@@ -180,7 +202,22 @@ class RadioWebsocketHandler(
         tuner: Tuner,
         updatedService: RadioService
     ) {
-        sendMessageSync(ServiceList(tuner))
+        if (tuner.tunerStatus == TunerStatus.TUNER_STATUS_SCANNING) {
+            scanCounts.countUpdated += 1
+            sendMessageSync(ScanFoundService(scanCounts))
+        } else {
+            sendMessageSync(ServiceList(tuner))
+        }
+    }
+
+    override fun tunerScannedServiceNoChanges(
+        tuner: Tuner,
+        service: RadioService
+    ) {
+        if (tuner.tunerStatus == TunerStatus.TUNER_STATUS_SCANNING) {
+            scanCounts.countSame += 1
+            sendMessageSync(ScanFoundService(scanCounts))
+        }
     }
 
     companion object {

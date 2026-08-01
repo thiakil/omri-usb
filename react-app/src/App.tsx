@@ -1,17 +1,19 @@
 /// <reference types="mdui/jsx.en" />
 import {HudiyNavCallbacks, useHudiy} from "./HudiyApi";
-import React, {ReactNode, useCallback, useMemo, useState} from 'react';
+import React, {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import './App.css';
 import useWebSocket, {ReadyState} from 'react-use-websocket';
 import {ReceptionQuality, ServiceInfo, TunerStatus, WSMessage} from './websocketTypes'
 import 'mdui'
+import type {Dialog} from 'mdui/components/dialog.js';
+import type {Checkbox} from 'mdui/components/checkbox.js';
 import CurrentlyPlaying from "./CurrentlyPlaying"
 import ServiceList from "./ServiceList";
 import PageHeading from "./PageHeading";
 import {Options as WebsocketOptions} from "react-use-websocket/src/lib/types";
 import {hudiy} from "./hudi_protobuf";
 import {useLocalStorage} from "./LocalStorage";
-import {Favourites, ServiceIdentity, FavouritesContext} from "./contexts";
+import {Favourites, FavouritesContext, ServiceIdentity} from "./contexts";
 
 enum PopupType {
   NONE,
@@ -26,11 +28,12 @@ interface MainWrapProps {
   onBack?: ()=>void
   signalIcon?: string
   signalColour?: "red"|"orange"|"yellow"|"green"
+  signalPercent?: number
   children?: ReactNode
 }
-function MainWrapper({headerText= "cell_tower", backAction = "arrow_back", headerIcon, onBack, children, signalIcon, signalColour}: MainWrapProps) {
+function MainWrapper({headerText= "cell_tower", backAction = "arrow_back", headerIcon, onBack, children, signalIcon, signalColour, signalPercent}: MainWrapProps) {
   return (<div className="flex flex-col h-screen max-h-screen">
-    <PageHeading headerText={headerText} icon={headerIcon} onBack={onBack} backAction={backAction} signalIcon={signalIcon} signalColour={signalColour}/>
+    <PageHeading headerText={headerText} icon={headerIcon} onBack={onBack} backAction={backAction} signalIcon={signalIcon} signalColour={signalColour} signalPercent={signalPercent || 0}/>
     {children}
   </div>)
 }
@@ -44,10 +47,16 @@ function App() {
   const [currentService, setCurrentService] = useState<ServiceInfo|undefined>(undefined);
   const [currentDls, setCurrentDls] = useState<string|undefined>(undefined)
   const [tunerStatus, setTunerStatus] = useState<TunerStatus>(TunerStatus.TUNER_STATUS_NOT_INITIALIZED)
+  const tunerStatusRef = useRef(TunerStatus.TUNER_STATUS_NOT_INITIALIZED)
   const [popupActive, setPopupActive] = useState<PopupType>(PopupType.NONE)
   const [slideshowImage, setSlideshowImage] = useState<string|undefined>(undefined)
   const [signalIcon, setSignalIcon] = useState<string|undefined>(undefined)
   const [signalColour, setSignalColour] = useState<"red"|"orange"|"yellow"|"green"|undefined>(undefined)
+  const [signalPercent, setSignalPercent] = useState(0)
+  const [scanPercent, setScanPercent] = useState<number|undefined>(undefined)
+  const [scanFrequency, setScanFrequency] = useState<number|undefined>(undefined)
+  const [scanChannel, setScanChannel] = useState<string|undefined>(undefined)
+  const [scanCounts, setScanCounts] = useState<Omit<WSMessage.scanned_service, "type">|undefined>(undefined)
   const [favouritesStorage, setFavouritesStorage] = useLocalStorage<Array<ServiceIdentity>>([], 'favourites')
   const favourites = useMemo<Favourites>(()=>{
     return {
@@ -73,6 +82,14 @@ function App() {
       onClose: e=> console.log("Web socket connection closed", e)
     }
   }, [])
+
+  const resetScanningVars = useCallback(()=>{
+    setScanPercent(undefined)
+    setScanFrequency(undefined)
+    setScanChannel(undefined)
+    setScanCounts(undefined)
+  }, [setScanPercent, setScanFrequency, setScanChannel, setScanCounts])
+
   const { sendJsonMessage, readyState, lastJsonMessage: tunerWSMessage} = useWebSocket(`ws://${window.location.host}/socket`, socketConfig);
   useEffect(()=> {
     if (!tunerWSMessage) {
@@ -85,13 +102,13 @@ function App() {
         return a.frequency - b.frequency || a.serviceLabel.localeCompare(b.serviceLabel);
       }) || [])
     } else if (message.type === 'tuner_state') {
-      if (message.status === TunerStatus.TUNER_STATUS_SCANNING && tunerStatus !== TunerStatus.TUNER_STATUS_SCANNING) {
-        //just started scanning
-
+      if ((tunerStatusRef.current === TunerStatus.TUNER_STATUS_SCANNING) !== (message.status === TunerStatus.TUNER_STATUS_SCANNING)){
+        //started or stopped scanning, ensure status is undefined
+        resetScanningVars()
       }
       setCurrentService(message.currentService || undefined)
       setTunerStatus(message.status)
-      //setTunerStatus(message.status)
+      tunerStatusRef.current = message.status
       if (!message.currentService) {
         setCurrentDls(undefined);
         setSlideshowImage(undefined)
@@ -131,8 +148,24 @@ function App() {
       }
       setSignalIcon(icon)
       setSignalColour(colour)
+      setSignalPercent(Math.round(((2000 - message.rawValue)/2000)*100))
+    } else if (message.type === "scan_status") {
+        setScanFrequency(message.frequencyMHz)
+        setScanPercent(message.percentScanned)
+        setScanChannel(message.channel)
+    } else if (message.type === WSMessage.Type.scanned_service) {
+      setScanCounts({
+        countNew: message.countNew,
+        countSame: message.countSame,
+        countUpdated: message.countUpdated
+      })
     }
-  }, [tunerWSMessage, setServices, setCurrentService, setCurrentDls, setSlideshowImage, setSignalIcon, setSignalColour, setTunerStatus, tunerStatus])
+  }, [
+      tunerWSMessage, setServices, setCurrentService, setCurrentDls, setSlideshowImage,
+      setSignalIcon, setSignalColour, setTunerStatus, tunerStatusRef,
+      setScanPercent, setScanFrequency,
+      setScanChannel, resetScanningVars
+  ])
 
   const stopService = useCallback( ()=> {
     sendJsonMessage({type: 'stop_service'})
@@ -205,9 +238,49 @@ function App() {
     return services.filter(svc=>favourites.contains(svc))
   }, [favourites, services]);
 
+  const scanDialogRef = useRef<Dialog>(null)
+  const clearServicesRef = useRef<Checkbox>(null)
+
+  const startScan = useCallback((clearExisting: boolean)=>{
+    sendJsonMessage<WSMessage.start_scan>({
+      type: WSMessage.Type.start_scan,
+      clearExisting: clearExisting
+    })
+  }, [sendJsonMessage])
+
+  const cancelScan = useCallback(()=>{
+    sendJsonMessage<WSMessage.stop_scan>({
+      type: WSMessage.Type.stop_scan
+    })
+  }, [sendJsonMessage])
+
   let content;
   if (readyState === ReadyState.OPEN) {
-    if (popupActive === PopupType.SERVICE_LIST) {
+    if (tunerStatus === TunerStatus.TUNER_STATUS_SCANNING) {
+      const hasPercent = scanPercent && scanPercent >= 0;
+      content = (
+          <MainWrapper headerText="Scanning" signalIcon={signalIcon}
+                       signalColour={signalColour} signalPercent={signalPercent}>
+            <div className="py-2 px-4 grow flex flex-col items-center justify-center">
+              <div className="py-2">
+                {scanFrequency && scanFrequency > 0 ? (<>Scanning channel <strong>{scanChannel}</strong></>) : "Starting scan"}
+                {scanFrequency && scanFrequency > 0 ? (<small>{" (" +scanFrequency+"MHz)"}</small>) : undefined}
+              </div>
+              <div className="py-2">
+                <strong>{scanCounts?.countNew || 0}</strong> new services,<br/>
+                <strong>{scanCounts?.countUpdated || 0}</strong> updated services,<br/>
+                <strong>{scanCounts?.countSame || 0}</strong> known services
+              </div>
+              <div className="py-2">
+                <mdui-circular-progress max={hasPercent ? 100 : undefined} value={hasPercent ? scanPercent : undefined}></mdui-circular-progress>
+              </div>
+              <div className="py-2">
+                <mdui-button className="text-error" variant="outlined" onClick={() => cancelScan()}>Cancel</mdui-button>
+              </div>
+            </div>
+          </MainWrapper>
+      )
+    } else if (popupActive === PopupType.SERVICE_LIST) {
       content = (
           <MainWrapper headerText="Services" onBack={closePopup} signalIcon={signalIcon}
                        signalColour={signalColour}>
@@ -215,6 +288,11 @@ function App() {
               <ServiceList services={services} startService={startService}
                            currentService={currentService}></ServiceList>
             </div>
+            <mdui-fab className="absolute right-5 bottom-5" icon="cell_tower" extended onClick={()=> {
+              if (scanDialogRef.current) {
+                scanDialogRef.current.open = true
+              }
+            }}>Scan</mdui-fab>
           </MainWrapper>);
     } else if (popupActive === PopupType.FAVOURITES_LIST) {
       content = (
@@ -228,7 +306,7 @@ function App() {
     } else {
       const isFav = currentService && favourites.contains(currentService);
       content = (
-          <MainWrapper headerText="DAB Radio" signalIcon={signalIcon} signalColour={signalColour}
+          <MainWrapper headerText="DAB Radio" signalIcon={signalIcon} signalColour={signalColour} signalPercent={signalPercent}
                        onBack={mainExitFn} backAction="close">
             <div className="size-main flex justify-center pt-6 grow">
               <CurrentlyPlaying
@@ -273,6 +351,28 @@ function App() {
 
   return (<FavouritesContext value={favourites}>
     {content}
+    <mdui-dialog
+        close-on-overlay-click
+        headline="Scan Services"
+        description="Scanning will stop any current radio service and scan all frequencies for new services."
+        ref={scanDialogRef}
+    >
+      <mdui-checkbox ref={clearServicesRef}>Clear existing services first</mdui-checkbox>
+      <mdui-button slot="action" variant="text" onClick={()=>{
+        if (scanDialogRef.current) {
+          scanDialogRef.current.open = false
+        }
+      }}>Cancel</mdui-button>
+      <mdui-button slot="action" variant="filled" onClick={()=> {
+        startScan(clearServicesRef.current?.checked || false)
+        if (scanDialogRef.current) {
+          scanDialogRef.current.open = false
+        }
+        //force it into the state early
+        resetScanningVars()
+        setTunerStatus(TunerStatus.TUNER_STATUS_SCANNING)
+      }}>Scan</mdui-button>
+    </mdui-dialog>
   </FavouritesContext>);
 }
 

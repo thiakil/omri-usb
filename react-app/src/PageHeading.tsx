@@ -8,6 +8,7 @@ interface PageHeadingProps {
   onBack?: ()=>void
   signalIcon?: string
   signalColour?: "red"|"orange"|"yellow"|"green"
+  signalPercent: number
 }
 
 const colorMap = {
@@ -17,7 +18,7 @@ const colorMap = {
   orange: 'text-orange-400',
 };
 
-function PageHeading({icon = "cell_tower", backAction = "arrow_back", headerText, onBack, signalIcon, signalColour}: PageHeadingProps) {
+function PageHeading({icon = "cell_tower", backAction = "arrow_back", headerText, onBack, signalIcon, signalColour, signalPercent}: PageHeadingProps) {
   return (
       <header className="pageHeader flex flex-row justify-between items-center pr-3">
         {onBack ? <mdui-button-icon icon={backAction} onClick={onBack}></mdui-button-icon> : <div></div>}

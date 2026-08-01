@@ -3,8 +3,12 @@ export type WSMessage =
   | WSMessage.dab_text_update
   | WSMessage.error
   | WSMessage.reception_status
+  | WSMessage.scan_status
+  | WSMessage.scanned_service
   | WSMessage.service_list
+  | WSMessage.start_scan
   | WSMessage.start_service
+  | WSMessage.stop_scan
   | WSMessage.stop_service
   | WSMessage.tuner_state;
 
@@ -14,8 +18,12 @@ export namespace WSMessage {
     dab_text_update = "dab_text_update",
     error = "error",
     reception_status = "reception_status",
+    scanned_service = "scanned_service",
+    scan_status = "scan_status",
     service_list = "service_list",
+    start_scan = "start_scan",
     start_service = "start_service",
+    stop_scan = "stop_scan",
     stop_service = "stop_service",
     tuner_state = "tuner_state",
   }
@@ -45,15 +53,38 @@ export namespace WSMessage {
     rawValue: number;
   }
   
+  export interface scanned_service {
+    type: WSMessage.Type.scanned_service;
+    countNew: number;
+    countUpdated: number;
+    countSame: number;
+  }
+  
+  export interface scan_status {
+    type: WSMessage.Type.scan_status;
+    percentScanned: number;
+    channel: string;
+    frequencyMHz: number;
+  }
+  
   export interface service_list {
     type: WSMessage.Type.service_list;
     services: ServiceInfo[];
+  }
+  
+  export interface start_scan {
+    type: WSMessage.Type.start_scan;
+    clearExisting?: boolean;
   }
   
   export interface start_service {
     type: WSMessage.Type.start_service;
     ensembleId: number;
     serviceId: number;
+  }
+  
+  export interface stop_scan {
+    type: WSMessage.Type.stop_scan;
   }
   
   export interface stop_service {

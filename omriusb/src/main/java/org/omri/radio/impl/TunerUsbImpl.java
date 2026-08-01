@@ -196,10 +196,10 @@ public class TunerUsbImpl implements TunerUsb {
 	@Override
 	public @NotNull List<RadioService> getRadioServices() {
         LOGGER.debug("getting Services at TunerStatus: {}", mTunerStatus.toString());
-		if (mTunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED) {
+		if (mTunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED || mTunerStatus == TunerStatus.TUNER_STATUS_SCANNING) {
 			return RadioServiceManager.getInstance().getRadioServices(RadioServiceType.RADIOSERVICE_TYPE_DAB);
 		} else {
-			return new ArrayList<>();
+			return Collections.emptyList();
 		}
 	}
 
@@ -433,8 +433,8 @@ public class TunerUsbImpl implements TunerUsb {
 		RadioService existingService = null;
 		try {
 			for (RadioService currentService : currentServices) {
-				if (service.equals(currentService)) {
-					LOGGER.debug("serviceFound already known: " + service);
+				if (service.equalsRadioService(currentService)) {
+                    LOGGER.debug("serviceFound already known: {}", service);
 					existingService = currentService;
 					break;
 				}
@@ -458,6 +458,12 @@ public class TunerUsbImpl implements TunerUsb {
 				synchronized (mTunerlisteners) {
 					for (TunerListener listener : mTunerlisteners) {
 						listener.tunerUpdatedService(this, existingService);
+					}
+				}
+			} else if (mTunerStatus == TunerStatus.TUNER_STATUS_SCANNING) {
+				synchronized (mTunerlisteners) {
+					for (TunerListener listener : mTunerlisteners) {
+						listener.tunerScannedServiceNoChanges(this, existingService);
 					}
 				}
 			}
