@@ -70,62 +70,69 @@ function App() {
     return {
       shouldReconnect: (closeEvent) => true, // Auto-reconnect on server drops
       onOpen: () => console.log('Connection established!'),
-      onClose: e=> console.log("Web socket connection closed", e),
-      onMessage: event => {
-        let message: WSMessage = JSON.parse(event.data);
-        //console.log('received message', message)
-        if (message.type === 'service_list') {
-          setServices(message.services.sort((a,b)=>{
-            return a.frequency - b.frequency || a.serviceLabel.localeCompare(b.serviceLabel);
-          }) || [])
-        } else if (message.type === 'tuner_state') {
-          setCurrentService(message.currentService || undefined)
-          setTunerStatus(message.status)
-          //setTunerStatus(message.status)
-          if (!message.currentService) {
-            setCurrentDls(undefined);
-            setSlideshowImage(undefined)
-            setSignalIcon(undefined)
-            setSignalColour(undefined)
-          }
-        } else if (message.type === 'dab_text_update'){
-          setCurrentDls(message.text)
-        } else if (message.type === 'dab_image') {
-          setSlideshowImage(`data:${message.mimeType};base64,${message.imageData}`)
-        } else if (message.type === "reception_status") {
-          let icon: string|undefined
-          let colour: "red"|"orange"|"yellow"|"green"|undefined;
-          if (message.rfLock) {
-            switch (message.quality) {
-              case ReceptionQuality.BAD:
-                icon = "signal_cellular_alt_1_bar"
-                colour = "red"
-                break;
-              case ReceptionQuality.POOR:
-                icon = "signal_cellular_alt_1_bar"
-                colour = "orange"
-                break;
-              case ReceptionQuality.OKAY:
-                icon = "signal_cellular_alt_2_bar"
-                colour = "yellow"
-                break
-              case ReceptionQuality.GOOD:
-                icon = "signal_cellular_alt_2_bar"
-                colour = "green"
-                break
-              case ReceptionQuality.BEST:
-                icon = "signal_cellular_alt"
-                colour = "green"
-                break;
-            }
-          }
-          setSignalIcon(icon)
-          setSignalColour(colour)
+      onClose: e=> console.log("Web socket connection closed", e)
+    }
+  }, [])
+  const { sendJsonMessage, readyState, lastJsonMessage: tunerWSMessage} = useWebSocket(`ws://${window.location.host}/socket`, socketConfig);
+  useEffect(()=> {
+    if (!tunerWSMessage) {
+      return;
+    }
+    const message = tunerWSMessage as WSMessage
+
+    if (message.type === 'service_list') {
+      setServices(message.services.sort((a,b)=>{
+        return a.frequency - b.frequency || a.serviceLabel.localeCompare(b.serviceLabel);
+      }) || [])
+    } else if (message.type === 'tuner_state') {
+      if (message.status === TunerStatus.TUNER_STATUS_SCANNING && tunerStatus !== TunerStatus.TUNER_STATUS_SCANNING) {
+        //just started scanning
+
+      }
+      setCurrentService(message.currentService || undefined)
+      setTunerStatus(message.status)
+      //setTunerStatus(message.status)
+      if (!message.currentService) {
+        setCurrentDls(undefined);
+        setSlideshowImage(undefined)
+        setSignalIcon(undefined)
+        setSignalColour(undefined)
+      }
+    } else if (message.type === 'dab_text_update'){
+      setCurrentDls(message.text)
+    } else if (message.type === 'dab_image') {
+      setSlideshowImage(`data:${message.mimeType};base64,${message.imageData}`)
+    } else if (message.type === "reception_status") {
+      let icon: string|undefined
+      let colour: "red"|"orange"|"yellow"|"green"|undefined;
+      if (message.rfLock) {
+        switch (message.quality) {
+          case ReceptionQuality.BAD:
+            icon = "signal_cellular_alt_1_bar"
+            colour = "red"
+            break;
+          case ReceptionQuality.POOR:
+            icon = "signal_cellular_alt_1_bar"
+            colour = "orange"
+            break;
+          case ReceptionQuality.OKAY:
+            icon = "signal_cellular_alt_2_bar"
+            colour = "yellow"
+            break
+          case ReceptionQuality.GOOD:
+            icon = "signal_cellular_alt_2_bar"
+            colour = "green"
+            break
+          case ReceptionQuality.BEST:
+            icon = "signal_cellular_alt"
+            colour = "green"
+            break;
         }
       }
+      setSignalIcon(icon)
+      setSignalColour(colour)
     }
-  }, [setServices, setCurrentService, setCurrentDls, setSlideshowImage, setSignalIcon, setSignalColour, setTunerStatus])
-  const { sendJsonMessage, readyState } = useWebSocket(`ws://${window.location.host}/socket`, socketConfig);
+  }, [tunerWSMessage, setServices, setCurrentService, setCurrentDls, setSlideshowImage, setSignalIcon, setSignalColour, setTunerStatus, tunerStatus])
 
   const stopService = useCallback( ()=> {
     sendJsonMessage({type: 'stop_service'})
