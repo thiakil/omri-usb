@@ -80,7 +80,9 @@ export default function ServiceList({services, startService, currentService, isF
       ))}
     </mdui-list>)
   } else {
-    widgetContents = (<p className="text-center h-full flex items-center justify-center">No services. {isFavourites ? 'Star a service to see it here' : 'Run a scan?'}</p>)
+    widgetContents = (<p className="text-center h-full flex items-center justify-center">
+      No services. {isFavourites ? 'Star a service to see it here' : 'Run a scan to find some'}
+    </p>)
   }
 
   return (<div className="overflow-auto h-full">{widgetContents}</div>)
