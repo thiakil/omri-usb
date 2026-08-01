@@ -364,6 +364,8 @@ public class TunerUsbImpl implements TunerUsb {
 				} else {
 					mIsScanning = false;
 					mTunerStatus = TunerStatus.TUNER_STATUS_INITIALIZED;
+
+					new SerializeServicesTask(this).execute();
 				}
 				break;
 			}
@@ -604,10 +606,6 @@ public class TunerUsbImpl implements TunerUsb {
 			return null;
 		}
 	}*/
-
-	void servicesUpdated() {
-		new SerializeServicesTask(this).execute();
-	}
 
 	public record SearchSettings(boolean clearExisting) {}
 }
