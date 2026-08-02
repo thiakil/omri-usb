@@ -42,20 +42,24 @@ function svcEqual(a: ServiceIdentity, b: ServiceIdentity): boolean {
   return a.ensembleId === b.ensembleId && a.serviceId === b.serviceId
 }
 
+interface ScanStatus {
+  percent: number
+  frequency: number
+  channel: string
+}
+
 function App() {
+  const [popupActive, setPopupActive] = useState<PopupType>(PopupType.NONE)
   const [services, setServices] = useState<ServiceInfo[]>([]);
   const [currentService, setCurrentService] = useState<ServiceInfo|undefined>(undefined);
   const [currentDls, setCurrentDls] = useState<string|undefined>(undefined)
   const [tunerStatus, setTunerStatus] = useState<TunerStatus>(TunerStatus.TUNER_STATUS_NOT_INITIALIZED)
   const tunerStatusRef = useRef(TunerStatus.TUNER_STATUS_NOT_INITIALIZED)
-  const [popupActive, setPopupActive] = useState<PopupType>(PopupType.NONE)
   const [slideshowImage, setSlideshowImage] = useState<string|undefined>(undefined)
   const [signalIcon, setSignalIcon] = useState<string|undefined>(undefined)
   const [signalColour, setSignalColour] = useState<"red"|"orange"|"yellow"|"green"|undefined>(undefined)
   const [signalPercent, setSignalPercent] = useState(0)
-  const [scanPercent, setScanPercent] = useState<number|undefined>(undefined)
-  const [scanFrequency, setScanFrequency] = useState<number|undefined>(undefined)
-  const [scanChannel, setScanChannel] = useState<string|undefined>(undefined)
+  const [scanStatus, setScanStatus] = useState<ScanStatus|undefined>(undefined)
   const [scanCounts, setScanCounts] = useState<Omit<WSMessage.scanned_service, "type">|undefined>(undefined)
   const [favouritesStorage, setFavouritesStorage] = useLocalStorage<Array<ServiceIdentity>>([], 'favourites')
   const favourites = useMemo<Favourites>(()=>{
@@ -84,11 +88,9 @@ function App() {
   }, [])
 
   const resetScanningVars = useCallback(()=>{
-    setScanPercent(undefined)
-    setScanFrequency(undefined)
-    setScanChannel(undefined)
+    setScanStatus(undefined)
     setScanCounts(undefined)
-  }, [setScanPercent, setScanFrequency, setScanChannel, setScanCounts])
+  }, [setScanStatus, setScanCounts])
 
   const { sendJsonMessage, readyState, lastJsonMessage: tunerWSMessage} = useWebSocket(`ws://${window.location.host}/socket`, socketConfig);
   useEffect(()=> {
@@ -150,9 +152,11 @@ function App() {
       setSignalColour(colour)
       setSignalPercent(Math.round(((2000 - message.rawValue)/2000)*100))
     } else if (message.type === "scan_status") {
-        setScanFrequency(message.frequencyMHz)
-        setScanPercent(message.percentScanned)
-        setScanChannel(message.channel)
+      setScanStatus({
+        frequency: message.frequencyMHz,
+        percent: message.percentScanned,
+        channel: message.channel
+      })
     } else if (message.type === WSMessage.Type.scanned_service) {
       setScanCounts({
         countNew: message.countNew,
@@ -163,8 +167,7 @@ function App() {
   }, [
       tunerWSMessage, setServices, setCurrentService, setCurrentDls, setSlideshowImage,
       setSignalIcon, setSignalColour, setTunerStatus, tunerStatusRef,
-      setScanPercent, setScanFrequency,
-      setScanChannel, resetScanningVars
+      setScanStatus, resetScanningVars
   ])
 
   const stopService = useCallback( ()=> {
@@ -257,14 +260,19 @@ function App() {
   let content;
   if (readyState === ReadyState.OPEN) {
     if (tunerStatus === TunerStatus.TUNER_STATUS_SCANNING) {
-      const hasPercent = scanPercent && scanPercent >= 0;
+      const scanPercent = scanStatus?.percent || -1;
+      const hasPercent = scanPercent >= 0;
+      const scanFrequency = scanStatus?.frequency || 0;
+      const hasFrequency = scanFrequency > 0;
+      const scanChannel = scanStatus?.channel;
+      const hasChannel = Boolean(scanChannel && scanChannel !== "Unknown")
       content = (
           <MainWrapper headerText="Scanning" signalIcon={signalIcon}
                        signalColour={signalColour} signalPercent={signalPercent}>
             <div className="py-2 px-4 grow flex flex-col items-center justify-center">
               <div className="py-2">
-                {scanFrequency && scanFrequency > 0 ? (<>Scanning channel <strong>{scanChannel}</strong></>) : "Starting scan"}
-                {scanFrequency && scanFrequency > 0 ? (<small>{" (" +scanFrequency+"MHz)"}</small>) : undefined}
+                {hasChannel ? (<>Scanning channel <strong>{scanChannel}</strong></>) : "Starting scan"}
+                {hasFrequency ? (<small>{" (" +scanFrequency+"MHz)"}</small>) : undefined}
               </div>
               <div className="py-2">
                 <strong>{scanCounts?.countNew || 0}</strong> new services,<br/>
