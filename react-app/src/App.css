@@ -9,7 +9,7 @@
   height: 3rem;
 }
 
-mdui-button-icon svg {
+mdui-button-icon svg, mdui-fab {
   fill: currentColor;
 }
 
