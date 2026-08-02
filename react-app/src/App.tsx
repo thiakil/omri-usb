@@ -331,16 +331,19 @@ function App() {
                                 onClick={() => setPopupActive(PopupType.SERVICE_LIST)}></mdui-button-icon>
               {currentSvcIdx > -1 ? <mdui-button-icon icon="navigate_before"
                                                       onClick={prevService}></mdui-button-icon> : undefined}
-              {currentService ? (<>
+              {currentService ? (
                 <mdui-button-icon icon="stop" onClick={stopService}
                                   variant="tonal"></mdui-button-icon>
-                <mdui-button-icon
-                                  onClick={()=>favourites.toggleFavourite(currentService)}
-                ><span className={isFav ? "material-symbols-round-filled" : "material-symbols-round"}>
-                        star</span></mdui-button-icon>
-              </>) : undefined}
+              ) : undefined}
               {currentSvcIdx > -1 ? <mdui-button-icon icon="navigate_next"
                                                       onClick={nextService}></mdui-button-icon> : undefined}
+              {currentService ? (
+                  <mdui-button-icon
+                      onClick={() => favourites.toggleFavourite(currentService)}
+                  ><span
+                      className={isFav ? "material-symbols-round-filled" : "material-symbols-round"}>
+                        star</span></mdui-button-icon>
+              ): undefined}
               <mdui-button-icon onClick={() => setPopupActive(PopupType.FAVOURITES_LIST)} icon="folder_special">
               </mdui-button-icon>
             </div>
