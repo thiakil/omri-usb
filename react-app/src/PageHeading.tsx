@@ -1,14 +1,13 @@
 /// <reference types="mdui/jsx.en" />
 import React from 'react';
+import {ReceptionQuality} from "./websocketTypes";
 
 interface PageHeadingProps {
   icon?: string;
   backAction?: "close"|"arrow_back"
   headerText: string
   onBack?: ()=>void
-  signalIcon?: string
-  signalColour?: "red"|"orange"|"yellow"|"green"
-  signalPercent: number
+  signalQuality?: ReceptionQuality
 }
 
 const colorMap = {
@@ -18,7 +17,33 @@ const colorMap = {
   orange: 'text-orange-400',
 };
 
-function PageHeading({icon = "cell_tower", backAction = "arrow_back", headerText, onBack, signalIcon, signalColour, signalPercent}: PageHeadingProps) {
+function PageHeading({icon = "cell_tower", backAction = "arrow_back", headerText, onBack, signalQuality}: PageHeadingProps) {
+  let signalIcon: string|undefined = undefined
+  let signalColour: "red"|"orange"|"yellow"|"green"|undefined = undefined
+  if (typeof signalQuality === "string") {
+    switch (signalQuality) {
+      case ReceptionQuality.BAD:
+        signalIcon = "signal_cellular_alt_1_bar"
+        signalColour = "red"
+        break;
+      case ReceptionQuality.POOR:
+        signalIcon = "signal_cellular_alt_1_bar"
+        signalColour = "orange"
+        break;
+      case ReceptionQuality.OKAY:
+        signalIcon = "signal_cellular_alt_2_bar"
+        signalColour = "yellow"
+        break
+      case ReceptionQuality.GOOD:
+        signalIcon = "signal_cellular_alt_2_bar"
+        signalColour = "green"
+        break
+      case ReceptionQuality.BEST:
+        signalIcon = "signal_cellular_alt"
+        signalColour = "green"
+        break;
+    }
+  }
   return (
       <header className="pageHeader flex flex-row justify-between items-center pr-3">
         {onBack ? <mdui-button-icon icon={backAction} onClick={onBack}></mdui-button-icon> : <div></div>}

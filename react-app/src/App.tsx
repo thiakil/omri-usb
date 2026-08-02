@@ -26,14 +26,12 @@ interface MainWrapProps {
   headerIcon?: string
   backAction?: "close"|"arrow_back"
   onBack?: ()=>void
-  signalIcon?: string
-  signalColour?: "red"|"orange"|"yellow"|"green"
-  signalPercent?: number
+  signalQuality?: ReceptionQuality
   children?: ReactNode
 }
-function MainWrapper({headerText= "cell_tower", backAction = "arrow_back", headerIcon, onBack, children, signalIcon, signalColour, signalPercent}: MainWrapProps) {
+function MainWrapper({headerText= "cell_tower", backAction = "arrow_back", headerIcon, onBack, children, signalQuality}: MainWrapProps) {
   return (<div className="flex flex-col h-screen max-h-screen">
-    <PageHeading headerText={headerText} icon={headerIcon} onBack={onBack} backAction={backAction} signalIcon={signalIcon} signalColour={signalColour} signalPercent={signalPercent || 0}/>
+    <PageHeading headerText={headerText} icon={headerIcon} onBack={onBack} backAction={backAction} signalQuality={signalQuality}/>
     {children}
   </div>)
 }
@@ -56,9 +54,7 @@ function App() {
   const [tunerStatus, setTunerStatus] = useState<TunerStatus>(TunerStatus.TUNER_STATUS_NOT_INITIALIZED)
   const tunerStatusRef = useRef(TunerStatus.TUNER_STATUS_NOT_INITIALIZED)
   const [slideshowImage, setSlideshowImage] = useState<string|undefined>(undefined)
-  const [signalIcon, setSignalIcon] = useState<string|undefined>(undefined)
-  const [signalColour, setSignalColour] = useState<"red"|"orange"|"yellow"|"green"|undefined>(undefined)
-  const [signalPercent, setSignalPercent] = useState(0)
+  const [signalQuality, setSignalQuality] = useState<ReceptionQuality|undefined>(undefined)
   const [scanStatus, setScanStatus] = useState<ScanStatus|undefined>(undefined)
   const [scanCounts, setScanCounts] = useState<Omit<WSMessage.scanned_service, "type">|undefined>(undefined)
   const [favouritesStorage, setFavouritesStorage] = useLocalStorage<Array<ServiceIdentity>>([], 'favourites')
@@ -114,43 +110,15 @@ function App() {
       if (!message.currentService) {
         setCurrentDls(undefined);
         setSlideshowImage(undefined)
-        setSignalIcon(undefined)
-        setSignalColour(undefined)
+        setSignalQuality(undefined)
       }
     } else if (message.type === WSMessage.Type.dab_text_update){
       setCurrentDls(message.text)
     } else if (message.type === WSMessage.Type.dab_image) {
       setSlideshowImage(`data:${message.mimeType};base64,${message.imageData}`)
     } else if (message.type === WSMessage.Type.reception_status) {
-      let icon: string|undefined
-      let colour: "red"|"orange"|"yellow"|"green"|undefined;
-      if (message.rfLock) {
-        switch (message.quality) {
-          case ReceptionQuality.BAD:
-            icon = "signal_cellular_alt_1_bar"
-            colour = "red"
-            break;
-          case ReceptionQuality.POOR:
-            icon = "signal_cellular_alt_1_bar"
-            colour = "orange"
-            break;
-          case ReceptionQuality.OKAY:
-            icon = "signal_cellular_alt_2_bar"
-            colour = "yellow"
-            break
-          case ReceptionQuality.GOOD:
-            icon = "signal_cellular_alt_2_bar"
-            colour = "green"
-            break
-          case ReceptionQuality.BEST:
-            icon = "signal_cellular_alt"
-            colour = "green"
-            break;
-        }
-      }
-      setSignalIcon(icon)
-      setSignalColour(colour)
-      setSignalPercent(Math.round(((2000 - message.rawValue)/2000)*100))
+      setSignalQuality(message.rfLock ? message.quality : undefined)
+      //setSignalPercent(Math.round(((2000 - message.rawValue)/2000)*100))
     } else if (message.type === "scan_status") {
       setScanStatus({
         frequency: message.frequencyMHz,
@@ -166,7 +134,7 @@ function App() {
     }
   }, [
       tunerWSMessage, setServices, setCurrentService, setCurrentDls, setSlideshowImage,
-      setSignalIcon, setSignalColour, setTunerStatus, tunerStatusRef,
+      setSignalQuality, setTunerStatus, tunerStatusRef,
       setScanStatus, resetScanningVars
   ])
 
@@ -267,8 +235,7 @@ function App() {
       const scanChannel = scanStatus?.channel;
       const hasChannel = Boolean(scanChannel && scanChannel !== "Unknown")
       content = (
-          <MainWrapper headerText="Scanning" signalIcon={signalIcon}
-                       signalColour={signalColour} signalPercent={signalPercent}>
+          <MainWrapper headerText="Scanning" signalQuality={signalQuality}>
             <div className="py-2 px-4 grow flex flex-col items-center justify-center">
               <div className="py-2">
                 {hasChannel ? (<>Scanning channel <strong>{scanChannel}</strong></>) : "Starting scan"}
@@ -290,8 +257,7 @@ function App() {
       )
     } else if (popupActive === PopupType.SERVICE_LIST) {
       content = (
-          <MainWrapper headerText="Services" onBack={closePopup} signalIcon={signalIcon}
-                       signalColour={signalColour}>
+          <MainWrapper headerText="Services" onBack={closePopup} signalQuality={signalQuality}>
             <div className="min-h-0 py-2 px-4 grow">
               <ServiceList services={services} startService={startService}
                            currentService={currentService}></ServiceList>
@@ -314,8 +280,7 @@ function App() {
           </MainWrapper>);
     } else if (popupActive === PopupType.FAVOURITES_LIST) {
       content = (
-          <MainWrapper headerText="Favourites" onBack={closePopup} signalIcon={signalIcon}
-                       signalColour={signalColour}>
+          <MainWrapper headerText="Favourites" onBack={closePopup} signalQuality={signalQuality}>
             <div className="min-h-0 py-2 px-4 grow">
               <ServiceList services={favouriteServices} isFavourites startService={startService}
                            currentService={currentService}></ServiceList>
@@ -324,7 +289,7 @@ function App() {
     } else {
       const isFav = currentService && favourites.contains(currentService);
       content = (
-          <MainWrapper headerText="DAB Radio" signalIcon={signalIcon} signalColour={signalColour} signalPercent={signalPercent}
+          <MainWrapper headerText="DAB Radio" signalQuality={signalQuality}
                        onBack={mainExitFn} backAction="close">
             <div className="size-main flex justify-center pt-6 grow">
               <CurrentlyPlaying
