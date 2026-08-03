@@ -393,46 +393,6 @@ public class RadioImpl extends Radio implements TunerListener, UsbHelper.UsbHelp
 	}
 
 	@Override
-	public boolean addRadioService(RadioService addSrv) {
-		boolean srvAdded = false;
-		if (addSrv != null) {
-			srvAdded = RadioServiceManager.getInstance().addRadioservice(addSrv);
-			if (srvAdded) {
-				RadioServiceManager.getInstance().serializeServices(addSrv.getRadioServiceType());
-			}
-		}
-
-		return srvAdded;
-	}
-
-	@Override
-	public boolean removeRadioService(RadioService remSrv) {
-		if (remSrv != null) {
-			return RadioServiceManager.getInstance().deleteService(remSrv);
-		}
-
-		return false;
-	}
-
-	public boolean deleteRadioService(RadioService delService) {
-		synchronized (mTunerList) {
-			for (Tuner chkTun : mTunerList) {
-				if (chkTun.getCurrentRunningRadioService() == delService) {
-					LOGGER.debug("Service to delete is currently running on {}, stopping it", chkTun);
-					chkTun.stopRadioService();
-				}
-			}
-		}
-		boolean delSuccess = false;
-		if (delService != null) {
-			delSuccess = RadioServiceManager.getInstance().deleteService(delService);
-		}
-
-		return delSuccess;
-	}
-
-	@Override
-	@NonNull
 	public ArrayList<RadioService> getFollowingServices(RadioService followSrv) {
 		ArrayList<RadioService> followingServices = new ArrayList<>();
 

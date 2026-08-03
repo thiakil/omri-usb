@@ -2,6 +2,7 @@ package org.omri.radio.impl;
 
 import com.thiakil.standin.Context;
 import java.util.Base64;
+import java.util.Collections;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -155,21 +156,6 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 		} else {
             LOGGER.debug("Adding unknown ServiceType: {}", addSrv.getRadioServiceType().toString());
 		}
-	}
-
-	boolean addRadioservice(RadioService addSrv) {
-		CopyOnWriteArrayList<RadioService> addList = mServicesMap.get(addSrv.getRadioServiceType());
-		if (addList != null) {
-			boolean oldSrvRemoved = addList.remove(addSrv);
-			if (oldSrvRemoved) {
-                LOGGER.debug("Removed old version of service: {} : {}", addSrv.getServiceLabel(), addSrv.getRadioServiceType().toString());
-			}
-
-            LOGGER.debug("Added new service: {} : {}", addSrv.getServiceLabel(), addSrv.getRadioServiceType().toString());
-
-			return addList.add(addSrv);
-		}
-		return false;
 	}
 
 	void clearServiceList(@NotNull RadioServiceType type) {
@@ -625,7 +611,7 @@ class RadioServiceManager implements org.omri.radio.RadioServiceManager {
 			}
 		}
 
-		return new ArrayList<>();
+		return Collections.emptyList();
 	}
 
 	@Override

@@ -170,9 +170,6 @@ public abstract class Radio {
 	@NotNull
 	public abstract RadioServiceManager getRadioServiceManager();
 
-	public abstract boolean addRadioService(RadioService addSrv);
-
-	public abstract boolean removeRadioService(RadioService remSrv);
 
 	/**
 	 * Retrieve {@link RadioService}s for following the given service using any of the tuners, which
