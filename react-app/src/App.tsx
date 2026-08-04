@@ -227,6 +227,8 @@ function App() {
   }, [popupActive, tunerStatus, readyState]);
 
   const hasPopup = readyState === ReadyState.OPEN && !!popupActive;
+  const showServiceList = (readyState === ReadyState.OPEN && popupActive === PopupType.SERVICE_LIST);
+  const showFavourites = readyState === ReadyState.OPEN && popupActive === PopupType.FAVOURITES_LIST;
   return (<FavouritesContext value={favourites}>
     <div className="flex flex-col h-screen max-h-screen">
       <PageHeading headerText={mainTitle} onBack={hasPopup ? closePopup : mainExitFn} backAction={hasPopup ? "arrow_back" : "close"} signalQuality={signalQuality}/>
@@ -247,8 +249,8 @@ function App() {
           <mdui-button className="text-error" variant="outlined" onClick={() => cancelScan()}>Cancel</mdui-button>
         </div>
       </div>
-      <div className="min-h-0 py-2 px-4 grow" hidden={!(readyState === ReadyState.OPEN && popupActive === PopupType.SERVICE_LIST)}>
-        <ServiceList services={services} startService={startService}
+      <div className="min-h-0 py-2 px-4 grow" hidden={!showServiceList}>
+        <ServiceList services={services} startService={startService} isShown={showServiceList}
                      currentService={currentService}></ServiceList>
         <mdui-fab className="absolute right-5 bottom-5"  extended onClick={()=> {
           if (scanDialogRef.current) {
@@ -266,8 +268,8 @@ function App() {
           </svg>
         </mdui-fab>
       </div>
-      <div className="min-h-0 py-2 px-4 grow" hidden={!(readyState === ReadyState.OPEN && popupActive === PopupType.FAVOURITES_LIST)}>
-        <ServiceList services={favouriteServices} isFavourites startService={startService}
+      <div className="min-h-0 py-2 px-4 grow" hidden={!showFavourites}>
+        <ServiceList services={favouriteServices} isFavourites startService={startService} isShown={showFavourites}
                      currentService={currentService}></ServiceList>
       </div>
       <MainScreen hidden={readyState !== ReadyState.OPEN || !!popupActive}

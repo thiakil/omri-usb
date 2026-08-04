@@ -9,6 +9,7 @@ interface ServiceListProps {
   startService: (svc: ServiceInfo)=>void
   currentService?: ServiceInfo
   isFavourites?: boolean
+  isShown: boolean
 }
 interface ServiceItemProps {
   svc: ServiceInfo;
@@ -38,7 +39,7 @@ function ServiceEntry({svc, startService, currentService, targetRef}: ServiceIte
 }
 
 type ServiceInfoWithKey = ServiceInfo & {key:string}
-export default function ServiceList({services, startService, currentService, isFavourites = false}: ServiceListProps) {
+export default function ServiceList({services, startService, currentService, isFavourites = false, isShown}: ServiceListProps) {
   const svcByEnsemble: Array<{id: string, services: Array<ServiceInfoWithKey>}> = useMemo(()=> {
     if (!services.length) {
       return []
@@ -56,12 +57,12 @@ export default function ServiceList({services, startService, currentService, isF
   const targetRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const current = targetRef.current;
-    if (current) {
+    if (isShown && current) {
       setTimeout(()=>current.scrollIntoView({ behavior: 'smooth', block: 'center' }))
     }/* else {
       console.log('ref was not active')
     }*/
-  }, []);
+  }, [isShown, targetRef]);
 
   let widgetContents;
   if (svcByEnsemble.length) {
