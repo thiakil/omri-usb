@@ -44,9 +44,9 @@ function PageHeading({backAction = "arrow_back", headerText, onBack, signalQuali
     }
   }
   return (
-      <header className="pageHeader grid grid-cols-6">
+      <header className="pageHeader grid grid-cols-3">
         <div>{onBack ? <mdui-button-icon icon={backAction} onClick={onBack} className="block"></mdui-button-icon> : undefined}</div>
-        <div className="col-span-4 flex items-center justify-center">{headerText}</div>
+        <div className="flex items-center justify-center">{headerText}</div>
         <div className="pr-3">
           <div className="col-span-4 flex items-center justify-end h-full gap-1">
             {signalIcon ?
