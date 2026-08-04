@@ -8,8 +8,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 
-import org.omri.radio.Radio;
-import org.omri.radio.RadioStatus;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceType;
@@ -21,7 +19,6 @@ import org.omri.tuner.TunerType;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -194,7 +191,7 @@ public class TunerUsbImpl implements TunerUsb {
 	}
 
 	@Override
-	public @NotNull List<RadioService> getRadioServices() {
+	public @NotNull List<RadioServiceDab> getRadioServices() {
         LOGGER.debug("getting Services at TunerStatus: {}", mTunerStatus.toString());
 		if (mTunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED || mTunerStatus == TunerStatus.TUNER_STATUS_SCANNING) {
 			return RadioServiceManager.getInstance().getRadioServices(RadioServiceType.RADIOSERVICE_TYPE_DAB);
@@ -237,7 +234,7 @@ public class TunerUsbImpl implements TunerUsb {
 			if (scanOptions instanceof SearchSettings) {
 				if (((SearchSettings) scanOptions).clearExisting()) {
 					LOGGER.debug("Clearing existing services before new scan");
-					RadioServiceManager.getInstance().clearServiceList(RadioServiceType.RADIOSERVICE_TYPE_DAB);
+					RadioServiceManager.getInstance().clearServiceList();
 				}
 			}
 		}
@@ -429,10 +426,10 @@ public class TunerUsbImpl implements TunerUsb {
 			return;
 		}
         LOGGER.debug("serviceFound: {}", service);
-        final List<RadioService> currentServices = getRadioServices();
-		RadioService existingService = null;
+        final List<RadioServiceDab> currentServices = getRadioServices();
+		RadioServiceDab existingService = null;
 		try {
-			for (RadioService currentService : currentServices) {
+			for (RadioServiceDab currentService : currentServices) {
 				if (service.equalsRadioService(currentService)) {
                     LOGGER.debug("serviceFound already known: {}", service);
 					existingService = currentService;
@@ -532,7 +529,7 @@ public class TunerUsbImpl implements TunerUsb {
 
 		@Override
 		protected Void doInBackground(Void voids) {
-			RadioServiceManager.getInstance().serializeServices(RadioServiceType.RADIOSERVICE_TYPE_DAB);
+			RadioServiceManager.getInstance().serializeServices();
 
 
 			if(mInstance != null) {
@@ -554,7 +551,7 @@ public class TunerUsbImpl implements TunerUsb {
 		@Override
 		protected Void doInBackground(Void params) {
 			LOGGER.debug("Restoring services....");
-			while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB) && !isCancelled()) {
+			while (!RadioServiceManager.getInstance().isServiceListReady() && !isCancelled()) {
 				try {
                     //noinspection BusyWait
                     Thread.sleep(100);

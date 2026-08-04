@@ -239,7 +239,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	@NotNull ArrayList<RadioService> replaceLinkedRadioServicesWithKnown(@NotNull ArrayList<RadioService> linkedServices) {
 		ArrayList<RadioService> retLinkedServices = new ArrayList<>();
 		// retrieve list of known services
-		final List<RadioService> radioServices = RadioServiceManager.getInstance().getRadioServices(this.getRadioServiceType());
+		final List<RadioServiceDab> radioServices = RadioServiceManager.getInstance().getRadioServices(this.getRadioServiceType());
 		for (final RadioService linkedService : linkedServices) {
 			boolean foundRadioServiceInCurrentList = false;
 			for (final RadioService radioService : radioServices) {

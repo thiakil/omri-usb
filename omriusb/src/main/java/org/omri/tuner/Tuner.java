@@ -6,6 +6,7 @@ import org.omri.radioservice.RadioService;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.omri.radioservice.RadioServiceDab;
 
 /**
  * Copyright (C) 2016 Open Mobile Radio Interface (OMRI) Group
@@ -69,7 +70,7 @@ public interface Tuner {
 	 * @return a list of {@link RadioService}s or an empty list
 	 */
 	@NotNull
-	public List<@NotNull RadioService> getRadioServices();
+	public List<@NotNull RadioServiceDab> getRadioServices();
 
 	/**
 	 * Retrieve {@link RadioService}s for following the given service.

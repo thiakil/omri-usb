@@ -48,7 +48,7 @@ public class DemoTuner implements Tuner {
     private final static String DEMO_DEVICE_NAME = "DemoDevice"; // must be equal to DemoUsbTunerInput::DEMO_DEVICE_NAME
     private final static int DEVICE_ID = -1; // must be equal to DemoUsbTunerInput
     private final TunerType mTunertype = TunerType.TUNER_TYPE_DAB;
-    private final List<RadioService> mServices = new ArrayList<>();
+    private final List<RadioServiceDab> mServices = new ArrayList<>();
     private final List<TunerListener> mTunerlisteners = Collections.synchronizedList(new ArrayList<>());
     private final String mInputFilesPath;
     private TunerStatus mTunerStatus = TunerStatus.TUNER_STATUS_NOT_INITIALIZED;
@@ -136,7 +136,7 @@ public class DemoTuner implements Tuner {
     }
 
     @Override
-    public @NotNull List<RadioService> getRadioServices() {
+    public @NotNull List<RadioServiceDab> getRadioServices() {
         if(mTunerStatus == TunerStatus.TUNER_STATUS_INITIALIZED) {
             return mServices;
         } else {
@@ -370,7 +370,7 @@ public class DemoTuner implements Tuner {
             if (!mServices.isEmpty()) {
                 // Collected >0 recordings, use them as the service list
                 final RadioServiceManager rsm = RadioServiceManager.getInstance();
-                while (!rsm.isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB)) {
+                while (!rsm.isServiceListReady()) {
                     try {
                         //noinspection BusyWait
                         Thread.sleep(10);
@@ -378,8 +378,8 @@ public class DemoTuner implements Tuner {
                         LOGGER.error(e);
                     }
                 }
-                rsm.clearServiceList(RadioServiceType.RADIOSERVICE_TYPE_DAB);
-                for (RadioService service : mServices) {
+                rsm.clearServiceList();
+                for (RadioServiceDab service : mServices) {
                     rsm.addRadioService(service);
                 }
             }
@@ -400,7 +400,7 @@ public class DemoTuner implements Tuner {
         @Override
         protected Void doInBackground(Void params) {
             LOGGER.debug("Restoring services....");
-            while (!RadioServiceManager.getInstance().isServiceListReady(RadioServiceType.RADIOSERVICE_TYPE_DAB) && !isCancelled() ) {
+            while (!RadioServiceManager.getInstance().isServiceListReady() && !isCancelled() ) {
                 try {
                     //noinspection BusyWait
                     Thread.sleep(100);

@@ -46,9 +46,9 @@ export function useTuner(closePopup: ()=>void) {
     const message = tunerWSMessage as WSMessage
 
     if (message.type === WSMessage.Type.service_list) {
-      setServices(message.services.sort((a,b)=>{
+      setServices(message.services/*.sort((a,b)=>{
         return a.frequency - b.frequency || a.serviceLabel.localeCompare(b.serviceLabel);
-      }) || [])
+      })*/ || [])
     } else if (message.type === WSMessage.Type.tuner_state) {
       if ((tunerStatusRef.current === TunerStatus.TUNER_STATUS_SCANNING) !== (message.status === TunerStatus.TUNER_STATUS_SCANNING)){
         //started or stopped scanning, ensure status is undefined

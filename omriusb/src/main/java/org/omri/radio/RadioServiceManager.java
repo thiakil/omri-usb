@@ -2,6 +2,7 @@ package org.omri.radio;
 
 import org.jetbrains.annotations.NotNull;
 import org.omri.radioservice.RadioService;
+import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceType;
 
 import java.util.List;
@@ -13,20 +14,20 @@ public interface RadioServiceManager {
 	 * @param type the wanted {@link RadioServiceType} or {@code null} to get all types
 	 * @return a list of all known {@link RadioService}s or an empty list
 	 */
-	public List<RadioService> getRadioServices(RadioServiceType type);
+	public List<RadioServiceDab> getRadioServices(RadioServiceType type);
 
 	/**
 	 * Removes the given {@link RadioService} permanently
 	 * @param service the {@link RadioService} to remove
 	 * @return {@code true} on success, {@code false} if the {@link RadioService} was not found in the list
 	 */
-	public boolean removeRadioService(RadioService service);
+	public boolean removeRadioService(RadioServiceDab service);
 
 	/**
 	 * Adds the given {@link RadioService} to the list
 	 * @param addSrv the {@link RadioService} to add
 	 */
-	public void addRadioService(RadioService addSrv);
+	public void addRadioService(RadioServiceDab addSrv);
 
 	public boolean addRadioServiceFromParams();
 
@@ -35,5 +36,5 @@ public interface RadioServiceManager {
 	 *
 	 * @param radioService the updated radio service, MUST already exist in the list
 	 */
-	void radioServiceChanged(@NotNull RadioService radioService);
+	void radioServiceChanged(@NotNull RadioServiceDab radioService);
 }
