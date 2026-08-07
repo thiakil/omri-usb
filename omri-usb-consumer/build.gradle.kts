@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(ktorLibs.plugins.ktor)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.protobuf.gradle)
 }
 
 val nativeDebug = configurations.create("nativeDebug") {
@@ -50,6 +51,11 @@ dependencies {
     implementation(libs.log4j.core)
     implementation(libs.log4j.slf4j.impl)
 
+    implementation(libs.protobuf.kotlin)
+
+    implementation(ktorLibs.client.core)
+    implementation(ktorLibs.client.cio)
+    implementation(ktorLibs.client.websockets)
 
     implementation(project(":omriusb"))
 
@@ -66,5 +72,26 @@ dependencies {
 
 }
 
+protobuf {
+    // Configure the protoc executable
+    protoc {
+        // Download from repositories
+        artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.asProvider().get()}"
+    }
+    generateProtoTasks {
+        all().configureEach {
+            builtins {
+                create("kotlin")
+                named("java") {
+                    option("lite")
+                }
+            }
+        }
+    }
+}
+
 tasks["assemble"].dependsOn(nativeRelease)
 
+tasks.compileKotlin {
+    dependsOn(tasks.generateProto)
+}
