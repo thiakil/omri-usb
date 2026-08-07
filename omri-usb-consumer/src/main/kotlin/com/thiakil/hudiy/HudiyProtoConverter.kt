@@ -132,55 +132,59 @@ class HudiyProtoConverter: WebsocketContentConverter {
 
     val MessageLite.messageType: MessageType get() = when (this) {
         is HelloRequest -> MessageType.MESSAGE_HELLO_REQUEST
-        is HelloResponse -> MessageType.MESSAGE_HELLO_RESPONSE
         is SetStatusSubscriptions -> MessageType.MESSAGE_SET_STATUS_SUBSCRIPTIONS
         is SetReverseCameraStatus -> MessageType.MESSAGE_SET_REVERSE_CAMERA_STATUS
-        is ProjectionStatus -> MessageType.MESSAGE_PROJECTION_STATUS
-        is MediaStatus -> MessageType.MESSAGE_MEDIA_STATUS
-        is MediaMetadata -> MessageType.MESSAGE_MEDIA_METADATA
-        is NavigationStatus -> MessageType.MESSAGE_NAVIGATION_STATUS
-        is NavigationManeuverDetails -> MessageType.MESSAGE_NAVIGATION_MANEUVER_DETAILS
-        is NavigationManeuverDistance -> MessageType.MESSAGE_NAVIGATION_MANEUVER_DISTANCE
         is RegisterStatusIconRequest -> MessageType.MESSAGE_REGISTER_STATUS_ICON_REQUEST
-        is RegisterStatusIconResponse -> MessageType.MESSAGE_REGISTER_STATUS_ICON_RESPONSE
         is UnregisterStatusIcon -> MessageType.MESSAGE_UNREGISTER_STATUS_ICON
         is ChangeStatusIconState -> MessageType.MESSAGE_CHANGE_STATUS_ICON_STATE
         is RegisterNotificationChannelRequest -> MessageType.MESSAGE_REGISTER_NOTIFICATION_CHANNEL_REQUEST
-        is RegisterNotificationChannelResponse -> MessageType.MESSAGE_REGISTER_NOTIFICATION_CHANNEL_RESPONSE
         is UnregisterNotificationChannel -> MessageType.MESSAGE_UNREGISTER_NOTIFICATION_CHANNEL
         is ShowNotification -> MessageType.MESSAGE_SHOW_NOTIFICATION
         is RegisterToastChannelRequest -> MessageType.MESSAGE_REGISTER_TOAST_CHANNEL_REQUEST
-        is RegisterToastChannelResponse -> MessageType.MESSAGE_REGISTER_TOAST_CHANNEL_RESPONSE
         is UnregisterToastChannel -> MessageType.MESSAGE_UNREGISTER_TOAST_CHANNEL
         is ShowToast -> MessageType.MESSAGE_SHOW_TOAST
-        is ObdConnectionStatus -> MessageType.MESSAGE_OBD_CONNECTION_STATUS
         is QueryObdDeviceRequest -> MessageType.MESSAGE_QUERY_OBD_DEVICE_REQUEST
-        is QueryObdDeviceResponse -> MessageType.MESSAGE_QUERY_OBD_DEVICE_RESPONSE
         is RegisterAudioFocusReceiverRequest -> MessageType.MESSAGE_REGISTER_AUDIO_FOCUS_RECEIVER_REQUEST
         is RegisterAudioFocusReceiverResponse -> MessageType.MESSAGE_REGISTER_AUDIO_FOCUS_RECEIVER_RESPONSE
         is UnregisterAudioFocusReceiver -> MessageType.MESSAGE_UNREGISTER_AUDIO_FOCUS_RECEIVER
         is AudioFocusChangeRequest -> MessageType.MESSAGE_AUDIO_FOCUS_CHANGE_REQUEST
-        is AudioFocusChangeResponse -> MessageType.MESSAGE_AUDIO_FOCUS_CHANGE_RESPONSE
-        is AudioFocusAction -> MessageType.MESSAGE_AUDIO_FOCUS_ACTION
-        is AudioFocusMediaKey -> MessageType.MESSAGE_AUDIO_FOCUS_MEDIA_KEY
-        is PhoneConnectionStatus -> MessageType.MESSAGE_PHONE_CONNECTION_STATUS
-        is PhoneVoiceCallStatus -> MessageType.MESSAGE_PHONE_VOICE_CALL_STATUS
-        is PhoneLevelsStatus -> MessageType.MESSAGE_PHONE_LEVELS_STATUS
         is KeyEvent -> MessageType.MESSAGE_KEY_EVENT
         is SetDarkMode -> MessageType.MESSAGE_SET_DARK_MODE
         is SetCustomOverlayVisibility -> MessageType.MESSAGE_SET_CUSTOM_OVERLAY_VISIBILITY
         is SetNavigationOverlayVisibility -> MessageType.MESSAGE_SET_NAVIGATION_OVERLAY_VISIBILITY
         is SetVolumeOverlayVisibility -> MessageType.MESSAGE_SET_VOLUME_OVERLAY_VISIBILITY
         is RegisterActionRequest -> MessageType.MESSAGE_REGISTER_ACTION_REQUEST
-        is RegisterActionResponse -> MessageType.MESSAGE_REGISTER_ACTION_RESPONSE
         is DispatchAction -> MessageType.MESSAGE_DISPATCH_ACTION
         is SetEqualizerPreset -> MessageType.MESSAGE_SET_EQUALIZER_PRESET
         is CoverartRequest -> MessageType.MESSAGE_COVERART_REQUEST
-        is CoverartResponse -> MessageType.MESSAGE_COVERART_RESPONSE
         is SetAndroidAutoDayNightMode -> MessageType.MESSAGE_SET_ANDROID_AUTO_DAY_NIGHT_MODE
         is SetAutoboxDayNightMode -> MessageType.MESSAGE_SET_AUTOBOX_DAY_NIGHT_MODE
-        is CurrentMenuAction -> MessageType.MESSAGE_CURRENT_MENU_ACTION
         is SetBassTrebleBoost -> MessageType.MESSAGE_SET_BASS_TREBLE_BOOST
+
+        //client receiving messages, shouldn't really be serialised
+        is HelloResponse -> MessageType.MESSAGE_HELLO_RESPONSE
+        is MediaStatus -> MessageType.MESSAGE_MEDIA_STATUS
+        is ProjectionStatus -> MessageType.MESSAGE_PROJECTION_STATUS
+        is MediaMetadata -> MessageType.MESSAGE_MEDIA_METADATA
+        is NavigationStatus -> MessageType.MESSAGE_NAVIGATION_STATUS
+        is NavigationManeuverDetails -> MessageType.MESSAGE_NAVIGATION_MANEUVER_DETAILS
+        is NavigationManeuverDistance -> MessageType.MESSAGE_NAVIGATION_MANEUVER_DISTANCE
+        is RegisterStatusIconResponse -> MessageType.MESSAGE_REGISTER_STATUS_ICON_RESPONSE
+        is RegisterNotificationChannelResponse -> MessageType.MESSAGE_REGISTER_NOTIFICATION_CHANNEL_RESPONSE
+        is RegisterToastChannelResponse -> MessageType.MESSAGE_REGISTER_TOAST_CHANNEL_RESPONSE
+        is ObdConnectionStatus -> MessageType.MESSAGE_OBD_CONNECTION_STATUS
+        is QueryObdDeviceResponse -> MessageType.MESSAGE_QUERY_OBD_DEVICE_RESPONSE
+        is AudioFocusChangeResponse -> MessageType.MESSAGE_AUDIO_FOCUS_CHANGE_RESPONSE
+        is AudioFocusMediaKey -> MessageType.MESSAGE_AUDIO_FOCUS_MEDIA_KEY
+        is AudioFocusAction -> MessageType.MESSAGE_AUDIO_FOCUS_ACTION
+        is PhoneConnectionStatus -> MessageType.MESSAGE_PHONE_CONNECTION_STATUS
+        is PhoneVoiceCallStatus -> MessageType.MESSAGE_PHONE_VOICE_CALL_STATUS
+        is PhoneLevelsStatus -> MessageType.MESSAGE_PHONE_LEVELS_STATUS
+        is RegisterActionResponse -> MessageType.MESSAGE_REGISTER_ACTION_RESPONSE
+        is CoverartResponse -> MessageType.MESSAGE_COVERART_RESPONSE
+        is CurrentMenuAction -> MessageType.MESSAGE_CURRENT_MENU_ACTION
+
+
         else -> throw WebsocketConverterNotFoundException("Unknown value type: ${this.javaClass}")
     }
 
