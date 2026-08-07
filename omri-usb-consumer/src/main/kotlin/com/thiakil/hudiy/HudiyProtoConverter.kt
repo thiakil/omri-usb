@@ -6,6 +6,7 @@ import com.google.protobuf.Parser
 import hudiy.app.api.*
 import io.ktor.serialization.WebsocketContentConverter
 import io.ktor.serialization.WebsocketConverterNotFoundException
+import io.ktor.serialization.WebsocketDeserializeException
 import io.ktor.util.reflect.TypeInfo
 import io.ktor.utils.io.charsets.Charset
 import io.ktor.websocket.Frame
@@ -28,13 +29,13 @@ class HudiyProtoConverter: WebsocketContentConverter {
         }
         val size = buffer.getInt()
         val rawMessageType = buffer.getInt()
-        val messageId = MessageType.forNumber(rawMessageType) ?: throw WebsocketConverterNotFoundException("Unknown message type: $rawMessageType")
+        val messageId = MessageType.forNumber(rawMessageType) ?: throw WebsocketDeserializeException("Unknown message type: $rawMessageType", frame = content)
         if (messageId == MessageType.MESSAGE_PING || messageId == MessageType.MESSAGE_PONG || messageId == MessageType.MESSAGE_BYEBYE) {
             return HudiyMessage(messageId)
         }
         buffer.position(HEADER_SIZE)//move past unused flags
         if (size == 0 || size > buffer.remaining()) {
-            throw WebsocketConverterNotFoundException("Size $size is greater than remaining: ${buffer.remaining()}")
+            throw WebsocketDeserializeException("Size $size is greater than remaining: ${buffer.remaining()}", frame = content)
         }
         return HudiyMessage(messageId, messageId.parser.parseFrom(buffer))
     }
