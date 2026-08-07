@@ -1,5 +1,6 @@
 package com.thiakil.tunerapi.messages
 
+import com.thiakil.com.thiakil.tunerapi.radioServices
 import com.thiakil.tunerapi.ServiceInfo
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -10,7 +11,7 @@ import org.omri.tuner.Tuner
 @SerialName("service_list")
 data class ServiceList(val services: List<ServiceInfo>): WSMessage() {
     constructor(tuner: Tuner): this(
-        tuner.radioServices.filterIsInstance<RadioServiceDab>().filter { it.isProgrammeService }.map {
+        radioServices.filter { it.isProgrammeService }.map {
             ServiceInfo(
                 it
             )

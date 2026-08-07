@@ -14,15 +14,12 @@ import org.omri.tuner.TunerType
 fun Application.tunerApi() {
     val instance = Radio.getInstance()
     instance.initialize(Context(), null)
-    val availableTuners = instance.getAvailableTuners(TunerType.TUNER_TYPE_DAB)
-    availableTuners.forEach { tuner ->
-        tuner.initializeTuner()
-    }
     Runtime.getRuntime().addShutdownHook(Thread {
         instance.deInitialize()
     })
     routing {
         webSocket("/socket") {
+            val availableTuners = instance.getAvailableTuners(TunerType.TUNER_TYPE_DAB)
             if (availableTuners.isEmpty()) {
                 close(CloseReason(CloseReason.Codes.TRY_AGAIN_LATER, "No available tuners"))
                 return@webSocket

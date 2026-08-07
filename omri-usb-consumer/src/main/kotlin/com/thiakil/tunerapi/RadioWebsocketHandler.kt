@@ -20,9 +20,11 @@ import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import org.apache.logging.log4j.LogManager
+import org.omri.radio.Radio
 import org.omri.radio.impl.TunerUsbImpl
 import org.omri.radioservice.RadioService
 import org.omri.radioservice.RadioServiceDab
+import org.omri.radioservice.RadioServiceType
 import org.omri.radioservice.metadata.Textual
 import org.omri.radioservice.metadata.TextualDabDynamicLabel
 import org.omri.radioservice.metadata.TextualMetadataListener
@@ -44,6 +46,8 @@ data class ScanCounts(var countNew: Int = 0, var countUpdated: Int = 0, var coun
     }
 }
 
+val radioServices: List<RadioServiceDab> get() = Radio.getInstance().radioServiceManager.getRadioServices(RadioServiceType.RADIOSERVICE_TYPE_DAB)
+
 class RadioWebsocketHandler(
     private val session: WebSocketServerSession,
     val tuner: Tuner
@@ -53,6 +57,13 @@ class RadioWebsocketHandler(
     private val scanCounts = ScanCounts()
     suspend fun handleSession() {
         tuner.subscribe(this)
+
+        when (tuner.tunerStatus) {
+            TunerStatus.TUNER_STATUS_NOT_INITIALIZED -> tuner.initializeTuner()
+            TunerStatus.TUNER_STATUS_SUSPENDED -> tuner.resumeTuner()
+            else -> {}//no action
+        }
+
         sendMessage(TunerState(tuner))
         sendMessage(ServiceList(tuner))
         tuner.currentRunningRadioService?.subscribe(
@@ -64,7 +75,7 @@ class RadioWebsocketHandler(
                 try {
                     when (val message = session.receiveDeserialized<WSMessage>()) {
                         is StartService -> {
-                            val service = tuner.radioServices.firstOrNull { it is RadioServiceDab && it.serviceId == message.serviceId && it.ensembleId == message.ensembleId }
+                            val service = radioServices.firstOrNull { it.serviceId == message.serviceId && it.ensembleId == message.ensembleId }
                             if (service != null) {
                                 tuner.startRadioService(service)
                             } else {
