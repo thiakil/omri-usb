@@ -2,6 +2,8 @@ package org.omri.radio.impl;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.BooleanControl;
+import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import org.apache.logging.log4j.LogManager;
@@ -43,7 +45,10 @@ public class DabAudioDecoder {
 
 	private final String[] DAB_MIME = {"audio/unknown", "audio/mpeg-l2" /*"audio/mpeg"*/, "audio/mp4a-latm"};
 
+	private volatile AudioState audioState = AudioState.NORMAL;
 	private SourceDataLine line = null;
+	private FloatControl gainControl = null;
+	private BooleanControl muteControl = null;
 
 	private @Nullable Thread mDecodeThread = null;
 	private boolean mDecode = false;
@@ -82,7 +87,6 @@ public class DabAudioDecoder {
 		return mConfPs;
 	}
 
-
 	synchronized void setCodecCallback(DabDecoderCallback codecCallback) {
 		mDataQ.clear();
 		mCallback = codecCallback;
@@ -93,6 +97,9 @@ public class DabAudioDecoder {
 		if (mDecodeThread == null || !mDecodeThread.isAlive()) {
 			LOGGER.warn("Discarding audio data as thread is not alive");
 			return;
+		}
+		if (audioState == AudioState.SUSPENDED) {
+			return;//don't bother if we're muted
 		}
 		if ((mConfCodec == DAB_CODEC_AAC || mConfCodec == 99) && audioData != null && audioData.length > 0) {
 			mDataQ.offer(audioData);
@@ -105,6 +112,8 @@ public class DabAudioDecoder {
 		if (line != null) {
 			line.close();
 			line = null;
+			gainControl = null;
+			muteControl = null;
 		}
 
 		ArrayList<DabAudioDecoderStateCallBack> currentCallbacks;
@@ -137,7 +146,7 @@ public class DabAudioDecoder {
 		mDataQ.clear();
 	}
 
-	boolean configure(int dabCodec, int samplingRate, int channelCnt, boolean sbr, boolean ps) {
+	boolean configure(int dabCodec, int samplingRate, int channelCnt, boolean sbr, boolean ps, AudioState initialAudioState) {
         LOGGER.debug("Configuring Codec: {} with: {} kHz, {} Channels and SBR: {}", dabCodec, samplingRate, channelCnt, sbr);
 
 		stopDecodeThread();
@@ -149,11 +158,31 @@ public class DabAudioDecoder {
 		mConfChans = channelCnt;
 		mConfSbr = sbr;
 		mConfPs = ps;
+		audioState = initialAudioState;
 
 		if (mConfCodec == 99) {
             try {
                 line = AudioSystem.getSourceDataLine(new AudioFormat(samplingRate, 16, channelCnt, true, false));
 				line.open();
+				if (line.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+					try {
+						gainControl = (FloatControl) line.getControl(FloatControl.Type.MASTER_GAIN);
+                    } catch (RuntimeException e) {
+                        LOGGER.error("Line failed to get gain control", e);
+                    }
+				}
+				if (line.isControlSupported(BooleanControl.Type.MUTE)) {
+					try {
+                        muteControl = (BooleanControl) line.getControl(BooleanControl.Type.MUTE);
+                    }  catch (RuntimeException e) {
+						LOGGER.error("Line failed to get mute control", e);
+					}
+				}
+				if (initialAudioState == AudioState.DUCKED) {
+					startDuck();
+				} else if (initialAudioState == AudioState.SUSPENDED) {
+					suspendAudio();
+				}
 				line.start();
             } catch (LineUnavailableException e) {
                 LOGGER.error("Line unavailable", e);
@@ -166,6 +195,52 @@ public class DabAudioDecoder {
 		}
 
 		return true;
+	}
+
+	void startDuck() {
+		FloatControl gainLocal = this.gainControl;
+		BooleanControl muteControl;
+		if (gainLocal != null) {
+			gainLocal.setValue(-10);
+		} else if ((muteControl = this.muteControl) != null) {
+			muteControl.setValue(false);
+		} else {
+			LOGGER.warn("no controls available for ducking");
+		}
+		audioState = AudioState.DUCKED;
+	}
+
+	void endDuck() {
+		FloatControl gainLocal = this.gainControl;
+		BooleanControl muteControl;
+		if (gainLocal != null) {
+			gainLocal.setValue(0);
+		} else if ((muteControl = this.muteControl) != null) {
+			muteControl.setValue(true);
+		} else {
+			LOGGER.warn("no controls available for ducking");
+		}
+		audioState = AudioState.NORMAL;
+	}
+
+	void suspendAudio() {
+		BooleanControl muteControl = this.muteControl;
+		if (muteControl != null) {
+			muteControl.setValue(false);
+		} else {
+			LOGGER.warn("no controls available for suspending");
+		}
+		audioState = AudioState.DUCKED;
+	}
+
+	void unsuspendAudio() {
+		BooleanControl muteControl = this.muteControl;
+		if (muteControl != null) {
+			muteControl.setValue(true);
+		} else {
+			LOGGER.warn("no controls available for suspending");
+		}
+		audioState = AudioState.NORMAL;
 	}
 
 	Runnable DecoderRunnable = new Runnable() {
@@ -220,5 +295,12 @@ public class DabAudioDecoder {
 	interface DabAudioDecoderStateCallBack {
 
 		void codecStopped(DabAudioDecoder decoder);
+	}
+
+	enum AudioState {
+		NORMAL,
+		DUCKED,
+		SUSPENDED//aka muted
+		;
 	}
 }

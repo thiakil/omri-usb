@@ -2,12 +2,15 @@ package org.omri.radio.impl;
 
 import io.github.landerlyoung.jenny.NativeMethodProxy;
 import io.github.landerlyoung.jenny.NativeProxy;
+import javax.sound.sampled.BooleanControl;
+import javax.sound.sampled.FloatControl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NullMarked;
 import org.omri.radio.Radio;
+import org.omri.radio.impl.DabAudioDecoder.AudioState;
 import org.omri.radioservice.RadioService;
 import org.omri.radioservice.RadioServiceDab;
 import org.omri.radioservice.RadioServiceFollowingListener;
@@ -42,9 +45,7 @@ import java.util.List;
 
 @SuppressWarnings({"ClassWithTooManyMethods", "OverlyComplexClass", "OverlyCoupledClass"})
 @NullMarked
-public abstract class RadioServiceImpl implements RadioService, Serializable {
-
-	private static final long serialVersionUID = 952156510217072036L;
+public abstract class RadioServiceImpl implements RadioService {
 
 	private static final Logger LOGGER = LogManager.getLogger("RadioServiceImpl");
 
@@ -58,33 +59,11 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 	final transient List<RadioServiceRawAudiodataListener> mRawAudiodataListeners = Collections.synchronizedList(new ArrayList<>());
 	final transient List<RadioServiceFollowingListener> mSfListeners = Collections.synchronizedList(new ArrayList<>());
 
-	boolean mDecodeAudio = false;
+	private AudioState decoderAudioState = AudioState.NORMAL;
 
 	private int mAscty = -1;
 	private boolean mSbrUsed = false;
 	private boolean mPsUsed = false;
-
-	//Serialization
-	private void writeObject(ObjectOutputStream stream) throws IOException {
-		stream.writeObject(mGenreList);
-	}
-
-	@SuppressWarnings("unchecked")
-	private void readObject(java.io.ObjectInputStream stream) throws IOException, ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
-		mLogoVisuals = new ArrayList<>();
-
-		mGenreList = (ArrayList<String>) stream.readObject();
-
-		mSlideshowListeners.clear();
-		mLabelListeners.clear();
-		mRawAudiodataListeners.clear();
-
-		mDecodeAudio = false;
-
-		mAscty = -1;
-		mSbrUsed = false;
-		mPsUsed = false;
-	}
 
 	@Override
 	public boolean isReadyForGetLogos() {
@@ -327,7 +306,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		}
 
 		if (mAudioDec == null) {
-			mAudioDec = DabAudioDecoderFactory.getInstance().getDecoder(ascty, samplingRate, channelCount, sbrUsed, psUsed);
+			mAudioDec = DabAudioDecoderFactory.getInstance().getDecoder(ascty, samplingRate, channelCount, sbrUsed, psUsed, decoderAudioState);
 		} else {
 			if (mAudioDec.getConfCodec() != ascty ||
 				mAudioDec.getConfSampling() != samplingRate ||
@@ -338,7 +317,7 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 
 				mAudioDec.stopCodec();
 
-				mAudioDec = DabAudioDecoderFactory.getInstance().getDecoder(ascty, samplingRate, channelCount, sbrUsed, psUsed);
+				mAudioDec = DabAudioDecoderFactory.getInstance().getDecoder(ascty, samplingRate, channelCount, sbrUsed, psUsed, decoderAudioState);
 			}
 		}
 
@@ -361,6 +340,34 @@ public abstract class RadioServiceImpl implements RadioService, Serializable {
 		}
 
 		mAudioDec = null;
+	}
+
+	public void startAudioDuck() {
+		if (mAudioDec != null) {
+			mAudioDec.startDuck();
+		}
+		decoderAudioState = AudioState.DUCKED;
+	}
+
+	public void endAudioDuck() {
+		if (mAudioDec != null) {
+			mAudioDec.endDuck();
+		}
+		decoderAudioState = AudioState.NORMAL;
+	}
+
+	public void suspendAudio() {
+		if (mAudioDec != null) {
+			mAudioDec.suspendAudio();
+		}
+		decoderAudioState = AudioState.DUCKED;
+	}
+
+	public void unsuspendAudio() {
+		if (mAudioDec != null) {
+			mAudioDec.unsuspendAudio();
+		}
+		decoderAudioState = AudioState.NORMAL;
 	}
 
 }

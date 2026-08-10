@@ -4,6 +4,7 @@ import java.util.Vector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.util.Vector;
+import org.omri.radio.impl.DabAudioDecoder.AudioState;
 
 /**
  * Copyright (C) 2018 IRT GmbH
@@ -34,9 +35,9 @@ class DabAudioDecoderFactory implements DabAudioDecoder.DabAudioDecoderStateCall
 		return mFactoryInstance;
 	}
 
-	DabAudioDecoder getDecoder(int dabCodec, int samplingRate, int channelCnt, boolean sbr, boolean ps) {
+	DabAudioDecoder getDecoder(int dabCodec, int samplingRate, int channelCnt, boolean sbr, boolean ps, AudioState initialAudioState) {
 		DabAudioDecoder retDec = new DabAudioDecoder();
-		if (retDec.configure(dabCodec, samplingRate, channelCnt, sbr, ps)) {
+		if (retDec.configure(dabCodec, samplingRate, channelCnt, sbr, ps, initialAudioState)) {
 			retDec.registerDabAudioDecoderStateCallBack(this);
 			mDecoderInstances.add(retDec);
             LOGGER.debug("Current DabAudioDecoder instances: {}", mDecoderInstances.size());
