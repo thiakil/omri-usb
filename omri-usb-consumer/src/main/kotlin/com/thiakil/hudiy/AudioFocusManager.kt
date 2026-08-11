@@ -215,9 +215,9 @@ object AudioFocusManager {
     private fun completeWaitingFocus(success: Boolean) {
         synchronized(this) {
             val waitingOnFocusLocal = waitingOnFocus
-            waitingOnFocusLocal?.complete(success)
             waitingOnFocus = null
-        }
+            waitingOnFocusLocal
+        }?.complete(success)
     }
 
     private suspend fun requestFocusInternal(): CompletableDeferred<Boolean> {
