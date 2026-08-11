@@ -224,10 +224,13 @@ object AudioFocusManager {
         val toWait = CompletableDeferred<Boolean>(currentCoroutineContext().job)
         var localSock: DefaultClientWebSocketSession? = null
         synchronized(this) {
-            localSock = socketReference ?: return@synchronized toWait.complete(NOT_CONNECTED_BEHAVIOUR)
+            localSock = socketReference ?: return@synchronized {
+                LOGGER.debug("Not connected, returning default: {}", NOT_CONNECTED_BEHAVIOUR)
+                toWait.complete(NOT_CONNECTED_BEHAVIOUR)
+            }
             val currentStatus = focusStatus
             when (currentStatus) {
-                AudioFocusState.NOT_CONNECTED -> toWait.complete(NOT_CONNECTED_BEHAVIOUR)
+                AudioFocusState.NOT_CONNECTED -> toWait.complete(NOT_CONNECTED_BEHAVIOUR)//shouldn't happen
                 AudioFocusState.HELD -> toWait.complete(true)
                 AudioFocusState.REQUESTED -> {
                     //return the existing wait, or fail due to mismatched state
