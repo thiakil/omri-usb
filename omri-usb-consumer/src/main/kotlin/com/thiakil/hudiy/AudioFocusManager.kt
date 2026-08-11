@@ -23,13 +23,18 @@ import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.onTimeout
+import kotlinx.coroutines.selects.select
 import org.apache.logging.log4j.LogManager
 import org.omri.radio.Radio
+import org.omri.radio.impl.RadioServiceImpl
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.seconds
 
 enum class AudioFocusState {
     NOT_HELD,
@@ -151,12 +156,16 @@ object AudioFocusManager {
                                 when (payload.action) {
                                     AudioFocusAction.AudioFocusActionType.AUDIO_FOCUS_ACTION_TYPE_SUSPEND -> {
                                         focusStatus = AudioFocusState.SUSPENDED
-                                        //todo pause the audio
+                                        radio.availableTuners.forEach {
+                                            (it.currentRunningRadioService as? RadioServiceImpl)?.suspendAudio()
+                                        }
                                     }
 
                                     AudioFocusAction.AudioFocusActionType.AUDIO_FOCUS_ACTION_TYPE_RESTORE -> {
                                         focusStatus = AudioFocusState.HELD
-                                        //todo unpause the audio
+                                        radio.availableTuners.forEach {
+                                            (it.currentRunningRadioService as? RadioServiceImpl)?.unsuspendAudio()
+                                        }
                                     }
 
                                     AudioFocusAction.AudioFocusActionType.AUDIO_FOCUS_ACTION_TYPE_LOSS -> {
@@ -170,12 +179,16 @@ object AudioFocusManager {
 
                                     AudioFocusAction.AudioFocusActionType.AUDIO_FOCUS_ACTION_TYPE_DUCK_START -> {
                                         focusStatus = AudioFocusState.DUCK
-                                        //todo actually duck
+                                        radio.availableTuners.forEach {
+                                            (it.currentRunningRadioService as? RadioServiceImpl)?.startAudioDuck()
+                                        }
                                     }
 
                                     AudioFocusAction.AudioFocusActionType.AUDIO_FOCUS_ACTION_TYPE_DUCK_END -> {
                                         focusStatus = AudioFocusState.HELD
-                                        //todo un-duck
+                                        radio.availableTuners.forEach {
+                                            (it.currentRunningRadioService as? RadioServiceImpl)?.endAudioDuck()
+                                        }
                                     }
                                 }
                             }
@@ -257,5 +270,15 @@ object AudioFocusManager {
         return toWait
     }
 
-    suspend fun requestFocus() = requestFocusInternal().await()
+    suspend fun requestFocus(): Boolean {
+        val focusWait = requestFocusInternal()
+        if (focusWait.isCompleted) {
+            return focusWait.await()
+        }
+        return select {
+            focusWait.onAwait { it }
+            @OptIn(ExperimentalCoroutinesApi::class)
+            onTimeout(1.seconds) { false }
+        }
+    }
 }
